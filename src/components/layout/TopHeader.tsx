@@ -13,11 +13,7 @@ import {
 import { formatDate } from '@/lib/format'
 import { ROLES } from '@/lib/constants'
 
-interface TopHeaderProps {
-  onMenuClick?: () => void
-}
-
-export function TopHeader({ onMenuClick: _onMenuClick }: TopHeaderProps) {
+export function TopHeader() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [role, setRole] = useState<string>('Super Admin')
 
@@ -35,9 +31,9 @@ export function TopHeader({ onMenuClick: _onMenuClick }: TopHeaderProps) {
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening'
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
-        <div className="min-w-0">
+    <header className="sticky top-14 z-30 border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 lg:top-0">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4 lg:flex-row">
+        <div className="min-w-0 flex-1">
           <h2 className="truncate text-lg font-bold sm:text-2xl">
             {greeting}, CEO 👋
           </h2>
@@ -46,17 +42,17 @@ export function TopHeader({ onMenuClick: _onMenuClick }: TopHeaderProps) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden items-center gap-1.5 rounded-xl border border-border bg-slate-50 px-3 py-1.5 text-xs text-text-muted lg:flex">
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
+          <div className="flex items-center gap-1.5 rounded-xl border border-border bg-slate-50 px-3 py-1.5 text-xs text-text-muted">
             <Calendar className="h-3.5 w-3.5" />
             <span className="max-w-[180px] truncate">{formatDate()}</span>
           </div>
 
-          <Button variant="ghost" size="icon" className="hidden sm:flex">
+          <Button variant="ghost" size="icon">
             <Search className="h-4 w-4" />
           </Button>
 
-          <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="hidden sm:flex">
+          <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
 
@@ -71,7 +67,7 @@ export function TopHeader({ onMenuClick: _onMenuClick }: TopHeaderProps) {
                 <Avatar className="h-8 w-8">
                   <AvatarFallback>CEO</AvatarFallback>
                 </Avatar>
-                <span className="hidden text-xs font-medium sm:inline">{role}</span>
+                <span className="text-xs font-medium">{role}</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">

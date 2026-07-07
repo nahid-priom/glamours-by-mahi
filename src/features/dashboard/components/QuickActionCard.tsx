@@ -45,18 +45,21 @@ export const QuickActionCard = memo(function QuickActionCard({
         'group flex h-[78px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 shadow-sm',
         'transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md',
         styles.ring,
-        'lg:h-[86px]',
+        'lg:h-auto lg:min-h-[52px] lg:flex-row lg:items-center lg:justify-center lg:gap-2.5 lg:px-3 lg:py-2.5',
       )}
     >
       <div
         className={cn(
-          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl lg:h-11 lg:w-11',
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+          'lg:h-9 lg:w-9',
           styles.box,
         )}
       >
-        <Icon className={cn('h-5 w-5', styles.icon)} />
+        <Icon className={cn('h-5 w-5 lg:h-4 lg:w-4', styles.icon)} />
       </div>
-      <h4 className="text-center text-sm font-semibold leading-tight text-slate-900">{title}</h4>
+      <h4 className="min-w-0 text-center text-sm font-semibold leading-tight text-slate-900 lg:whitespace-nowrap lg:text-left lg:text-[13px]">
+        {title}
+      </h4>
     </Link>
   )
 })
