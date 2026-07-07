@@ -1,0 +1,649 @@
+@page invoice {
+  size: A4;
+  margin: 12mm;
+}
+
+@page report {
+  size: A4;
+  margin: 12mm;
+}
+
+@page label {
+  size: 100mm 150mm;
+  margin: 4mm;
+}
+
+@page shipping-label {
+  size: 100mm 150mm;
+  margin: 4mm;
+}
+
+@page shipping-label-compact {
+  size: 80mm 100mm;
+  margin: 3mm;
+}
+
+.print-root {
+  min-height: 100vh;
+  background: #f1f5f9;
+}
+
+.print-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.print-hint {
+  width: 100%;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.invoice-page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 1rem auto;
+  padding: 12mm;
+  background: white;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #0f172a;
+  page: invoice;
+}
+
+.shipping-label-page {
+  width: 100mm;
+  min-height: 150mm;
+  max-width: 100mm;
+  margin: 1rem auto;
+  padding: 4mm;
+  background: white;
+  color: #000;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  font-family: Arial, 'Segoe UI', system-ui, sans-serif;
+  page: shipping-label;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.shipping-label-compact {
+  width: 80mm;
+  min-height: 100mm;
+  max-width: 80mm;
+  margin: 1rem auto;
+  padding: 3mm;
+  background: white;
+  color: #000;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  font-family: Arial, 'Segoe UI', system-ui, sans-serif;
+  page: shipping-label-compact;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.shipping-label-a4-preview {
+  width: 100mm;
+  min-height: 150mm;
+  margin: 1rem auto;
+  padding: 4mm;
+  background: white;
+  color: #000;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  border: 2px dashed #cbd5e1;
+}
+
+.gift-label-page {
+  width: 100mm;
+  height: 100mm;
+  margin: 1rem auto;
+  padding: 6mm;
+  background: white;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  page: label;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Thermal label typography */
+.thermal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.thermal-section {
+  padding: 2mm 0;
+}
+
+.thermal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2mm;
+}
+
+.thermal-store {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.thermal-fraud-badge {
+  display: inline-block;
+  margin-top: 2px;
+  border: 1.5px solid #000;
+  padding: 1px 4px;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.thermal-cod-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.thermal-cod-amount {
+  font-size: 18px;
+  font-weight: 900;
+  color: #dc2626;
+  line-height: 1.1;
+}
+
+.thermal-divider {
+  border-top: 1.5px solid #000;
+  margin: 1mm 0;
+}
+
+.thermal-label-sm {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.thermal-order-id {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  word-break: break-all;
+}
+
+.thermal-tracking-id {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  word-break: break-all;
+}
+
+.thermal-status {
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.thermal-barcode-wrap {
+  padding: 1mm 0;
+}
+
+.thermal-customer-name {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.thermal-phone {
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 1mm;
+}
+
+.thermal-address {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-top: 1mm;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.thermal-product {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.thermal-sku {
+  font-size: 8px;
+  margin-top: 1mm;
+}
+
+.thermal-courier {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.thermal-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2mm;
+  padding-top: 1mm;
+}
+
+.thermal-care-badge {
+  flex: 1;
+  border: 2px solid #000;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 3mm 2mm;
+}
+
+.thermal-powered {
+  text-align: center;
+  font-size: 6px;
+  color: #525252;
+  margin-top: 1mm;
+  padding-bottom: 1mm;
+}
+
+.invoice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #ef4444;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.invoice-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #ef4444;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.invoice-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+}
+
+.invoice-table th,
+.invoice-table td {
+  border: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.invoice-table th {
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.report-print-page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 1rem auto;
+  padding: 12mm;
+  background: white;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+  color: #111827;
+  page: report;
+  box-sizing: border-box;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  border-bottom: 2px solid #ef4444;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.report-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: #ef4444;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.report-company {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.report-powered {
+  font-size: 9px;
+  color: #64748b;
+  margin: 2px 0 0;
+}
+
+.report-title-block {
+  text-align: right;
+}
+
+.report-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: #111827;
+}
+
+.report-meta-line {
+  font-size: 10px;
+  margin: 2px 0;
+  color: #374151;
+}
+
+.report-meta-line span {
+  color: #64748b;
+}
+
+.report-criteria {
+  font-size: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.report-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #374151;
+}
+
+.report-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.report-kpi-box {
+  border: 1px solid #d1d5db;
+  padding: 8px 10px;
+  text-align: center;
+  background: #fafafa;
+}
+
+.report-kpi-label {
+  display: block;
+  font-size: 9px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+}
+
+.report-kpi-value {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.report-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.report-cell-title {
+  font-weight: 600;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #111827;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.report-cell-sub {
+  font-size: 9px;
+  line-height: 1.35;
+  color: #64748b;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.report-cell-status {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  table-layout: fixed;
+}
+
+.report-table thead {
+  display: table-header-group;
+}
+
+.report-table th,
+.report-table td {
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  font-size: 10px;
+}
+
+.report-table th {
+  background: #f3f4f6;
+  font-weight: 700;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #374151;
+}
+
+.report-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.report-row-count {
+  font-size: 9px;
+  color: #64748b;
+  margin: 8px 0 0;
+  text-align: right;
+}
+
+.report-empty {
+  font-size: 11px;
+  color: #64748b;
+  padding: 16px;
+  text-align: center;
+  border: 1px dashed #d1d5db;
+}
+
+.report-footer {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid #d1d5db;
+  font-size: 9px;
+  color: #64748b;
+}
+
+.report-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.report-signature-line {
+  font-size: 10px;
+  color: #374151;
+  margin-bottom: 8px;
+  padding-top: 8px;
+}
+
+.report-footer-note {
+  margin: 0;
+  font-size: 8px;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.report-section {
+  break-inside: avoid-page;
+}
+
+.report-table-section {
+  break-inside: auto;
+}
+
+.report-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.report-print-toolbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-left: auto;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: #111827 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-root {
+    background: white !important;
+  }
+
+  .report-print-page {
+    width: 210mm;
+    min-height: auto;
+    background: white;
+    box-shadow: none !important;
+    margin: 0 auto;
+    padding: 0;
+    page: report;
+  }
+
+  .report-kpi-box {
+    background: #f9fafb !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .report-table th {
+    background: #f3f4f6 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .report-table thead {
+    display: table-header-group;
+  }
+
+  .report-page-num::after {
+    content: 'Page ' counter(page);
+  }
+
+  .page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .print-page {
+    box-shadow: none !important;
+    margin: 0 auto !important;
+  }
+
+  .print-safe {
+    color-adjust: exact;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .shipping-label-page {
+    width: 100mm;
+    min-height: 150mm;
+    page: shipping-label;
+    background: white;
+    color: black;
+    box-shadow: none !important;
+    margin: 0 auto;
+    break-after: page;
+  }
+
+  .shipping-label-compact {
+    width: 80mm;
+    min-height: 100mm;
+    page: shipping-label-compact;
+    box-shadow: none !important;
+    break-after: page;
+  }
+
+  .shipping-label-a4-preview {
+    border: none;
+    box-shadow: none !important;
+    page: shipping-label;
+  }
+
+  .thermal-cod-amount {
+    color: #000 !important;
+    font-size: 20px;
+  }
+}
