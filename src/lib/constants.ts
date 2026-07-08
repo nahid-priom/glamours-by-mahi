@@ -48,3 +48,22 @@ export const FRAUD_LEVELS = ['SAFE', 'MEDIUM', 'HIGH', 'BLOCKED'] as const
 export type FraudLevel = (typeof FRAUD_LEVELS)[number]
 
 export const SIDEBAR_WIDTH = 260
+
+export const ECOMMERCE_STORE_ID = 's5'
+export const ECOMMERCE_STORE_NAME = 'E-commerce Website'
+export const STOREFRONT_BRAND = 'E-BONDHU'
+export const DELIVERY_CHARGE = 120
+export const FREE_DELIVERY_THRESHOLD = 3000
+
+export const STOREFRONT_CATEGORIES = [
+  { slug: 'new-arrival', label: 'New Arrival' },
+  { slug: 'dress', label: 'Dress' },
+  { slug: 'co-ord-set', label: 'Co-ord Set' },
+  { slug: 'tops-tunic', label: 'Tops & Tunic' },
+  { slug: 'kurti', label: 'Kurti' },
+  { slug: 'accessories', label: 'Accessories' },
+  { slug: 'best-seller', label: 'Best Seller' },
+  { slug: 'sale', label: 'Sale' },
+] as const
+
+export type StorefrontCategorySlug = (typeof STOREFRONT_CATEGORIES)[number]['slug']

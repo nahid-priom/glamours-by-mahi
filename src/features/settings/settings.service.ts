@@ -31,8 +31,8 @@ function defaultSettings(): AppSettings {
     company: {
       company_name: COMPANY_NAME,
       phone: '+880 1712-345678',
-      email: 'support@codebondhu.com',
-      website: 'https://codebondhu.com',
+      email: 'support@E-BONDHU.com',
+      website: 'https://E-BONDHU.com',
       address: 'Dhaka, Bangladesh',
       logo_url: '',
     },

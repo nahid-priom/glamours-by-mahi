@@ -1,8 +1,9 @@
 import type { Product } from '@/types'
 import type { ProductFilters, ProductFormInput, ProductStats } from './products.types'
-import { LOW_STOCK_THRESHOLD } from '@/lib/constants'
+import { FASHION_CATALOG_COUNT, FASHION_CATALOG_VERSION } from '@/lib/fashion-catalog'
 import { generateId } from '@/lib/id'
 import { MOCK_PRODUCTS, MOCK_STORES } from '@/lib/mock-data'
+import { LOW_STOCK_THRESHOLD } from '@/lib/constants'
 import { getStorageItem, setStorageItem, STORAGE_KEYS, updateStorageItem } from '@/lib/storage'
 
 const delay = (ms = 200) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -22,9 +23,17 @@ function normalizeProduct(p: Product): Product {
 
 function loadProducts(): Product[] {
   const stored = getStorageItem<Product[]>(STORAGE_KEYS.products, [])
-  if (stored.length === 0) {
+  const catalogVersion = getStorageItem<number>('catalog_version', 0)
+  const ecommerceCount = stored.filter((p) => p.store_id === 's5').length
+  const needsReseed =
+    stored.length === 0 ||
+    catalogVersion < FASHION_CATALOG_VERSION ||
+    ecommerceCount < FASHION_CATALOG_COUNT - 10
+
+  if (needsReseed) {
     const seeded = MOCK_PRODUCTS.map(normalizeProduct)
     setStorageItem(STORAGE_KEYS.products, seeded)
+    setStorageItem('catalog_version', FASHION_CATALOG_VERSION)
     return seeded
   }
   return stored.map(normalizeProduct)

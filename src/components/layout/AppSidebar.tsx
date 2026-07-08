@@ -16,7 +16,7 @@ import { APP_NAME } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/orders', label: 'Orders', icon: Package },
   { to: '/stores', label: 'Stores', icon: Store },
   { to: '/couriers', label: 'Couriers', icon: Truck },
@@ -57,7 +57,7 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/dashboard'}
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(

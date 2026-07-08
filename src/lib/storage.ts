@@ -39,4 +39,8 @@ export const STORAGE_KEYS = {
   customerNotes: 'customer_notes',
   courierStatusLogs: 'courier_status_logs',
   reportsFilters: 'reports_filters',
+  cart: 'cart',
+  wishlist: 'wishlist',
+  accountSession: 'account_session',
+  customerAddresses: 'customer_addresses',
 } as const

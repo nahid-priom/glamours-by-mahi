@@ -3,7 +3,7 @@ import { LayoutDashboard, Package, Plus, Users, MoreHorizontal } from 'lucide-re
 import { cn } from '@/lib/utils'
 
 const items = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/orders', label: 'Orders', icon: Package },
   { to: '/orders/new', label: 'Create', icon: Plus },
   { to: '/customers', label: 'Customers', icon: Users },
@@ -18,7 +18,7 @@ export function MobileBottomNav() {
           <NavLink
             key={to}
             to={to}
-            end={to === '/'}
+            end={to === '/dashboard'}
             className={({ isActive }) =>
               cn(
                 'flex flex-col items-center gap-0.5 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors',

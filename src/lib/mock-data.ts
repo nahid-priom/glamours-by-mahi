@@ -2,6 +2,7 @@ import type { Order, Customer, Product } from '@/types'
 import type { Courier } from '@/features/couriers/couriers.types'
 import type { FraudRule } from '@/features/fraud/fraud.types'
 import type { Store } from '@/features/stores/stores.types'
+import { generateFashionCatalog } from '@/lib/fashion-catalog'
 
 const now = new Date().toISOString()
 
@@ -69,6 +70,21 @@ export const MOCK_STORES: Store[] = [
     email: 'instagram@example.com',
     address: 'Banani, Dhaka',
     default_courier_id: null,
+    ...storeDefaults,
+    created_at: now,
+    updated_at: now,
+  },
+  {
+    id: 's5',
+    name: 'E-commerce Website',
+    type: 'manual',
+    status: 'active',
+    api_status: 'connected',
+    invoice_prefix: 'EC',
+    phone: '01700000000',
+    email: 'shop@E-BONDHU.bd',
+    address: 'Dhaka, Bangladesh',
+    default_courier_id: 'c1',
     ...storeDefaults,
     created_at: now,
     updated_at: now,
@@ -270,13 +286,7 @@ export const MOCK_CUSTOMERS: Customer[] = [
   },
 ]
 
-export const MOCK_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Wireless Earbuds Pro', sku: 'WEP-001', price: 2500, stock: 150, store_id: 's1', store_name: 'Main Facebook Store', status: 'active', created_at: now, updated_at: now },
-  { id: 'p2', name: 'Smart Watch X5', sku: 'SWX-002', price: 4500, stock: 85, store_id: 's2', store_name: 'Shopify Store', status: 'active', created_at: now, updated_at: now },
-  { id: 'p3', name: 'Phone Case Premium', sku: 'PCP-003', price: 350, stock: 500, store_id: 's1', store_name: 'Main Facebook Store', status: 'active', created_at: now, updated_at: now },
-  { id: 'p4', name: 'Bluetooth Speaker', sku: 'BTS-004', price: 1800, stock: 0, store_id: 's3', store_name: 'WooCommerce Store', status: 'out_of_stock', created_at: now, updated_at: now },
-  { id: 'p5', name: 'Power Bank 20000mAh', sku: 'PBK-005', price: 1200, stock: 200, store_id: 's2', store_name: 'Shopify Store', status: 'active', created_at: now, updated_at: now },
-]
+export const MOCK_PRODUCTS: Product[] = generateFashionCatalog()
 
 export const MOCK_ORDERS: Order[] = [
   { id: 'o1', order_id: 'REX-20240708-001', customer_id: 'cu1', customer_name: 'Rahim Uddin', customer_phone: '01712345678', delivery_address: 'Dhanmondi 27, Dhaka', store_id: 's1', store_name: 'Main Facebook Store', product_id: 'p1', product_name: 'Wireless Earbuds Pro', sku: 'WEP-001', quantity: 1, unit_price: 2500, cod_amount: 2500, courier_id: 'c1', courier_name: 'Steadfast', tracking_id: 'REX2024070812345', status: 'Delivered', fraud_level: 'SAFE', fraud_score: 15, payment_status: 'collected', assigned_to: 'Admin', delivery_area: 'Dhaka Zone', customer_note: 'Call before delivery', order_note: '', created_at: now, updated_at: now },

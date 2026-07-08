@@ -294,4 +294,19 @@ export const customersService = {
   getCustomers: (filters?: CustomerFilters) => customersService.getAll(filters),
   getCustomerById: (id: string) => customersService.getById(id),
   getCustomerByPhone: (phone: string) => customersService.getByPhone(phone),
+
+  async recordOrderPlacement(phone: string, amount: number) {
+    await delay(100)
+    updateStorageItem(STORAGE_KEYS.customers, loadCustomers(), (current) =>
+      current.map((c) => {
+        if (c.phone !== phone) return c
+        return migrateCustomer({
+          ...c,
+          total_orders: c.total_orders + 1,
+          total_spent: c.total_spent + amount,
+          updated_at: new Date().toISOString(),
+        })
+      }),
+    )
+  },
 }
