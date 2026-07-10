@@ -82,7 +82,7 @@ export const MOCK_STORES: Store[] = [
     api_status: 'connected',
     invoice_prefix: 'EC',
     phone: '01700000000',
-    email: 'shop@E-BONDHU.bd',
+    email: 'shop@Shakira Enterprise.bd',
     address: 'Dhaka, Bangladesh',
     default_courier_id: 'c1',
     ...storeDefaults,

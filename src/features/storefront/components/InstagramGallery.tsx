@@ -5,7 +5,7 @@ export function InstagramGallery() {
   return (
     <section className="px-4 py-16 sm:px-6 lg:py-20">
       <div className="mx-auto max-w-[1400px] text-center">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-[#6B7280]">@E-BONDHU.bd</p>
+        <p className="text-[11px] uppercase tracking-[0.3em] text-[#6B7280]">@Shakira Enterprise.bd</p>
         <h2 className="mt-2 font-serif text-3xl text-[#111111]">Style Inspiration</h2>
         <div className="mt-10 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           {INSTAGRAM_IMAGES.map((img, i) => (
