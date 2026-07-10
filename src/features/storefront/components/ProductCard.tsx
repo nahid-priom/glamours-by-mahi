@@ -89,7 +89,7 @@ export const ProductCard = memo(function ProductCard({
   return (
     <article
       className={cn(
-        'group flex h-[285px] flex-col overflow-hidden rounded-[22px] border border-[#E5E7EB] bg-white shadow-sm transition-all duration-300',
+        'group flex h-[320px] flex-col overflow-hidden rounded-[22px] border border-[#E5E7EB] bg-white shadow-sm transition-all duration-300',
         'md:h-[390px] lg:h-[390px] xl:h-[400px]',
         'hover:-translate-y-0.5 hover:shadow-md',
         className,
