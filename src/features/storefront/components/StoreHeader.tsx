@@ -6,6 +6,7 @@ import { formatBDT } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useCart } from '../cart.context'
 import { useStorefrontUI } from '../storefront-ui.context'
+import { PWAInstallButton } from '@/features/pwa'
 
 const NAV = [
   { to: '/shop', label: 'Shop' },
@@ -32,11 +33,14 @@ export function StoreHeader() {
     <>
       <header
         className={cn(
-          'fixed left-0 right-0 top-0 z-50 transition-all duration-300',
+          'fixed left-0 right-0 z-50 transition-all duration-300',
           scrolled
             ? 'border-b border-[#111111]/5 bg-[#F8F6F2]/95 py-2 shadow-[0_4px_30px_-10px_rgba(17,17,17,0.08)] backdrop-blur-md'
             : 'bg-transparent py-4',
         )}
+        style={{
+          top: 'calc(var(--pwa-install-bar-height, 0px) + env(safe-area-inset-top, 0px))',
+        }}
       >
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -102,6 +106,7 @@ export function StoreHeader() {
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2">
+            <PWAInstallButton />
             <button type="button" onClick={openSearch} className="rounded-full p-2.5 hover:bg-white/60" aria-label="Search">
               <Search className="h-5 w-5" />
             </button>
@@ -149,6 +154,9 @@ export function StoreHeader() {
                   {c.label}
                 </Link>
               ))}
+              <div className="mt-2 border-t border-[#111111]/5 pt-2">
+                <PWAInstallButton variant="menu" onAfterClick={() => setMenuOpen(false)} />
+              </div>
             </nav>
           </div>
         </div>

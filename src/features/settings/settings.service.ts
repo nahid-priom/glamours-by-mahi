@@ -31,8 +31,8 @@ function defaultSettings(): AppSettings {
     company: {
       company_name: COMPANY_NAME,
       phone: '+880 1712-345678',
-      email: 'support@Shakira Enterprise.com',
-      website: 'https://Shakira Enterprise.com',
+      email: 'support@CODE BONDHU.com',
+      website: 'https://CODE BONDHU.com',
       address: 'Dhaka, Bangladesh',
       logo_url: '',
     },

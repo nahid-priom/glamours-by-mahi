@@ -51,7 +51,7 @@ export const SIDEBAR_WIDTH = 260
 
 export const ECOMMERCE_STORE_ID = 's5'
 export const ECOMMERCE_STORE_NAME = 'E-commerce Website'
-export const STOREFRONT_BRAND = 'Shakira Enterprise'
+export const STOREFRONT_BRAND = 'CODE BONDHU'
 export const DELIVERY_CHARGE = 120
 export const FREE_DELIVERY_THRESHOLD = 3000
 

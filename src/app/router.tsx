@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType } from 'react'
 import { createBrowserRouter, Outlet } from 'react-router-dom'
 import { ScrollToTop } from '@/components/common/ScrollToTop'
+import { PWAProvider } from '@/features/pwa'
 import { DashboardLayout } from '@/layouts/DashboardLayout'
 import { PrintLayout } from '@/features/print/PrintLayout'
 import { StorefrontLayout } from '@/features/storefront/StorefrontLayout'
@@ -50,6 +51,9 @@ const AccountAddressesPage = lazy(() =>
 )
 const SearchPage = lazy(() =>
   import('@/features/storefront/SearchPage').then((m) => ({ default: m.SearchPage })),
+)
+const OfflineFallbackPage = lazy(() =>
+  import('@/features/pwa').then((m) => ({ default: m.OfflineFallbackPage })),
 )
 
 const DashboardPage = lazy(() =>
@@ -139,10 +143,10 @@ function withSuspense(Component: ComponentType, fallback?: React.ReactNode) {
 
 function RootLayout() {
   return (
-    <>
+    <PWAProvider>
       <ScrollToTop />
       <Outlet />
-    </>
+    </PWAProvider>
   )
 }
 
@@ -174,6 +178,7 @@ export const router = createBrowserRouter([
         ],
       },
       { path: 'search', element: withSuspense(SearchPage, <StorefrontLoader />) },
+      { path: 'offline', element: withSuspense(OfflineFallbackPage) },
     ],
   },
   {

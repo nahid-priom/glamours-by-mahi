@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { StorefrontProduct } from '../storefront.types'
 
-const STORAGE_KEY = 'Shakira Enterprise_recently_viewed'
+const STORAGE_KEY = 'CODE BONDHU_recently_viewed'
 const MAX_ITEMS = 12
 
 function readIds(): string[] {
