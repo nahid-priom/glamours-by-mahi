@@ -5,9 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 const PWA_MANIFEST = {
-  name: 'Shakira Enterprise',
-  short_name: 'Shakira',
-  description: 'Premium fashion and online shopping from Shakira Enterprise.',
+  name: 'Glamourous by Mahi',
+  short_name: 'Glamourous',
+  description: 'Multi-Branch Fashion Retail & E-commerce Business Automation System',
   theme_color: '#F8F6F2',
   background_color: '#F8F6F2',
   lang: 'en',

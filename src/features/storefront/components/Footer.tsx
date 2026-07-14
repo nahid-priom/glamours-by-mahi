@@ -61,7 +61,7 @@ export function Footer() {
 
       <div className="border-t border-white/10 px-4 py-5 text-center text-xs text-white/40 sm:px-6">
         © {new Date().getFullYear()} {STOREFRONT_BRAND}. Powered by{' '}
-        <span className="text-[#E11D48]">Code Bondhu IT</span>
+        <span className="text-[#E11D48]">Glamourous by Mahi</span>
       </div>
     </footer>
   )

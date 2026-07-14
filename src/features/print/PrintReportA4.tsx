@@ -80,13 +80,13 @@ export function PrintReportA4({ document: doc }: PrintReportA4Props) {
 
       <footer className="report-footer report-section">
         <div className="report-footer-row">
-          <span>Prepared by SMART ORDER MS OMS (System Generated)</span>
+          <span>Prepared by Glamourous by Mahi ERP (System Generated)</span>
           <span className="report-page-num" />
         </div>
         <div className="report-signature-line">
           Authorized Signature: _________________________________
         </div>
-        <p className="report-footer-note">Printed from SMART ORDER MS Order Management System</p>
+        <p className="report-footer-note">Printed from Glamourous by Mahi Retail ERP</p>
       </footer>
     </div>
   )

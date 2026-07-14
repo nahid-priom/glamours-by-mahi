@@ -161,8 +161,8 @@ export const reportPrintService = {
         }),
         periodLabel: formatPeriod(filters),
         filterLabels,
-        companyName: 'SMART ORDER MS',
-        poweredBy: 'Code Bondhu IT',
+        companyName: 'Glamourous by Mahi',
+        poweredBy: 'Glamourous by Mahi',
       },
     }
   },

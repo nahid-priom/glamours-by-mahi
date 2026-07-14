@@ -1,5 +1,6 @@
-export const FALLBACK_PRODUCT_IMAGE =
-  'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&q=80&auto=format&fit=crop'
+import { PRODUCT_PLACEHOLDER } from '@/lib/images/image-utils'
+
+export const FALLBACK_PRODUCT_IMAGE = PRODUCT_PLACEHOLDER
 
 const img = (id: string, w = 800) =>
   `https://images.unsplash.com/photo-${id}?w=${w}&q=80&auto=format&fit=crop`

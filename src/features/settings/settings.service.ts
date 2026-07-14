@@ -31,9 +31,9 @@ function defaultSettings(): AppSettings {
     company: {
       company_name: COMPANY_NAME,
       phone: '+880 1712-345678',
-      email: 'support@CODE BONDHU.com',
-      website: 'https://CODE BONDHU.com',
-      address: 'Dhaka, Bangladesh',
+      email: 'hello@glamourousbymahi.com',
+      website: 'https://glamourousbymahi.com',
+      address: 'Level 2, Bashundhara City Shopping Mall, Panthapath, Dhaka',
       logo_url: '',
     },
     print: {

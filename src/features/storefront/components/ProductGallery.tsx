@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { FALLBACK_PRODUCT_IMAGE } from '@/lib/product-images'
-import { Skeleton } from '@/components/ui/skeleton'
+import { AppImage } from '@/components/common/AppImage'
 import type { StorefrontProduct } from '../storefront.types'
-import { getDisplayAlt, getDisplayGallery } from '../utils/product-display'
+import { getDisplayAlt, getDisplayGallery, getDisplayImage } from '../utils/product-display'
 
 interface ProductGalleryProps {
   product: StorefrontProduct
@@ -22,12 +21,11 @@ function MobileGallery({
   onIndexChange: (index: number) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [loaded, setLoaded] = useState<Record<number, boolean>>({})
 
   const handleScroll = () => {
     const el = scrollRef.current
     if (!el) return
-    const index = Math.round(el.scrollLeft / el.clientWidth)
+    const index = Math.round(el.scrollLeft / Math.max(el.clientWidth, 1))
     onIndexChange(index)
   }
 
@@ -47,21 +45,14 @@ function MobileGallery({
       >
         {images.map((src, index) => (
           <div key={`${src}-${index}`} className="w-full shrink-0 snap-center overflow-hidden rounded-3xl bg-white">
-            <div className="relative aspect-[4/5] bg-[#F8F6F2]">
-              {!loaded[index] && <Skeleton className="absolute inset-0" />}
-              <img
-                src={src}
-                alt={alt}
-                loading={index === 0 ? 'eager' : 'lazy'}
-                decoding="async"
-                onLoad={() => setLoaded((prev) => ({ ...prev, [index]: true }))}
-                onError={() => setLoaded((prev) => ({ ...prev, [index]: true }))}
-                className={cn(
-                  'h-full w-full object-cover transition-opacity duration-300',
-                  loaded[index] ? 'opacity-100' : 'opacity-0',
-                )}
-              />
-            </div>
+            <AppImage
+              src={src}
+              alt={alt}
+              aspectRatio="portrait"
+              className="w-full"
+              loading={index === 0 ? 'eager' : 'lazy'}
+              objectFit="cover"
+            />
           </div>
         ))}
       </div>
@@ -84,13 +75,15 @@ function MobileGallery({
 }
 
 export function ProductGallery({ product, className }: ProductGalleryProps) {
-  const images = getDisplayGallery(product)
+  const cover = getDisplayImage(product)
+  const gallery = getDisplayGallery(product)
+  // Cover first, then remaining unique images
+  const images = [cover, ...gallery.filter((url) => url !== cover)].slice(0, 5)
   const alt = getDisplayAlt(product)
   const [activeIndex, setActiveIndex] = useState(0)
   const [zoomed, setZoomed] = useState(false)
-  const [loaded, setLoaded] = useState<Record<number, boolean>>({})
 
-  const activeImage = images[activeIndex] ?? FALLBACK_PRODUCT_IMAGE
+  const activeImage = images[activeIndex] ?? cover
 
   return (
     <div className={cn('min-w-0', className)}>
@@ -98,7 +91,6 @@ export function ProductGallery({ product, className }: ProductGalleryProps) {
         <MobileGallery images={images} alt={alt} activeIndex={activeIndex} onIndexChange={setActiveIndex} />
       </div>
 
-      {/* Desktop gallery */}
       <div className="hidden gap-4 lg:grid lg:grid-cols-[88px_1fr]">
         {images.length > 1 && (
           <div className="flex flex-col gap-3">
@@ -108,11 +100,11 @@ export function ProductGallery({ product, className }: ProductGalleryProps) {
                 type="button"
                 onClick={() => setActiveIndex(index)}
                 className={cn(
-                  'relative aspect-[4/5] overflow-hidden rounded-2xl border-2 bg-[#F8F6F2] transition',
+                  'relative overflow-hidden rounded-2xl border-2 bg-[#F8F6F2] transition',
                   activeIndex === index ? 'border-[#111111]' : 'border-transparent opacity-70 hover:opacity-100',
                 )}
               >
-                <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+                <AppImage src={src} alt="" aspectRatio="portrait" className="w-full" objectFit="cover" />
               </button>
             ))}
           </div>
@@ -123,22 +115,15 @@ export function ProductGallery({ product, className }: ProductGalleryProps) {
           onMouseEnter={() => setZoomed(true)}
           onMouseLeave={() => setZoomed(false)}
         >
-          <div className="relative aspect-[4/5] bg-[#F8F6F2]">
-            {!loaded[activeIndex] && <Skeleton className="absolute inset-0 rounded-[32px]" />}
-            <img
-              src={activeImage}
-              alt={alt}
-              loading="eager"
-              decoding="async"
-              onLoad={() => setLoaded((prev) => ({ ...prev, [activeIndex]: true }))}
-              onError={() => setLoaded((prev) => ({ ...prev, [activeIndex]: true }))}
-              className={cn(
-                'h-full w-full object-cover transition-all duration-500',
-                loaded[activeIndex] ? 'opacity-100' : 'opacity-0',
-                zoomed && 'scale-110',
-              )}
-            />
-          </div>
+          <AppImage
+            src={activeImage}
+            alt={alt}
+            aspectRatio="portrait"
+            className="w-full"
+            loading="eager"
+            objectFit="cover"
+            imgClassName={cn('transition-transform duration-500', zoomed && 'scale-110')}
+          />
         </div>
       </div>
     </div>

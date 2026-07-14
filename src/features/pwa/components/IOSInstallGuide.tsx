@@ -38,7 +38,7 @@ export function IOSInstallGuide() {
       >
         <SheetHeader>
           <SheetTitle className="font-serif text-xl">Install {PWA_BRAND.shortName} App</SheetTitle>
-          <SheetDescription>Add CODE BONDHU to your home screen for quick access.</SheetDescription>
+          <SheetDescription>Add Glamourous by Mahi to your home screen for quick access.</SheetDescription>
         </SheetHeader>
 
         <ol className="mt-4 space-y-4">

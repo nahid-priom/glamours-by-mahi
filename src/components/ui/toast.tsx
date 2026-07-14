@@ -30,21 +30,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-20 right-4 z-[100] flex flex-col gap-2 sm:bottom-6">
+      <div className="fixed right-4 top-4 z-[100] flex flex-col gap-2 max-sm:bottom-20 max-sm:top-auto">
         {toasts.map((t) => (
           <div
             key={t.id}
             className={cn(
               'flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg',
               t.type === 'success'
-                ? 'border-green-200 bg-white text-green-800'
-                : 'border-red-200 bg-white text-red-800',
+                ? 'border-green-600 bg-green-600 text-white'
+                : 'border-red-600 bg-red-600 text-white',
             )}
           >
             {t.type === 'success' ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-white" />
             ) : (
-              <XCircle className="h-4 w-4 shrink-0 text-danger" />
+              <XCircle className="h-4 w-4 shrink-0 text-white" />
             )}
             <span className="max-w-[260px]">{t.message}</span>
             <button type="button" onClick={() => dismiss(t.id)} className="ml-1 shrink-0 opacity-60 hover:opacity-100">

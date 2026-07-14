@@ -1,6 +1,8 @@
-import type { PrintOrderData } from './print.types'
+import type { PrintOrderData, PrintSaleData } from './print.types'
 import type { Order } from '@/types'
 import { ordersService } from '@/features/orders/orders.service'
+import { salesService } from '@/services/sales.service'
+import { peekDatabase } from '@/database/transaction'
 
 export function orderToPrintData(order: Order): PrintOrderData {
   return {
@@ -26,6 +28,41 @@ export function orderToPrintData(order: Order): PrintOrderData {
   }
 }
 
+export function saleToPrintData(saleId: string): PrintSaleData | null {
+  const detail = salesService.getDetail(saleId)
+  if (!detail || detail.sale.deleted_at) return null
+  const { sale, customer, branch, salesperson } = detail
+  const db = peekDatabase()
+  return {
+    id: sale.id,
+    saleNo: sale.saleNo,
+    storeName: db.meta.brand || 'Store',
+    branchName: branch?.name ?? '—',
+    customerName: customer?.name ?? '—',
+    customerPhone: customer?.phone ?? '',
+    customerAddress: customer?.address ?? '',
+    salespersonName: salesperson?.name ?? '—',
+    channel: sale.channel,
+    paymentMethod: sale.paymentMethod,
+    items: sale.items.map((i) => ({
+      productId: i.productId,
+      name: i.name,
+      quantity: i.quantity,
+      unitPrice: i.unitPrice,
+      discount: i.discount,
+      total: i.total,
+    })),
+    subtotal: sale.subtotal,
+    discount: sale.discount,
+    total: sale.total,
+    paidAmount: sale.paidAmount,
+    dueAmount: sale.dueAmount,
+    note: sale.note,
+    status: sale.status,
+    createdAt: sale.created_at,
+  }
+}
+
 export const printService = {
   async getOrderForPrint(id: string): Promise<PrintOrderData | null> {
     const order = await ordersService.getOrderById(id)
@@ -36,6 +73,10 @@ export const printService = {
   async getOrdersForBulkPrint(ids: string[]): Promise<PrintOrderData[]> {
     const orders = await ordersService.getOrdersByIds(ids)
     return orders.map(orderToPrintData)
+  },
+
+  async getSaleForPrint(id: string): Promise<PrintSaleData | null> {
+    return saleToPrintData(id)
   },
 
   triggerPrint() {

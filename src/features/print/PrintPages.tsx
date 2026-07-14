@@ -7,6 +7,9 @@ import { PrintInvoiceA4 } from './PrintInvoiceA4'
 import { PrintShippingLabel } from './PrintShippingLabel'
 import { PrintGiftLabel } from './PrintGiftLabel'
 import { PrintReportA4 } from './PrintReportA4'
+import { PrintSaleInvoiceA4 } from './PrintSaleInvoiceA4'
+import { PrintSalePosReceipt } from './PrintSalePosReceipt'
+import { PrintSaleGiftLabel } from './PrintSaleGiftLabel'
 import { reportPrintService } from '@/features/reports/report-print.service'
 import type { ShippingLabelSize } from './print.utils'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
@@ -88,6 +91,66 @@ export function PrintGiftLabelPage() {
   if (isLoading) return <LoadingSkeleton rows={4} />
   if (!order) return <EmptyState title="Order not found" />
   return <PrintGiftLabel order={order} />
+}
+
+export function PrintSaleA4Page() {
+  const { id } = useParams<{ id: string }>()
+  const { data: sale, isLoading } = useQuery({
+    queryKey: ['print', 'sale-a4', id],
+    queryFn: () => printService.getSaleForPrint(id!),
+    enabled: !!id,
+  })
+  useEffect(() => {
+    if (sale) document.title = `Invoice ${sale.saleNo}`
+  }, [sale])
+  if (isLoading) return <LoadingSkeleton rows={8} />
+  if (!sale) return <EmptyState title="Sale not found" />
+  return <PrintSaleInvoiceA4 sale={sale} />
+}
+
+export function PrintSalePosPage() {
+  const { id } = useParams<{ id: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const width = (searchParams.get('width') as '58mm' | '80mm') || '80mm'
+  const { data: sale, isLoading } = useQuery({
+    queryKey: ['print', 'sale-pos', id],
+    queryFn: () => printService.getSaleForPrint(id!),
+    enabled: !!id,
+  })
+  useEffect(() => {
+    if (sale) document.title = `POS ${sale.saleNo}`
+  }, [sale])
+  if (isLoading) return <LoadingSkeleton rows={4} />
+  if (!sale) return <EmptyState title="Sale not found" />
+  return (
+    <>
+      <div className="no-print mx-auto mb-3 flex justify-center gap-2">
+        {(['58mm', '80mm'] as const).map((w) => (
+          <Button
+            key={w}
+            size="sm"
+            variant={width === w ? 'default' : 'outline'}
+            onClick={() => setSearchParams({ width: w }, { replace: true })}
+          >
+            {w}
+          </Button>
+        ))}
+      </div>
+      <PrintSalePosReceipt sale={sale} width={width} />
+    </>
+  )
+}
+
+export function PrintSaleGiftLabelPage() {
+  const { id } = useParams<{ id: string }>()
+  const { data: sale, isLoading } = useQuery({
+    queryKey: ['print', 'sale-gift', id],
+    queryFn: () => printService.getSaleForPrint(id!),
+    enabled: !!id,
+  })
+  if (isLoading) return <LoadingSkeleton rows={4} />
+  if (!sale) return <EmptyState title="Sale not found" />
+  return <PrintSaleGiftLabel sale={sale} />
 }
 
 export function PrintBulkInvoicesPage() {
@@ -175,7 +238,7 @@ export function PrintReportPage() {
   })
 
   useEffect(() => {
-    if (document) document.title = `${document.title} — SMART ORDER MS`
+    if (document) document.title = `${document.title} — Glamourous by Mahi`
   }, [document])
 
   const reportLabel = REPORT_SLUG_LABELS[reportType] ?? 'Report'

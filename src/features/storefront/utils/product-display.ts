@@ -1,7 +1,11 @@
-import { FALLBACK_PRODUCT_IMAGE } from '@/lib/product-images'
 import { getCategoryLabel } from '../lib/shop-utils'
 import type { StorefrontProduct } from '../storefront.types'
 import { safeProductName } from './product-slug'
+import {
+  getProductCoverImage,
+  getProductGalleryImages,
+} from '@/lib/images/product-image-utils'
+import { getFallbackImage } from '@/lib/images/image-utils'
 
 export function getDisplayName(product: StorefrontProduct): string {
   return safeProductName(product.name)
@@ -47,18 +51,11 @@ export function getDisplayReviewCount(product: StorefrontProduct): number {
 }
 
 export function getDisplayGallery(product: StorefrontProduct): string[] {
-  const images = [
-    product.image,
-    ...(product.gallery ?? []),
-    product.hoverImage,
-  ].filter((src): src is string => Boolean(src?.trim()))
-
-  const unique = [...new Set(images)]
-  return unique.length > 0 ? unique.slice(0, 5) : [FALLBACK_PRODUCT_IMAGE]
+  return getProductGalleryImages(product).slice(0, 5)
 }
 
 export function getDisplayImage(product: StorefrontProduct): string {
-  return product.image?.trim() || FALLBACK_PRODUCT_IMAGE
+  return getProductCoverImage(product) || getFallbackImage()
 }
 
 export function getDisplayAlt(product: StorefrontProduct): string {

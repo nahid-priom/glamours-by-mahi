@@ -16,7 +16,7 @@ export function DashboardLayout() {
       </div>
 
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-[260px] border-0 p-0">
+        <SheetContent side="left" className="z-[70] w-[260px] border-0 p-0">
           <AppSidebar onNavigate={() => setSidebarOpen(false)} className="h-full" />
         </SheetContent>
       </Sheet>
@@ -28,7 +28,7 @@ export function DashboardLayout() {
         </div>
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden pb-20 lg:pb-6">
-          <div className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-5 sm:py-6">
+          <div className="mx-auto w-full max-w-[1366px] px-4 py-5 sm:px-5 sm:py-6">
             <Outlet />
           </div>
         </main>

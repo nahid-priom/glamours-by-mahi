@@ -2,7 +2,8 @@ import { memo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Eye, Heart, ShoppingBag, Star } from 'lucide-react'
 import { formatBDT } from '@/lib/format'
-import { FALLBACK_PRODUCT_IMAGE } from '@/lib/product-images'
+import { getProductCoverImage } from '@/lib/images/product-image-utils'
+import { AppImage } from '@/components/common/AppImage'
 import { cn } from '@/lib/utils'
 import type { StorefrontProduct, ProductCardVariant } from '../storefront.types'
 import { useCart } from '../cart.context'
@@ -59,7 +60,6 @@ export const ProductCard = memo(function ProductCard({
   const { addItem, toggleWishlist, isWishlisted } = useCart()
   const { openQuickView } = useStorefrontUI()
   const [hovered, setHovered] = useState(false)
-  const [imgError, setImgError] = useState(false)
 
   const wishlisted = isWishlisted(product.id)
   const stock = getDisplayStock(product)
@@ -71,11 +71,8 @@ export const ProductCard = memo(function ProductCard({
   const showButton = variant !== 'compact'
   const price = getCardPrice(product)
 
-  const imageSrc = imgError
-    ? FALLBACK_PRODUCT_IMAGE
-    : hovered && product.hoverImage
-      ? product.hoverImage
-      : product.image || FALLBACK_PRODUCT_IMAGE
+  const coverImage = getProductCoverImage(product)
+  const imageSrc = hovered && product.hoverImage ? product.hoverImage : coverImage
 
   const handleCta = () => {
     if (outOfStock) return
@@ -99,16 +96,16 @@ export const ProductCard = memo(function ProductCard({
     >
       <div className="relative h-[155px] shrink-0 overflow-hidden bg-[#F8F6F2] md:h-[210px] lg:h-[230px]">
         <Link to={`/product/${product.slug}`} className="block h-full">
-          <img
+          <AppImage
             src={imageSrc}
             alt={getCardProductName(product)}
-            loading="lazy"
-            decoding="async"
-            onError={() => setImgError(true)}
-            className={cn(
-              'h-full w-full object-cover transition-transform duration-500',
+            className="h-full w-full"
+            imgClassName={cn(
+              'transition-transform duration-500',
               hovered && 'scale-105',
             )}
+            objectFit="cover"
+            aspectRatio="auto"
           />
         </Link>
 

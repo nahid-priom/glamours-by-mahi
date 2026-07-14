@@ -1,6 +1,8 @@
-export const APP_NAME = 'SMART ORDER MS'
-export const APP_VERSION = '1.0.0'
-export const COMPANY_NAME = 'Code Bondhu IT'
+import { brandConfig } from '@/config/brand'
+
+export const APP_NAME = brandConfig.name
+export const APP_VERSION = '2.0.0'
+export const COMPANY_NAME = brandConfig.name
 
 export const COLORS = {
   primary: '#EF4444',
@@ -18,10 +20,12 @@ export const COLORS = {
 
 export const ROLES = [
   'Super Admin',
-  'Admin',
-  'Order Manager',
-  'Courier Operator',
-  'Customer Support',
+  'Owner',
+  'Branch Admin',
+  'Sales Manager',
+  'Accounts User',
+  'HR User',
+  'Salesperson',
 ] as const
 
 export type UserRole = (typeof ROLES)[number]
@@ -50,8 +54,8 @@ export type FraudLevel = (typeof FRAUD_LEVELS)[number]
 export const SIDEBAR_WIDTH = 260
 
 export const ECOMMERCE_STORE_ID = 's5'
-export const ECOMMERCE_STORE_NAME = 'E-commerce Website'
-export const STOREFRONT_BRAND = 'CODE BONDHU'
+export const ECOMMERCE_STORE_NAME = 'Glamourous Website'
+export const STOREFRONT_BRAND = brandConfig.name
 export const DELIVERY_CHARGE = 120
 export const FREE_DELIVERY_THRESHOLD = 3000
 

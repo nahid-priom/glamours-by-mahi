@@ -1,4 +1,4 @@
-export type PrintType = 'invoice' | 'shipping-label' | 'gift-label'
+export type PrintType = 'invoice' | 'shipping-label' | 'gift-label' | 'pos'
 
 export interface PrintOrderData {
   id: string
@@ -20,4 +20,33 @@ export interface PrintOrderData {
   customer_note?: string
   order_note?: string
   created_at: string
+}
+
+export interface PrintSaleData {
+  id: string
+  saleNo: string
+  storeName: string
+  branchName: string
+  customerName: string
+  customerPhone: string
+  customerAddress: string
+  salespersonName: string
+  channel: string
+  paymentMethod: string
+  items: {
+    productId: string
+    name: string
+    quantity: number
+    unitPrice: number
+    discount: number
+    total: number
+  }[]
+  subtotal: number
+  discount: number
+  total: number
+  paidAmount: number
+  dueAmount: number
+  note: string
+  status: string
+  createdAt: string
 }

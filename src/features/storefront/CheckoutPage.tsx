@@ -77,6 +77,27 @@ export function CheckoutPage() {
       } catch {
         /* profile sync is best-effort */
       }
+      try {
+        const { erpOrdersService } = await import('@/services/erp-orders.service')
+        erpOrdersService.createFromWebsite({
+          customerName: variables.customer_name,
+          phone: variables.phone,
+          email: variables.email,
+          address: variables.address,
+          district: variables.district,
+          deliveryCharge,
+          note: variables.notes,
+          items: items.map((i) => ({
+            productId: i.productId,
+            name: i.name,
+            sku: i.sku,
+            quantity: i.quantity,
+            unitPrice: i.price,
+          })),
+        })
+      } catch {
+        /* ERP sync best-effort for demo continuity */
+      }
       navigate(`/order-success/${result.primaryOrderId}`)
     },
     onError: (e: Error) => toast(e.message, 'error'),
