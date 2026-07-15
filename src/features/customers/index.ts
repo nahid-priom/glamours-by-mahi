@@ -1,0 +1,4 @@
+export { CustomersAdminPage } from './pages/CustomersAdminPage'
+export { CustomersPage } from './CustomersPage'
+export { customersRepository } from './repositories/customers.repository'
+export type { Customer, CustomerInput, CustomerFilters } from './repositories/customers.repository'

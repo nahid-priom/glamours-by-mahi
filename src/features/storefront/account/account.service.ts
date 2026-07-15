@@ -2,7 +2,7 @@ import { getStorageItem, setStorageItem, STORAGE_KEYS } from '@/lib/storage'
 import type { OrderStatus } from '@/lib/constants'
 import type { Order } from '@/types'
 import { customersService } from '@/features/customers/customers.service'
-import { ordersService } from '@/features/orders/orders.service'
+import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
 import { cartService } from '../cart.service'
 import type { AccountOrderFilters, AccountSession, AccountStats, SavedAddress } from './account.types'
 

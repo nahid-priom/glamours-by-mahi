@@ -7,7 +7,7 @@ import {
   ShoppingBag,
   Truck,
   Wallet,
-  FilePlus2,
+  History,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,14 +20,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 const ACTIONS = [
-  { to: '/sales/new', label: 'New Sale', icon: ShoppingBag },
-  { to: '/orders/new', label: 'New Order', icon: FilePlus2 },
+  { to: '/sales/pos', label: 'Open POS', icon: ShoppingBag },
+  { to: '/sales', label: 'Sales History', icon: History },
   { to: '/purchases/new', label: 'Add Purchase', icon: PackagePlus },
-  { to: '/sales/collections', label: 'Customer Collection', icon: Banknote },
-  { to: '/suppliers', label: 'Supplier Payment', icon: Wallet },
+  { to: '/sales/collections', label: 'Due Collection', icon: Banknote },
+  { to: '/purchases/payments', label: 'Supplier Payment', icon: Wallet },
   { to: '/inventory/transfers/new', label: 'Stock Transfer', icon: ArrowRightLeft },
   { to: '/accounts/expenses', label: 'Add Expense', icon: Wallet },
-  { to: '/couriers', label: 'Book Courier', icon: Truck },
+  { to: '/couriers/parcels', label: 'Book Parcel', icon: Truck },
 ] as const
 
 export function QuickActionsMenu() {

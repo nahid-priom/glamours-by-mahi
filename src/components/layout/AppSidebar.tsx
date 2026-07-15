@@ -3,7 +3,6 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   ShoppingBag,
-  Package,
   Boxes,
   Truck,
   Users,
@@ -18,104 +17,125 @@ import {
 } from 'lucide-react'
 import { brandConfig } from '@/config/brand'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/features/auth/auth-session'
+import { hasAnyModuleAccess, hasPermission, type Permission } from '@/lib/permissions'
 
-type NavItem = { to: string; label: string; end?: boolean }
+type NavItem = { to: string; label: string; end?: boolean; permission?: Permission | Permission[]; module?: string }
 type NavGroup = {
   id: string
   label: string
   icon: typeof LayoutDashboard
   to?: string
   end?: boolean
+  module?: string
+  permission?: Permission | Permission[]
   children?: NavItem[]
 }
 
 const groups: NavGroup[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard', end: true },
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    to: '/dashboard',
+    end: true,
+    module: 'dashboard',
+  },
   {
     id: 'sales',
     label: 'Sales',
     icon: ShoppingBag,
+    module: 'sales',
     children: [
-      { to: '/sales/new', label: 'POS / New Sale' },
-      { to: '/sales', label: 'Sales List', end: true },
-      { to: '/sales/returns', label: 'Returns' },
-      { to: '/sales/collections', label: 'Collections' },
-      { to: '/sales/commissions', label: 'Commission' },
-    ],
-  },
-  {
-    id: 'orders',
-    label: 'Orders',
-    icon: Package,
-    children: [
-      { to: '/orders', label: 'All Orders', end: true },
-      { to: '/orders/new', label: 'New Order' },
+      { to: '/sales/pos', label: 'POS', permission: 'pos.create' },
+      { to: '/sales', label: 'Sales History', end: true, permission: 'sales.read' },
+      { to: '/sales/returns', label: 'Sales Returns', permission: ['sales.read', 'sales.return.review'] },
+      { to: '/sales/collections', label: 'Due Collection', permission: 'sales.read' },
+      { to: '/sales/held', label: 'Held Sales', permission: 'pos.create' },
     ],
   },
   {
     id: 'inventory',
     label: 'Products & Inventory',
     icon: Boxes,
+    module: 'products',
     children: [
-      { to: '/products', label: 'Products', end: true },
-      { to: '/inventory/branch-stock', label: 'Branch Stock' },
-      { to: '/inventory/transfers', label: 'Transfers' },
-      { to: '/inventory/adjustments', label: 'Adjustments' },
-      { to: '/inventory/low-stock', label: 'Low Stock' },
-      { to: '/inventory/ledger', label: 'Stock Ledger' },
+      { to: '/products', label: 'Products', end: true, permission: 'products.read' },
+      { to: '/products/categories', label: 'Categories', permission: 'products.read' },
+      { to: '/products/subcategories', label: 'Subcategories', permission: 'products.read' },
+      { to: '/products/brands', label: 'Brands', permission: 'products.read' },
+      { to: '/products/variants', label: 'Variants', permission: 'products.read' },
+      { to: '/inventory/stock', label: 'Stock Overview', permission: 'inventory.read' },
+      { to: '/inventory/ledger', label: 'Stock Ledger', permission: 'inventory.read' },
+      { to: '/inventory/adjustments', label: 'Stock Adjustment', permission: 'inventory.adjust' },
+      { to: '/inventory/transfers', label: 'Stock Transfer', permission: 'inventory.transfer' },
+      { to: '/inventory/low-stock', label: 'Low Stock', permission: 'inventory.read' },
     ],
   },
   {
     id: 'purchases',
     label: 'Purchases',
     icon: Warehouse,
+    module: 'purchases',
     children: [
-      { to: '/purchases', label: 'Purchase List', end: true },
-      { to: '/purchases/new', label: 'New Purchase' },
-      { to: '/purchases/returns', label: 'Purchase Returns' },
+      { to: '/purchases/new', label: 'New Purchase', permission: 'purchases.create' },
+      { to: '/purchases', label: 'Purchase History', end: true, permission: 'purchases.read' },
+      { to: '/purchases/returns', label: 'Purchase Returns', permission: 'purchases.read' },
+      { to: '/purchases/payments', label: 'Supplier Payments', permission: 'purchases.read' },
     ],
   },
   {
     id: 'suppliers',
     label: 'Suppliers',
     icon: Building2,
-    children: [
-      { to: '/suppliers', label: 'Supplier List', end: true },
-      { to: '/suppliers/new', label: 'Add Supplier' },
-    ],
+    to: '/suppliers',
+    module: 'suppliers',
   },
-  { id: 'customers', label: 'Customers', icon: Users, to: '/customers' },
+  {
+    id: 'customers',
+    label: 'Customers',
+    icon: Users,
+    to: '/customers',
+    module: 'customers',
+  },
   {
     id: 'courier',
     label: 'Courier',
     icon: Truck,
+    module: 'courier',
     children: [
-      { to: '/couriers', label: 'Couriers', end: true },
-      { to: '/couriers/settlements', label: 'Settlements' },
-      { to: '/couriers/returns', label: 'Returns' },
+      { to: '/couriers', label: 'Courier Companies', end: true, permission: 'courier.read' },
+      { to: '/couriers/parcels', label: 'Parcel Booking', permission: 'courier.manage' },
+      { to: '/couriers/tracking', label: 'Delivery Tracking', permission: 'courier.read' },
+      { to: '/couriers/returns', label: 'Return Requests', permission: 'sales.return.review' },
+      { to: '/couriers/settlements', label: 'Courier Settlements', permission: 'courier.read' },
     ],
   },
   {
     id: 'accounts',
     label: 'Accounts',
     icon: Wallet,
+    module: 'accounts',
     children: [
-      { to: '/accounts', label: 'Overview', end: true },
-      { to: '/accounts/cashbook', label: 'Cashbook' },
-      { to: '/accounts/banks', label: 'Bank' },
-      { to: '/accounts/mobile-banking', label: 'Mobile Banking' },
-      { to: '/accounts/income', label: 'Income' },
-      { to: '/accounts/expenses', label: 'Expenses' },
-      { to: '/accounts/customer-dues', label: 'Customer Due' },
-      { to: '/accounts/supplier-dues', label: 'Supplier Due' },
-      { to: '/accounts/profit-loss', label: 'Profit & Loss' },
-      { to: '/accounts/daily-closing', label: 'Daily Closing' },
+      { to: '/accounts', label: 'Accounts Dashboard', end: true, permission: 'accounts.read' },
+      { to: '/accounts/cash-bank', label: 'Cash & Bank', permission: 'accounts.read' },
+      { to: '/accounts/income', label: 'Income', permission: ['accounts.read', 'income.create'] },
+      { to: '/accounts/expenses', label: 'Expenses', permission: ['accounts.read', 'expense.create'] },
+      { to: '/accounts/customer-due', label: 'Customer Due', permission: ['accounts.read', 'customer_due.collect'] },
+      { to: '/accounts/supplier-due', label: 'Supplier Due', permission: ['accounts.read', 'supplier_due.pay'] },
+      { to: '/accounts/collections', label: 'Due Collection', permission: ['accounts.read', 'customer_due.collect', 'accounts.post'] },
+      { to: '/accounts/supplier-payments', label: 'Supplier Payment', permission: ['accounts.read', 'supplier_due.pay', 'accounts.post'] },
+      { to: '/accounts/daily-closing', label: 'Daily Closing', permission: ['accounts.read', 'daily_closing.create'] },
+      { to: '/accounts/transactions', label: 'Transactions', permission: 'accounts.read' },
+      { to: '/accounts/profit-loss', label: 'Profit & Loss', permission: ['accounts.read', 'profit_loss.read'] },
+      { to: '/accounts/settings', label: 'Account Settings', permission: ['accounts.manage', 'account_settings.manage'] },
     ],
   },
   {
     id: 'hr',
     label: 'HR & Payroll',
     icon: UserCog,
+    module: 'hr',
     children: [
       { to: '/hr/employees', label: 'Employees' },
       { to: '/hr/attendance', label: 'Attendance' },
@@ -127,28 +147,28 @@ const groups: NavGroup[] = [
     id: 'reports',
     label: 'Reports',
     icon: BarChart3,
-    children: [
-      { to: '/reports', label: 'Overview', end: true },
-      { to: '/reports/sales', label: 'Sales' },
-      { to: '/reports/products', label: 'Products' },
-      { to: '/reports/branches', label: 'Branches' },
-      { to: '/reports/inventory', label: 'Inventory' },
-      { to: '/reports/accounts', label: 'Accounts' },
-      { to: '/reports/hr', label: 'HR' },
-    ],
+    to: '/reports',
+    module: 'reports',
   },
   {
     id: 'settings',
     label: 'Settings',
     icon: Settings,
-    children: [
-      { to: '/settings', label: 'General', end: true },
-      { to: '/stores', label: 'Branches / Stores' },
-      { to: '/fraud', label: 'Fraud Checker' },
-      { to: '/invoices', label: 'Invoices' },
-    ],
+    to: '/settings',
+    module: 'settings',
   },
 ]
+
+function itemAllowed(
+  permissions: string[],
+  item: { permission?: Permission | Permission[]; module?: string },
+  parentModule?: string,
+) {
+  if (item.permission) return hasPermission(permissions, item.permission)
+  if (item.module) return hasAnyModuleAccess(permissions, item.module)
+  if (parentModule) return hasAnyModuleAccess(permissions, parentModule)
+  return true
+}
 
 interface AppSidebarProps {
   onNavigate?: () => void
@@ -157,24 +177,34 @@ interface AppSidebarProps {
 
 export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
   const location = useLocation()
+  const { permissions } = useAuth()
+
+  const visibleGroups = useMemo(() => {
+    return groups
+      .map((group) => {
+        if (!itemAllowed(permissions, group)) return null
+        if (!group.children) return group
+        const children = group.children.filter((c) => itemAllowed(permissions, c, group.module))
+        if (!children.length) return null
+        return { ...group, children }
+      })
+      .filter(Boolean) as NavGroup[]
+  }, [permissions])
+
   const activeGroup = useMemo(() => {
-    return groups.find((g) => {
+    return visibleGroups.find((g) => {
       if (g.to && (g.end ? location.pathname === g.to : location.pathname.startsWith(g.to))) return true
       return g.children?.some((c) =>
         c.end ? location.pathname === c.to : location.pathname.startsWith(c.to),
       )
     })?.id
-  }, [location.pathname])
+  }, [location.pathname, visibleGroups])
 
   const [expanded, setExpanded] = useState<string | null>(activeGroup ?? 'dashboard')
 
-  const toggle = (id: string) => {
-    setExpanded((prev) => (prev === id ? null : id))
-  }
-
   return (
     <aside
-      className={cn('flex h-full w-[260px] flex-col bg-sidebar text-white', className)}
+      className={cn('flex h-full w-[260px] min-w-0 flex-col bg-sidebar text-white', className)}
       style={{ background: 'linear-gradient(180deg, #0B0F15 0%, #111827 100%)' }}
     >
       <div className="flex items-center gap-2.5 border-b border-white/10 px-5 py-4">
@@ -187,8 +217,8 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
-        {groups.map((group) => {
+      <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
+        {visibleGroups.map((group) => {
           const Icon = group.icon
           const isOpen = expanded === group.id
           if (!group.children) {
@@ -217,7 +247,7 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
             <div key={group.id} className="pt-1">
               <button
                 type="button"
-                onClick={() => toggle(group.id)}
+                onClick={() => setExpanded((prev) => (prev === group.id ? null : group.id))}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                   isOpen || activeGroup === group.id

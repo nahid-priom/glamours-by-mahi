@@ -12,10 +12,10 @@ export function PrintLayout() {
     <div className="print-root">
       {!isReportRoute && (
         <div className="no-print print-toolbar">
-          <Link to="/orders">
+          <Link to="/sales">
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-3.5 w-3.5" />
-              Back to Orders
+              Back to Sales
             </Button>
           </Link>
           <Button size="sm" onClick={() => printService.triggerPrint()}>

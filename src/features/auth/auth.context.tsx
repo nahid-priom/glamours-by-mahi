@@ -1,62 +1,58 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
-import { authService, type DemoSession } from '@/services/auth.service'
-import type { ErpRole } from '@/database/schema'
+/**
+ * Compatibility shim around Supabase auth session for legacy page shapes.
+ */
+export {
+  AuthSessionProvider as AuthProvider,
+  AuthSessionProvider,
+  useAuth as useSupabaseAuth,
+} from './auth-session'
+export type { AuthProfile } from './auth-session'
 
-interface AuthContextValue {
-  session: DemoSession
-  users: ReturnType<typeof authService.getUsers>
-  switchUser: (userId: string) => void
-  logout: () => void
-  canAccess: (module: string) => boolean
-  role: ErpRole
+import { useAuth as useSessionAuth } from './auth-session'
+
+export type ErpRoleName =
+  | 'Owner'
+  | 'Super Admin'
+  | 'Branch Admin'
+  | 'Accounts'
+  | 'Salesperson'
+  | 'HR'
+  | 'Staff'
+
+export interface DemoSession {
+  userId: string
+  role: ErpRoleName
+  name: string
+  branchId: string | null
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<DemoSession>(() => {
-    const existing = authService.getSession()
-    if (!existing) {
-      // Guard should prevent this; fall back for safety during HMR
-      return authService.ensureSession()
-    }
-    return existing
-  })
-  const users = useMemo(() => authService.getUsers(), [session.userId])
-
-  const switchUser = useCallback((userId: string) => {
-    setSession(authService.switchRole(userId))
-  }, [])
-
-  const logout = useCallback(() => {
-    authService.logout()
-    window.location.assign('/admin/login')
-  }, [])
-
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      session,
-      users,
-      switchUser,
-      logout,
-      canAccess: (module: string) => authService.canAccess(session.role, module),
-      role: session.role,
-    }),
-    [session, users, switchUser, logout],
-  )
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+const GUEST_SESSION: DemoSession = {
+  userId: '',
+  role: 'Salesperson',
+  name: 'Staff',
+  branchId: null,
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
+  const auth = useSessionAuth()
+
+  const session: DemoSession = auth.profile
+    ? {
+        userId: auth.profile.id,
+        role: (auth.profile.role_name as ErpRoleName) || 'Salesperson',
+        name: auth.profile.full_name,
+        branchId: auth.activeBranchId,
+      }
+    : GUEST_SESSION
+
+  return {
+    ...auth,
+    session,
+    users: [] as { id: string; name: string; role: string }[],
+    switchUser: async (_userId: string) => {
+      /* Role switch removed — use real user accounts in Supabase Auth */
+    },
+    canAccess: (module: string) => auth.permissions.includes('*') || auth.can(module as never),
+    role: session.role,
+  }
 }

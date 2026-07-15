@@ -1,0 +1,7 @@
+export { CategoriesPage } from './pages/CategoriesPage'
+export { SubcategoriesPage } from './pages/SubcategoriesPage'
+export { BrandsPage } from './pages/BrandsPage'
+export { AdminProductsPage } from './pages/AdminProductsPage'
+export { VariantsPage } from './pages/VariantsPage'
+export { ProductImageUploader } from './components/ProductImageUploader'
+export { catalogRepository } from './repositories/catalog.repository'

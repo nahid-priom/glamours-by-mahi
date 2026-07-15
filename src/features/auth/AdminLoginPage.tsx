@@ -1,54 +1,108 @@
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Sparkles } from 'lucide-react'
 import { brandConfig } from '@/config/brand'
-import { authService } from '@/services/auth.service'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { PWAInstallButton } from '@/features/pwa'
+import { AuthSessionProvider, useAuth } from '@/features/auth/auth-session'
+import { FullPageLoader } from '@/components/loading/FullPageLoader'
 
-export function AdminLoginPage() {
+const schema = z.object({
+  email: z.string().email('Enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+})
+
+type FormValues = z.infer<typeof schema>
+
+function LoginForm() {
   const navigate = useNavigate()
-  const users = authService.getUsers()
+  const location = useLocation()
+  const { signIn, session, loading } = useAuth()
+  const [error, setError] = useState<string | null>(null)
+  const from = (location.state as { from?: string } | null)?.from ?? '/dashboard'
 
-  const enter = (userId: string) => {
-    authService.login(userId)
-    navigate('/dashboard', { replace: true })
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: '', password: '' },
+  })
+
+  if (loading) return <FullPageLoader label="Checking session…" />
+
+  if (session) {
+    navigate(from, { replace: true })
+    return <FullPageLoader label="Redirecting…" />
   }
 
+  const onSubmit = form.handleSubmit(async (values) => {
+    setError(null)
+    try {
+      await signIn(values.email, values.password)
+      navigate(from, { replace: true })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sign-in failed')
+    }
+  })
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F8F6F2] px-4">
-      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-[#111111]/8 bg-white shadow-sm">
+    <div className="flex min-h-svh items-center justify-center bg-[#F8F6F2] px-4">
+      <div className="w-full max-w-md overflow-hidden rounded-3xl border border-[#111111]/8 bg-white shadow-sm">
         <div className="bg-[#111111] px-6 py-8 text-white">
           <div className="inline-flex rounded-2xl bg-[#E11D48] p-2.5">
             <Sparkles className="h-5 w-5" />
           </div>
           <h1 className="mt-4 font-serif text-3xl">{brandConfig.name}</h1>
-          <p className="mt-2 text-sm text-white/70">{brandConfig.description}</p>
+          <p className="mt-2 text-sm text-white/70">Retail ERP · Secure staff login</p>
           <p className="mt-1 text-xs text-white/50">{brandConfig.primaryLocation}</p>
         </div>
-        <div className="space-y-3 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6B7280]">Demo Login</p>
-          {users.map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              onClick={() => enter(u.id)}
-              className="flex w-full items-center justify-between rounded-2xl border border-[#111111]/8 px-4 py-3 text-left transition hover:border-[#E11D48]/40 hover:shadow-sm"
-            >
-              <div>
-                <p className="text-sm font-semibold text-[#111111]">{u.name}</p>
-                <p className="text-xs text-[#6B7280]">{u.role}</p>
-              </div>
-              <span className="text-xs font-medium text-[#E11D48]">Enter →</span>
-            </button>
-          ))}
-          <div className="flex items-center justify-between pt-2">
-            <Button variant="outline" className="rounded-full" onClick={() => navigate('/')}>
-              Visit Storefront
+        <form onSubmit={onSubmit} className="space-y-4 p-6" noValidate>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" autoComplete="username" {...form.register('email')} />
+            {form.formState.errors.email ? (
+              <p className="text-xs text-[#E11D48]">{form.formState.errors.email.message}</p>
+            ) : null}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              {...form.register('password')}
+            />
+            {form.formState.errors.password ? (
+              <p className="text-xs text-[#E11D48]">{form.formState.errors.password.message}</p>
+            ) : null}
+          </div>
+          {error ? <p className="text-xs text-[#E11D48]">{error}</p> : null}
+          <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? 'Signing in…' : 'Sign in'}
+          </Button>
+          <div className="flex items-center justify-between pt-1">
+            <Button variant="outline" className="rounded-full" type="button" asChild>
+              <Link to="/">Visit Storefront</Link>
             </Button>
             <PWAInstallButton variant="menu" />
           </div>
-        </div>
+          <p className="text-[11px] leading-relaxed text-[#9CA3AF]">
+            Apply <code className="rounded bg-slate-100 px-1">supabase/migrations</code> and create
+            staff users in Supabase Auth with matching <code className="rounded bg-slate-100 px-1">profiles</code> rows.
+          </p>
+        </form>
       </div>
     </div>
+  )
+}
+
+export function AdminLoginPage() {
+  return (
+    <AuthSessionProvider>
+      <LoginForm />
+    </AuthSessionProvider>
   )
 }

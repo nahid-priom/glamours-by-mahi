@@ -3,97 +3,190 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { ScrollToTop } from '@/components/common/ScrollToTop'
 import { PWAProvider } from '@/features/pwa'
 import { DashboardLayout } from '@/layouts/DashboardLayout'
-import { AdminAuthGuard } from '@/features/auth/AdminAuthGuard'
+import { AdminAuthGuard } from '@/app/guards/AdminAuthGuard'
+import { PermissionRoute } from '@/app/guards/PermissionRoute'
 import { PrintLayout } from '@/features/print/PrintLayout'
 import { StorefrontLayout } from '@/features/storefront/StorefrontLayout'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getDatabase } from '@/database/local-database'
-
-// Ensure ERP demo DB exists on boot
-getDatabase()
 
 const HomePage = lazy(() => import('@/features/storefront/HomePage').then((m) => ({ default: m.HomePage })))
 const ShopPage = lazy(() => import('@/features/storefront/ShopPage').then((m) => ({ default: m.ShopPage })))
 const CategoryPage = lazy(() => import('@/features/storefront/CategoryPage').then((m) => ({ default: m.CategoryPage })))
-const ProductDetailsPage = lazy(() => import('@/features/storefront/ProductDetailsPage').then((m) => ({ default: m.ProductDetailsPage })))
+const ProductDetailsPage = lazy(() =>
+  import('@/features/storefront/ProductDetailsPage').then((m) => ({ default: m.ProductDetailsPage })),
+)
 const CartPage = lazy(() => import('@/features/storefront/CartPage').then((m) => ({ default: m.CartPage })))
 const CheckoutPage = lazy(() => import('@/features/storefront/CheckoutPage').then((m) => ({ default: m.CheckoutPage })))
-const OrderSuccessPage = lazy(() => import('@/features/storefront/OrderSuccessPage').then((m) => ({ default: m.OrderSuccessPage })))
-const TrackOrderPage = lazy(() => import('@/features/storefront/TrackOrderPage').then((m) => ({ default: m.TrackOrderPage })))
+const OrderSuccessPage = lazy(() =>
+  import('@/features/storefront/OrderSuccessPage').then((m) => ({ default: m.OrderSuccessPage })),
+)
+const TrackOrderPage = lazy(() =>
+  import('@/features/storefront/TrackOrderPage').then((m) => ({ default: m.TrackOrderPage })),
+)
 const AccountPage = lazy(() => import('@/features/storefront/AccountPage').then((m) => ({ default: m.AccountPage })))
-const AccountOverviewPage = lazy(() => import('@/features/storefront/AccountPage').then((m) => ({ default: m.AccountOverviewPage })))
-const AccountOrdersPage = lazy(() => import('@/features/storefront/AccountOrdersPage').then((m) => ({ default: m.AccountOrdersPage })))
-const AccountProfilePage = lazy(() => import('@/features/storefront/AccountProfilePage').then((m) => ({ default: m.AccountProfilePage })))
-const AccountWishlistPage = lazy(() => import('@/features/storefront/account/AccountWishlistPage').then((m) => ({ default: m.AccountWishlistPage })))
-const AccountAddressesPage = lazy(() => import('@/features/storefront/account/AccountAddressesPage').then((m) => ({ default: m.AccountAddressesPage })))
+const AccountOverviewPage = lazy(() =>
+  import('@/features/storefront/AccountPage').then((m) => ({ default: m.AccountOverviewPage })),
+)
+const AccountOrdersPage = lazy(() =>
+  import('@/features/storefront/AccountOrdersPage').then((m) => ({ default: m.AccountOrdersPage })),
+)
+const AccountProfilePage = lazy(() =>
+  import('@/features/storefront/AccountProfilePage').then((m) => ({ default: m.AccountProfilePage })),
+)
+const AccountWishlistPage = lazy(() =>
+  import('@/features/storefront/account/AccountWishlistPage').then((m) => ({ default: m.AccountWishlistPage })),
+)
+const AccountAddressesPage = lazy(() =>
+  import('@/features/storefront/account/AccountAddressesPage').then((m) => ({ default: m.AccountAddressesPage })),
+)
 const SearchPage = lazy(() => import('@/features/storefront/SearchPage').then((m) => ({ default: m.SearchPage })))
 const OfflineFallbackPage = lazy(() => import('@/features/pwa').then((m) => ({ default: m.OfflineFallbackPage })))
 const NotFoundPage = lazy(() => import('@/features/common/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
 const AdminLoginPage = lazy(() => import('@/features/auth/AdminLoginPage').then((m) => ({ default: m.AdminLoginPage })))
 
-const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
-const OrdersPage = lazy(() => import('@/features/orders/OrdersPage').then((m) => ({ default: m.OrdersPage })))
-const OrderFormPage = lazy(() => import('@/features/orders/OrderFormPage').then((m) => ({ default: m.OrderFormPage })))
+const DashboardPage = lazy(() =>
+  import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+)
 const StoresPage = lazy(() => import('@/features/stores/StoresPage').then((m) => ({ default: m.StoresPage })))
-const CouriersPage = lazy(() => import('@/features/couriers/CouriersPage').then((m) => ({ default: m.CouriersPage })))
-const CustomersPage = lazy(() => import('@/features/customers/CustomersPage').then((m) => ({ default: m.CustomersPage })))
-const ProductsPage = lazy(() => import('@/features/products/ProductsPage').then((m) => ({ default: m.ProductsPage })))
-const FraudPage = lazy(() => import('@/features/fraud/FraudPage').then((m) => ({ default: m.FraudPage })))
-const InvoicesPage = lazy(() => import('@/features/invoices/InvoicesPage').then((m) => ({ default: m.InvoicesPage })))
-const ReportsPage = lazy(() => import('@/features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })))
-const SettingsPage = lazy(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const CustomersAdminPage = lazy(() =>
+  import('@/features/customers').then((m) => ({ default: m.CustomersAdminPage })),
+)
+const SettingsPage = lazy(() =>
+  import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+)
 
-const SalesPosPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesPosPage })))
-const SalesListPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesListPage })))
-const SaleDetailsRoute = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SaleDetailsRoute })))
-const SaleEditRoute = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SaleEditRoute })))
-const SaleReturnRoute = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SaleReturnRoute })))
-const SaleCollectionRoute = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SaleCollectionRoute })))
-const SalesReturnsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesReturnsPage })))
-const SalesCollectionsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesCollectionsPage })))
-const SalesCommissionsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesCommissionsPage })))
-const InventoryBranchStockPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.InventoryBranchStockPage })))
-const InventoryLowStockPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.InventoryLowStockPage })))
-const InventoryLedgerPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.InventoryLedgerPage })))
-const TransfersListPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.TransfersListPage })))
-const TransferNewPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.TransferNewPage })))
-const SuppliersListPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SuppliersListPage })))
-const SupplierDetailsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SupplierDetailsPage })))
-const PurchasesListPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.PurchasesListPage })))
-const PurchaseDetailsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.PurchaseDetailsPage })))
-const PurchasePlaceholderPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.PurchasePlaceholderPage })))
-const AccountsOverviewPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.AccountsOverviewPage })))
-const AccountsSubPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.AccountsSubPage })))
-const HrEmployeesPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.HrEmployeesPage })))
-const HrAttendancePage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.HrAttendancePage })))
-const HrLeavesPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.HrLeavesPage })))
-const HrPayrollPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.HrPayrollPage })))
-const ReportsSalesPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesReportsHubPage })))
-const SalesReportChannelsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesReportChannelsPage })))
-const SalesReportProductsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesReportProductsPage })))
-const SalesReportCustomersPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesReportCustomersPage })))
-const SalesReportCollectionsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesReportCollectionsPage })))
-const SalesReportProfitPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesReportProfitPage })))
-const SalesReportReturnsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesReportReturnsPage })))
-const SalesReportSalespersonPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.SalesReportSalespersonPage })))
-const CourierSettlementsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.CourierSettlementsPage })))
-const CourierReturnsPage = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.CourierReturnsPage })))
-const DemoControlPanel = lazy(() => import('@/features/erp/ErpRoutes').then((m) => ({ default: m.DemoControlPanel })))
+const PosPage = lazy(() => import('@/features/pos').then((m) => ({ default: m.PosPage })))
+const HeldSalesPage = lazy(() => import('@/features/pos').then((m) => ({ default: m.HeldSalesPage })))
 
-const PrintInvoicePage = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintInvoicePage })))
-const PrintShippingLabelPage = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintShippingLabelPage })))
-const PrintGiftLabelPage = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintGiftLabelPage })))
+const SalesHistoryPage = lazy(() => import('@/features/sales').then((m) => ({ default: m.SalesHistoryPage })))
+const SaleDetailPage = lazy(() => import('@/features/sales').then((m) => ({ default: m.SaleDetailPage })))
+const DueCollectionPage = lazy(() => import('@/features/sales').then((m) => ({ default: m.DueCollectionPage })))
+const SalesReturnsPage = lazy(() => import('@/features/sales').then((m) => ({ default: m.SalesReturnsPage })))
+
+const CategoriesPage = lazy(() => import('@/features/products').then((m) => ({ default: m.CategoriesPage })))
+const SubcategoriesPage = lazy(() => import('@/features/products').then((m) => ({ default: m.SubcategoriesPage })))
+const BrandsPage = lazy(() => import('@/features/products').then((m) => ({ default: m.BrandsPage })))
+const AdminProductsPage = lazy(() => import('@/features/products').then((m) => ({ default: m.AdminProductsPage })))
+const VariantsPage = lazy(() => import('@/features/products').then((m) => ({ default: m.VariantsPage })))
+
+const StockOverviewPage = lazy(() => import('@/features/inventory').then((m) => ({ default: m.StockOverviewPage })))
+const StockLedgerPage = lazy(() => import('@/features/inventory').then((m) => ({ default: m.StockLedgerPage })))
+const StockAdjustmentPage = lazy(() =>
+  import('@/features/inventory').then((m) => ({ default: m.StockAdjustmentPage })),
+)
+const StockTransferPage = lazy(() => import('@/features/inventory').then((m) => ({ default: m.StockTransferPage })))
+const TransferFormPage = lazy(() => import('@/features/inventory').then((m) => ({ default: m.TransferFormPage })))
+const LowStockPage = lazy(() => import('@/features/inventory').then((m) => ({ default: m.LowStockPage })))
+
+const AccountsDashboardPage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.SimpleAccountsDashboardPage })),
+)
+const CashBankPage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.CashBankPage })),
+)
+const IncomePage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.SimpleIncomePage })),
+)
+const ExpensesPage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.SimpleExpensePage })),
+)
+const CustomerDuePage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.CustomerDuePage })),
+)
+const SupplierDuePage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.SupplierDuePage })),
+)
+const DailyClosingPage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.DailyClosingPage })),
+)
+const TransactionsPage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.TransactionsPage })),
+)
+const ProfitLossPage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.SimpleProfitLossPage })),
+)
+const AccountSettingsPage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.AccountSettingsPage })),
+)
+
+const PurchaseNewPage = lazy(() => import('@/features/purchases').then((m) => ({ default: m.PurchaseNewPage })))
+const PurchaseHistoryPage = lazy(() =>
+  import('@/features/purchases').then((m) => ({ default: m.PurchaseHistoryPage })),
+)
+const PurchaseReturnsPage = lazy(() =>
+  import('@/features/purchases').then((m) => ({ default: m.PurchaseReturnsPage })),
+)
+const SupplierPaymentsPage = lazy(() =>
+  import('@/features/purchases').then((m) => ({ default: m.SupplierPaymentsPage })),
+)
+
+const CourierCompaniesPage = lazy(() =>
+  import('@/features/couriers').then((m) => ({ default: m.CourierCompaniesPage })),
+)
+const ParcelBookingPage = lazy(() =>
+  import('@/features/couriers').then((m) => ({ default: m.ParcelBookingPage })),
+)
+const DeliveryTrackingPage = lazy(() =>
+  import('@/features/couriers').then((m) => ({ default: m.DeliveryTrackingPage })),
+)
+const ReturnRequestsPage = lazy(() =>
+  import('@/features/couriers').then((m) => ({ default: m.ReturnRequestsPage })),
+)
+const CourierSettlementsPage = lazy(() =>
+  import('@/features/couriers').then((m) => ({ default: m.CourierSettlementsPage })),
+)
+
+const ReportsHubPage = lazy(() => import('@/features/reports').then((m) => ({ default: m.ReportsHubPage })))
+const SalesReportPage = lazy(() => import('@/features/reports').then((m) => ({ default: m.SalesReportPage })))
+const PurchasesReportPage = lazy(() =>
+  import('@/features/reports').then((m) => ({ default: m.PurchasesReportPage })),
+)
+const InventoryReportPage = lazy(() =>
+  import('@/features/reports').then((m) => ({ default: m.InventoryReportPage })),
+)
+const CustomerDueReportPage = lazy(() =>
+  import('@/features/reports').then((m) => ({ default: m.CustomerDueReportPage })),
+)
+const SupplierDueReportPage = lazy(() =>
+  import('@/features/reports').then((m) => ({ default: m.SupplierDueReportPage })),
+)
+const ProfitReportPage = lazy(() => import('@/features/reports').then((m) => ({ default: m.ProfitReportPage })))
+const BranchReportPage = lazy(() => import('@/features/reports').then((m) => ({ default: m.BranchReportPage })))
+const SalespersonReportPage = lazy(() =>
+  import('@/features/reports').then((m) => ({ default: m.SalespersonReportPage })),
+)
+const ProductPerformanceReportPage = lazy(() =>
+  import('@/features/reports').then((m) => ({ default: m.ProductPerformanceReportPage })),
+)
+const CourierReturnsReportPage = lazy(() =>
+  import('@/features/reports').then((m) => ({ default: m.CourierReturnsReportPage })),
+)
+
+const SuppliersPage = lazy(() =>
+  import('@/features/suppliers').then((m) => ({ default: m.SuppliersPage })),
+)
+const SupplierDetailPage = lazy(() =>
+  import('@/features/suppliers').then((m) => ({ default: m.SupplierDetailPage })),
+)
+const HrEmployeesPage = lazy(() => import('@/features/hr/HrPages').then((m) => ({ default: m.HrEmployeesPage })))
+const HrAttendancePage = lazy(() => import('@/features/hr/HrPages').then((m) => ({ default: m.HrAttendancePage })))
+const HrLeavesPage = lazy(() => import('@/features/hr/HrPages').then((m) => ({ default: m.HrLeavesPage })))
+const HrPayrollPage = lazy(() => import('@/features/hr/HrPages').then((m) => ({ default: m.HrPayrollPage })))
+
 const PrintSaleA4Page = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintSaleA4Page })))
-const PrintSalePosPage = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintSalePosPage })))
-const PrintSaleGiftLabelPage = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintSaleGiftLabelPage })))
-const PrintBulkInvoicesPage = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintBulkInvoicesPage })))
-const PrintBulkShippingLabelsPage = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintBulkShippingLabelsPage })))
-const PrintBulkGiftLabelsPage = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintBulkGiftLabelsPage })))
-const PrintReportPage = lazy(() => import('@/features/print/PrintPages').then((m) => ({ default: m.PrintReportPage })))
+const PrintSalePosPage = lazy(() =>
+  import('@/features/print/PrintPages').then((m) => ({ default: m.PrintSalePosPage })),
+)
+const PrintSaleGiftLabelPage = lazy(() =>
+  import('@/features/print/PrintPages').then((m) => ({ default: m.PrintSaleGiftLabelPage })),
+)
+const PrintReportPage = lazy(() =>
+  import('@/features/print/PrintPages').then((m) => ({ default: m.PrintReportPage })),
+)
 
 function PageLoader() {
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-64 w-full" />
     </div>
@@ -128,64 +221,6 @@ function RootLayout() {
       <Outlet />
     </PWAProvider>
   )
-}
-
-function PurchaseNewPage() {
-  return <PurchasePlaceholderPage title="New Purchase" />
-}
-function PurchaseReturnsPage() {
-  return <PurchasePlaceholderPage title="Purchase Returns" />
-}
-function AccountsCashbookPage() {
-  return <AccountsSubPage title="Cashbook" filter="Cash" />
-}
-function AccountsBanksPage() {
-  return <AccountsSubPage title="Bank Accounts" filter="Bank" />
-}
-function AccountsMobilePage() {
-  return <AccountsSubPage title="Mobile Banking" filter="Mobile" />
-}
-function AccountsIncomePage() {
-  return <AccountsSubPage title="Income" filter="Income" />
-}
-function AccountsExpensesPage() {
-  return <AccountsSubPage title="Expenses" filter="Expense" />
-}
-function AccountsCustomerDuesPage() {
-  return <AccountsSubPage title="Customer Due" />
-}
-function AccountsSupplierDuesPage() {
-  return <AccountsSubPage title="Supplier Due" />
-}
-function AccountsProfitLossPage() {
-  return <ReportsSalesPage />
-}
-function AccountsDailyClosingPage() {
-  return <AccountsOverviewPage />
-}
-function InventoryAdjustmentsPage() {
-  return <InventoryLedgerPage />
-}
-function TransfersNewPage() {
-  return <TransferNewPage />
-}
-function SupplierNewPage() {
-  return <SuppliersListPage />
-}
-function ReportsProductsPage() {
-  return <ReportsSalesPage />
-}
-function ReportsBranchesPage() {
-  return <ReportsSalesPage />
-}
-function ReportsInventoryPage() {
-  return <InventoryLowStockPage />
-}
-function ReportsAccountsPage() {
-  return <AccountsOverviewPage />
-}
-function ReportsHrPage() {
-  return <HrPayrollPage />
 }
 
 export const router = createBrowserRouter([
@@ -226,90 +261,192 @@ export const router = createBrowserRouter([
           {
             element: <DashboardLayout />,
             children: [
-          { path: '/dashboard', element: withSuspense(DashboardPage) },
-          { path: '/sales', element: withSuspense(SalesListPage) },
-          { path: '/sales/new', element: withSuspense(SalesPosPage) },
-          { path: '/sales/returns', element: withSuspense(SalesReturnsPage) },
-          { path: '/sales/collections', element: withSuspense(SalesCollectionsPage) },
-          { path: '/sales/commissions', element: withSuspense(SalesCommissionsPage) },
-          { path: '/sales/:id', element: withSuspense(SaleDetailsRoute) },
-          { path: '/sales/:id/edit', element: withSuspense(SaleEditRoute) },
-          { path: '/sales/:id/return', element: withSuspense(SaleReturnRoute) },
-          { path: '/sales/:id/collections', element: withSuspense(SaleCollectionRoute) },
-          { path: '/orders', element: withSuspense(OrdersPage) },
-          { path: '/orders/new', element: withSuspense(OrderFormPage) },
-          { path: '/orders/:id', element: withSuspense(OrderFormPage) },
-          { path: '/orders/:id/edit', element: withSuspense(OrderFormPage) },
-          { path: '/products', element: withSuspense(ProductsPage) },
-          { path: '/products/new', element: withSuspense(ProductsPage) },
-          { path: '/products/:id', element: withSuspense(ProductsPage) },
-          { path: '/products/:id/edit', element: withSuspense(ProductsPage) },
-          { path: '/inventory', element: <Navigate to="/inventory/branch-stock" replace /> },
-          { path: '/inventory/branch-stock', element: withSuspense(InventoryBranchStockPage) },
-          { path: '/inventory/transfers', element: withSuspense(TransfersListPage) },
-          { path: '/inventory/transfers/new', element: withSuspense(TransfersNewPage) },
-          { path: '/inventory/adjustments', element: withSuspense(InventoryAdjustmentsPage) },
-          { path: '/inventory/low-stock', element: withSuspense(InventoryLowStockPage) },
-          { path: '/inventory/ledger', element: withSuspense(InventoryLedgerPage) },
-          { path: '/purchases', element: withSuspense(PurchasesListPage) },
-          { path: '/purchases/new', element: withSuspense(PurchaseNewPage) },
-          { path: '/purchases/:id', element: withSuspense(PurchaseDetailsPage) },
-          { path: '/purchases/:id/edit', element: withSuspense(PurchaseDetailsPage) },
-          { path: '/purchases/returns', element: withSuspense(PurchaseReturnsPage) },
-          { path: '/suppliers', element: withSuspense(SuppliersListPage) },
-          { path: '/suppliers/new', element: withSuspense(SupplierNewPage) },
-          { path: '/suppliers/:id', element: withSuspense(SupplierDetailsPage) },
-          { path: '/suppliers/:id/edit', element: withSuspense(SupplierDetailsPage) },
-          { path: '/suppliers/:id/ledger', element: withSuspense(SupplierDetailsPage) },
-          { path: '/customers', element: withSuspense(CustomersPage) },
-          { path: '/customers/new', element: withSuspense(CustomersPage) },
-          { path: '/customers/:id', element: withSuspense(CustomersPage) },
-          { path: '/customers/:id/edit', element: withSuspense(CustomersPage) },
-          { path: '/customers/:id/ledger', element: withSuspense(CustomersPage) },
-          { path: '/couriers', element: withSuspense(CouriersPage) },
-          { path: '/couriers/:id', element: withSuspense(CouriersPage) },
-          { path: '/couriers/settlements', element: withSuspense(CourierSettlementsPage) },
-          { path: '/couriers/returns', element: withSuspense(CourierReturnsPage) },
-          { path: '/accounts', element: withSuspense(AccountsOverviewPage) },
-          { path: '/accounts/cashbook', element: withSuspense(AccountsCashbookPage) },
-          { path: '/accounts/banks', element: withSuspense(AccountsBanksPage) },
-          { path: '/accounts/mobile-banking', element: withSuspense(AccountsMobilePage) },
-          { path: '/accounts/income', element: withSuspense(AccountsIncomePage) },
-          { path: '/accounts/expenses', element: withSuspense(AccountsExpensesPage) },
-          { path: '/accounts/customer-dues', element: withSuspense(AccountsCustomerDuesPage) },
-          { path: '/accounts/supplier-dues', element: withSuspense(AccountsSupplierDuesPage) },
-          { path: '/accounts/profit-loss', element: withSuspense(AccountsProfitLossPage) },
-          { path: '/accounts/daily-closing', element: withSuspense(AccountsDailyClosingPage) },
-          { path: '/hr', element: <Navigate to="/hr/employees" replace /> },
-          { path: '/hr/employees', element: withSuspense(HrEmployeesPage) },
-          { path: '/hr/employees/new', element: withSuspense(HrEmployeesPage) },
-          { path: '/hr/employees/:id', element: withSuspense(HrEmployeesPage) },
-          { path: '/hr/attendance', element: withSuspense(HrAttendancePage) },
-          { path: '/hr/leaves', element: withSuspense(HrLeavesPage) },
-          { path: '/hr/payroll', element: withSuspense(HrPayrollPage) },
-          { path: '/hr/payroll/:id', element: withSuspense(HrPayrollPage) },
-          { path: '/reports', element: withSuspense(ReportsPage) },
-          { path: '/reports/sales', element: withSuspense(ReportsSalesPage) },
-          { path: '/reports/sales/channels', element: withSuspense(SalesReportChannelsPage) },
-          { path: '/reports/sales/products', element: withSuspense(SalesReportProductsPage) },
-          { path: '/reports/sales/customers', element: withSuspense(SalesReportCustomersPage) },
-          { path: '/reports/sales/collections', element: withSuspense(SalesReportCollectionsPage) },
-          { path: '/reports/sales/profit', element: withSuspense(SalesReportProfitPage) },
-          { path: '/reports/sales/returns', element: withSuspense(SalesReportReturnsPage) },
-          { path: '/reports/sales/salesperson', element: withSuspense(SalesReportSalespersonPage) },
-          { path: '/reports/products', element: withSuspense(ReportsProductsPage) },
-          { path: '/reports/branches', element: withSuspense(ReportsBranchesPage) },
-          { path: '/reports/suppliers', element: withSuspense(SuppliersListPage) },
-          { path: '/reports/customers', element: withSuspense(CustomersPage) },
-          { path: '/reports/inventory', element: withSuspense(ReportsInventoryPage) },
-          { path: '/reports/couriers', element: withSuspense(CourierSettlementsPage) },
-          { path: '/reports/accounts', element: withSuspense(ReportsAccountsPage) },
-          { path: '/reports/hr', element: withSuspense(ReportsHrPage) },
-          { path: '/stores', element: withSuspense(StoresPage) },
-          { path: '/fraud', element: withSuspense(FraudPage) },
-          { path: '/invoices', element: withSuspense(InvoicesPage) },
-          { path: '/settings', element: withSuspense(SettingsPage) },
-          { path: '/settings/demo', element: withSuspense(DemoControlPanel) },
+              {
+                element: <PermissionRoute module="dashboard" />,
+                children: [{ path: '/dashboard', element: withSuspense(DashboardPage) }],
+              },
+              {
+                element: <PermissionRoute permission="pos.create" />,
+                children: [
+                  { path: '/sales/pos', element: withSuspense(PosPage) },
+                  { path: '/sales/new', element: <Navigate to="/sales/pos" replace /> },
+                  { path: '/sales/held', element: withSuspense(HeldSalesPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="sales.read" />,
+                children: [
+                  { path: '/sales', element: withSuspense(SalesHistoryPage) },
+                  { path: '/sales/returns', element: withSuspense(SalesReturnsPage) },
+                  { path: '/sales/collections', element: withSuspense(DueCollectionPage) },
+                  { path: '/sales/:id', element: withSuspense(SaleDetailPage) },
+                  { path: '/sales/:id/edit', element: <Navigate to="/sales" replace /> },
+                  { path: '/sales/:id/return', element: withSuspense(SalesReturnsPage) },
+                  { path: '/sales/:id/collections', element: withSuspense(DueCollectionPage) },
+                ],
+              },
+              { path: '/orders', element: <Navigate to="/sales" replace /> },
+              { path: '/orders/new', element: <Navigate to="/sales/pos" replace /> },
+              { path: '/orders/*', element: <Navigate to="/sales" replace /> },
+              {
+                element: <PermissionRoute permission="products.read" />,
+                children: [
+                  { path: '/products', element: withSuspense(AdminProductsPage) },
+                  { path: '/products/categories', element: withSuspense(CategoriesPage) },
+                  { path: '/products/subcategories', element: withSuspense(SubcategoriesPage) },
+                  { path: '/products/brands', element: withSuspense(BrandsPage) },
+                  { path: '/products/variants', element: withSuspense(VariantsPage) },
+                  { path: '/products/new', element: withSuspense(AdminProductsPage) },
+                  { path: '/products/:id', element: withSuspense(AdminProductsPage) },
+                  { path: '/products/:id/edit', element: withSuspense(AdminProductsPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="inventory.read" />,
+                children: [
+                  { path: '/inventory', element: <Navigate to="/inventory/stock" replace /> },
+                  { path: '/inventory/stock', element: withSuspense(StockOverviewPage) },
+                  { path: '/inventory/branch-stock', element: <Navigate to="/inventory/stock" replace /> },
+                  { path: '/inventory/ledger', element: withSuspense(StockLedgerPage) },
+                  { path: '/inventory/low-stock', element: withSuspense(LowStockPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="inventory.adjust" />,
+                children: [
+                  { path: '/inventory/adjustments', element: withSuspense(StockAdjustmentPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="inventory.transfer" />,
+                children: [
+                  { path: '/inventory/transfers', element: withSuspense(StockTransferPage) },
+                  { path: '/inventory/transfers/new', element: withSuspense(TransferFormPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="purchases.read" />,
+                children: [
+                  { path: '/purchases', element: withSuspense(PurchaseHistoryPage) },
+                  { path: '/purchases/returns', element: withSuspense(PurchaseReturnsPage) },
+                  { path: '/purchases/payments', element: withSuspense(SupplierPaymentsPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="purchases.create" />,
+                children: [{ path: '/purchases/new', element: withSuspense(PurchaseNewPage) }],
+              },
+              {
+                element: <PermissionRoute permission="suppliers.read" />,
+                children: [
+                  { path: '/suppliers', element: withSuspense(SuppliersPage) },
+                  { path: '/suppliers/new', element: withSuspense(SuppliersPage) },
+                  { path: '/suppliers/:id', element: withSuspense(SupplierDetailPage) },
+                  { path: '/suppliers/:id/edit', element: withSuspense(SupplierDetailPage) },
+                  { path: '/suppliers/:id/ledger', element: withSuspense(SupplierDetailPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="customers.read" />,
+                children: [
+                  { path: '/customers', element: withSuspense(CustomersAdminPage) },
+                  { path: '/customers/new', element: withSuspense(CustomersAdminPage) },
+                  { path: '/customers/:id', element: withSuspense(CustomersAdminPage) },
+                  { path: '/customers/:id/edit', element: withSuspense(CustomersAdminPage) },
+                  { path: '/customers/:id/ledger', element: withSuspense(CustomersAdminPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="courier.read" />,
+                children: [
+                  { path: '/couriers', element: withSuspense(CourierCompaniesPage) },
+                  { path: '/couriers/tracking', element: withSuspense(DeliveryTrackingPage) },
+                  { path: '/couriers/settlements', element: withSuspense(CourierSettlementsPage) },
+                  { path: '/couriers/:id', element: withSuspense(CourierCompaniesPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="courier.manage" />,
+                children: [{ path: '/couriers/parcels', element: withSuspense(ParcelBookingPage) }],
+              },
+              {
+                element: <PermissionRoute permission="sales.return.review" />,
+                children: [{ path: '/couriers/returns', element: withSuspense(ReturnRequestsPage) }],
+              },
+              {
+                element: <PermissionRoute permission="accounts.read" />,
+                children: [
+                  { path: '/accounts', element: withSuspense(AccountsDashboardPage) },
+                  { path: '/accounts/cash-bank', element: withSuspense(CashBankPage) },
+                  { path: '/accounts/income', element: withSuspense(IncomePage) },
+                  { path: '/accounts/expenses', element: withSuspense(ExpensesPage) },
+                  { path: '/accounts/customer-due', element: withSuspense(CustomerDuePage) },
+                  { path: '/accounts/supplier-due', element: withSuspense(SupplierDuePage) },
+                  { path: '/accounts/collections', element: withSuspense(DueCollectionPage) },
+                  { path: '/accounts/supplier-payments', element: withSuspense(SupplierPaymentsPage) },
+                  { path: '/accounts/daily-closing', element: withSuspense(DailyClosingPage) },
+                  { path: '/accounts/transactions', element: withSuspense(TransactionsPage) },
+                  { path: '/accounts/profit-loss', element: withSuspense(ProfitLossPage) },
+                  { path: '/accounts/settings', element: withSuspense(AccountSettingsPage) },
+                  { path: '/accounts/chart', element: <Navigate to="/accounts/settings" replace /> },
+                  { path: '/accounts/journals', element: <Navigate to="/accounts/transactions" replace /> },
+                  { path: '/accounts/general-ledger', element: <Navigate to="/accounts/transactions" replace /> },
+                  { path: '/accounts/trial-balance', element: <Navigate to="/accounts/profit-loss" replace /> },
+                  { path: '/accounts/balance-sheet', element: <Navigate to="/accounts/profit-loss" replace /> },
+                  { path: '/accounts/cash-flow', element: <Navigate to="/accounts/transactions" replace /> },
+                  { path: '/accounts/setup', element: <Navigate to="/accounts/settings" replace /> },
+                  { path: '/accounts/customer-ledger', element: <Navigate to="/accounts/customer-due" replace /> },
+                  { path: '/accounts/supplier-ledger', element: <Navigate to="/accounts/supplier-due" replace /> },
+                  { path: '/accounts/cashbook', element: <Navigate to="/accounts/cash-bank" replace /> },
+                  { path: '/accounts/banks', element: <Navigate to="/accounts/cash-bank" replace /> },
+                  { path: '/accounts/mobile-banking', element: <Navigate to="/accounts/cash-bank" replace /> },
+                  { path: '/accounts/customer-dues', element: <Navigate to="/accounts/customer-due" replace /> },
+                  { path: '/accounts/supplier-dues', element: <Navigate to="/accounts/supplier-due" replace /> },
+                ],
+              },
+              {
+                element: <PermissionRoute module="hr" />,
+                children: [
+                  { path: '/hr', element: <Navigate to="/hr/employees" replace /> },
+                  { path: '/hr/employees', element: withSuspense(HrEmployeesPage) },
+                  { path: '/hr/employees/new', element: withSuspense(HrEmployeesPage) },
+                  { path: '/hr/employees/:id', element: withSuspense(HrEmployeesPage) },
+                  { path: '/hr/attendance', element: withSuspense(HrAttendancePage) },
+                  { path: '/hr/leaves', element: withSuspense(HrLeavesPage) },
+                  { path: '/hr/payroll', element: withSuspense(HrPayrollPage) },
+                  { path: '/hr/payroll/:id', element: withSuspense(HrPayrollPage) },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="reports.read" />,
+                children: [
+                  { path: '/reports', element: withSuspense(ReportsHubPage) },
+                  { path: '/reports/sales', element: withSuspense(SalesReportPage) },
+                  { path: '/reports/purchases', element: withSuspense(PurchasesReportPage) },
+                  { path: '/reports/inventory', element: withSuspense(InventoryReportPage) },
+                  { path: '/reports/customer-due', element: withSuspense(CustomerDueReportPage) },
+                  { path: '/reports/supplier-due', element: withSuspense(SupplierDueReportPage) },
+                  { path: '/reports/profit', element: withSuspense(ProfitReportPage) },
+                  { path: '/reports/branch', element: withSuspense(BranchReportPage) },
+                  { path: '/reports/salesperson', element: withSuspense(SalespersonReportPage) },
+                  {
+                    path: '/reports/product-performance',
+                    element: withSuspense(ProductPerformanceReportPage),
+                  },
+                  { path: '/reports/courier-returns', element: withSuspense(CourierReturnsReportPage) },
+                  { path: '/reports/products', element: <Navigate to="/reports/product-performance" replace /> },
+                  { path: '/reports/branches', element: <Navigate to="/reports/branch" replace /> },
+                  { path: '/reports/accounts', element: <Navigate to="/accounts/profit-loss" replace /> },
+                  { path: '/reports/hr', element: <Navigate to="/hr/payroll" replace /> },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="settings.manage" />,
+                children: [
+                  { path: '/settings', element: withSuspense(SettingsPage) },
+                  { path: '/stores', element: withSuspense(StoresPage) },
+                ],
+              },
             ],
           },
         ],
@@ -318,12 +455,7 @@ export const router = createBrowserRouter([
         path: '/print',
         element: <PrintLayout />,
         children: [
-          { path: 'orders/:id/invoice', element: withSuspense(PrintInvoicePage) },
-          { path: 'orders/:id/shipping-label', element: withSuspense(PrintShippingLabelPage) },
-          { path: 'orders/:id/gift-label', element: withSuspense(PrintGiftLabelPage) },
-          { path: 'orders/bulk/invoices', element: withSuspense(PrintBulkInvoicesPage) },
-          { path: 'orders/bulk/shipping-labels', element: withSuspense(PrintBulkShippingLabelsPage) },
-          { path: 'orders/bulk/gift-labels', element: withSuspense(PrintBulkGiftLabelsPage) },
+          { path: 'orders/*', element: <Navigate to="/sales" replace /> },
           { path: 'sales/:id/a4', element: withSuspense(PrintSaleA4Page) },
           { path: 'sales/:id/pos', element: withSuspense(PrintSalePosPage) },
           { path: 'sales/:id/gift-label', element: withSuspense(PrintSaleGiftLabelPage) },

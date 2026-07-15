@@ -1,18 +1,9 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { AuthProvider } from './auth.context'
-import { authService } from '@/services/auth.service'
+/**
+ * @deprecated Dead demo guard — router uses `@/app/guards/AdminAuthGuard` (Supabase session).
+ * Kept only to avoid accidental imports from old paths; do not use.
+ */
+import { Navigate } from 'react-router-dom'
 
 export function AdminAuthGuard() {
-  const location = useLocation()
-  const session = authService.getSession()
-
-  if (!session) {
-    return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />
-  }
-
-  return (
-    <AuthProvider>
-      <Outlet />
-    </AuthProvider>
-  )
+  return <Navigate to="/admin/login" replace />
 }

@@ -3,7 +3,7 @@ import type { StorefrontCategorySlug } from '@/lib/constants'
 import { getCatalogMeta, type StyleTag } from '@/lib/fashion-catalog'
 import { getProductImageMeta } from '@/lib/product-images'
 import { productsService } from '@/features/products/products.service'
-import { ordersService } from '@/features/orders/orders.service'
+import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
 import type {
   StorefrontFilters,
   StorefrontListResult,

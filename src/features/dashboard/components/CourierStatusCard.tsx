@@ -22,12 +22,12 @@ interface CourierStatusCardProps {
 }
 
 const ROWS = [
-  { key: 'pending', label: 'Pending Orders', icon: Clock, tone: 'amber', to: '/orders?status=New' },
-  { key: 'readyToShip', label: 'Ready to Ship', icon: Package, tone: 'blue', to: '/orders?status=Packed' },
-  { key: 'courierBooked', label: 'Courier Booked', icon: Warehouse, tone: 'slate', to: '/orders?status=Courier+Booked' },
-  { key: 'inTransit', label: 'In Transit', icon: Truck, tone: 'blue', to: '/orders?status=Shipped' },
-  { key: 'deliveredToday', label: 'Delivered Today', icon: CheckCircle2, tone: 'green', to: '/orders?status=Delivered' },
-  { key: 'returnedToday', label: 'Returned Today', icon: RotateCcw, tone: 'rose', to: '/orders?status=Returned' },
+  { key: 'pending', label: 'Pending Parcels', icon: Clock, tone: 'amber', to: '/couriers/parcels' },
+  { key: 'readyToShip', label: 'Ready to Ship', icon: Package, tone: 'blue', to: '/couriers/parcels' },
+  { key: 'courierBooked', label: 'Booked', icon: Warehouse, tone: 'slate', to: '/couriers/tracking' },
+  { key: 'inTransit', label: 'In Transit', icon: Truck, tone: 'blue', to: '/couriers/tracking' },
+  { key: 'deliveredToday', label: 'Delivered Today', icon: CheckCircle2, tone: 'green', to: '/couriers/tracking' },
+  { key: 'returnedToday', label: 'Return Requests', icon: RotateCcw, tone: 'rose', to: '/couriers/returns' },
 ] as const
 
 const tones = {
@@ -40,7 +40,7 @@ const tones = {
 
 export function CourierStatusCard({ statuses }: CourierStatusCardProps) {
   return (
-    <DashboardSectionCard title="Orders & Courier Status" action={{ label: 'View all', to: '/orders' }}>
+    <DashboardSectionCard title="Courier Status" action={{ label: 'View all', to: '/couriers/tracking' }}>
       <ul className="space-y-2">
         {ROWS.map(({ key, label, icon: Icon, tone, to }) => (
           <li key={key}>

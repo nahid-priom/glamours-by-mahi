@@ -1,5 +1,5 @@
 import type { Invoice, InvoiceFilters, InvoiceStats, UpdateInvoiceInput } from './invoices.types'
-import { ordersService } from '@/features/orders/orders.service'
+import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
 import { MOCK_STORES } from '@/lib/mock-data'
 import { auditCreate, auditUpdate, delay } from '@/lib/service-utils'
 import { getStorageItem, setStorageItem, STORAGE_KEYS, updateStorageItem } from '@/lib/storage'

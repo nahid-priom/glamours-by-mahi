@@ -109,10 +109,11 @@ export function SettingsPage() {
 
   return (
     <PageShell title="Settings" description="System configuration and preferences">
-      <div className="mb-4 rounded-2xl border border-[#E11D48]/20 bg-[#E11D48]/5 p-4">
-        <p className="font-semibold text-[#111111]">Demo Control Center</p>
-        <p className="mt-1 text-sm text-[#6B7280]">Reset demo data, export backup, and presentation tools.</p>
-        <a href="/settings/demo" className="mt-3 inline-flex text-sm font-semibold text-[#E11D48]">Open Demo Controls →</a>
+      <div className="mb-4 rounded-2xl border border-border bg-white p-4">
+        <p className="font-semibold text-[#111111]">Organization settings</p>
+        <p className="mt-1 text-sm text-[#6B7280]">
+          Company profile, print defaults, and roles are stored in your linked Supabase project.
+        </p>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

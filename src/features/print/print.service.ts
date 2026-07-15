@@ -1,8 +1,8 @@
 import type { PrintOrderData, PrintSaleData } from './print.types'
 import type { Order } from '@/types'
-import { ordersService } from '@/features/orders/orders.service'
-import { salesService } from '@/services/sales.service'
-import { peekDatabase } from '@/database/transaction'
+import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
+import { getSale } from '@/features/sales/repositories/sales.repository'
+import { supabase } from '@/lib/supabase/client'
 
 export function orderToPrintData(order: Order): PrintOrderData {
   return {
@@ -28,38 +28,62 @@ export function orderToPrintData(order: Order): PrintOrderData {
   }
 }
 
-export function saleToPrintData(saleId: string): PrintSaleData | null {
-  const detail = salesService.getDetail(saleId)
-  if (!detail || detail.sale.deleted_at) return null
-  const { sale, customer, branch, salesperson } = detail
-  const db = peekDatabase()
+export async function saleToPrintData(saleId: string): Promise<PrintSaleData | null> {
+  const sale = await getSale(saleId)
+  if (!sale || sale.deleted_at) return null
+
+  const [{ data: org }, { data: profiles }] = await Promise.all([
+    supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', sale.organization_id)
+      .maybeSingle(),
+    sale.salesperson_id
+      ? supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', sale.salesperson_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const paymentMethod =
+    (sale.sale_payments ?? [])
+      .map((p) => p.method)
+      .filter(Boolean)
+      .join(' + ') || sale.payment_status
+
   return {
     id: sale.id,
-    saleNo: sale.saleNo,
-    storeName: db.meta.brand || 'Store',
-    branchName: branch?.name ?? '—',
-    customerName: customer?.name ?? '—',
-    customerPhone: customer?.phone ?? '',
-    customerAddress: customer?.address ?? '',
-    salespersonName: salesperson?.name ?? '—',
-    channel: sale.channel,
-    paymentMethod: sale.paymentMethod,
-    items: sale.items.map((i) => ({
-      productId: i.productId,
-      name: i.name,
-      quantity: i.quantity,
-      unitPrice: i.unitPrice,
-      discount: i.discount,
-      total: i.total,
+    saleNo: sale.invoice_no,
+    storeName: org?.name || 'Store',
+    branchName: sale.branches?.name ?? '—',
+    customerName: sale.customers?.name ?? 'Walk-in',
+    customerPhone: sale.customers?.phone ?? '',
+    customerAddress: '',
+    salespersonName: profiles?.full_name ?? '—',
+    channel: 'pos',
+    paymentMethod,
+    items: (sale.sale_items ?? []).map((i) => ({
+      productId: i.variant_id,
+      name:
+        i.product_variants?.products?.name ||
+        i.product_variants?.name ||
+        i.product_variants?.sku ||
+        'Item',
+      quantity: Number(i.qty),
+      unitPrice: Number(i.unit_price),
+      discount: Number(i.line_discount ?? 0),
+      total: Number(i.line_total),
     })),
-    subtotal: sale.subtotal,
-    discount: sale.discount,
-    total: sale.total,
-    paidAmount: sale.paidAmount,
-    dueAmount: sale.dueAmount,
-    note: sale.note,
+    subtotal: Number(sale.subtotal),
+    discount: Number(sale.discount),
+    total: Number(sale.grand_total),
+    paidAmount: Number(sale.paid_total),
+    dueAmount: Number(sale.due_total),
+    note: sale.note ?? '',
     status: sale.status,
-    createdAt: sale.created_at,
+    createdAt: sale.completed_at ?? sale.created_at,
   }
 }
 

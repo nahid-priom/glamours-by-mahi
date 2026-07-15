@@ -1,65 +1,53 @@
-import type { Store, StoreFilters, StoreFormInput, StoreStats, StoreType } from './stores.types'
-import { MOCK_STORES } from '@/lib/mock-data'
-import { getStorageItem, setStorageItem, STORAGE_KEYS, updateStorageItem } from '@/lib/storage'
-import { auditCreate, auditUpdate, delay } from '@/lib/service-utils'
+import { supabase } from '@/lib/supabase/client'
+import type { Store, StoreFilters, StoreFormInput, StoreStats } from './stores.types'
 
-type LegacyStore = {
-  platform?: string
-  orders_count?: number
-  collection_amount?: number
-  status?: string
+type BranchRow = {
+  id: string
+  name: string
+  code: string
+  phone: string | null
+  address: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  created_by: string | null
+  updated_by: string | null
+  organization_id: string
 }
 
-const PLATFORM_MAP: Record<string, StoreType> = {
-  facebook: 'facebook',
-  shopify: 'shopify',
-  woocommerce: 'woocommerce',
-  instagram: 'instagram',
-}
-
-function normalizeStatus(status?: string): Store['status'] {
-  if (status === 'archived') return 'archived'
-  if (status === 'inactive' || status === 'pending') return 'inactive'
-  return 'active'
-}
-
-function migrateStore(raw: Store & LegacyStore): Store {
-  const platformKey = (raw.platform ?? '').toLowerCase()
-  const type = raw.type ?? PLATFORM_MAP[platformKey] ?? 'manual'
-  const legacyStatus = raw.status as string | undefined
-  const status = normalizeStatus(legacyStatus)
-  const api_status =
-    raw.api_status ??
-    (legacyStatus === 'pending' || status === 'inactive' ? 'not_connected' : 'connected')
-
+function branchToStore(b: BranchRow): Store {
   return {
-    id: raw.id,
-    name: raw.name,
-    type,
-    logo_url: raw.logo_url ?? null,
-    phone: raw.phone ?? null,
-    email: raw.email ?? null,
-    address: raw.address ?? null,
-    invoice_prefix: raw.invoice_prefix,
-    default_courier_id: raw.default_courier_id ?? null,
-    status,
-    api_status,
-    created_at: raw.created_at,
-    updated_at: raw.updated_at,
-    deleted_at: raw.deleted_at ?? null,
-    created_by: raw.created_by ?? 'Admin',
-    updated_by: raw.updated_by ?? 'Admin',
+    id: b.id,
+    name: b.name,
+    type: 'manual',
+    logo_url: null,
+    phone: b.phone,
+    email: null,
+    address: b.address,
+    invoice_prefix: b.code,
+    default_courier_id: null,
+    status: b.deleted_at ? 'archived' : b.is_active ? 'active' : 'inactive',
+    api_status: 'connected',
+    created_at: b.created_at,
+    updated_at: b.updated_at,
+    deleted_at: b.deleted_at,
+    created_by: b.created_by ?? 'system',
+    updated_by: b.updated_by ?? 'system',
   }
 }
 
-function loadStores(): Store[] {
-  const stored = getStorageItem<(Store & LegacyStore)[]>(STORAGE_KEYS.stores, [])
-  if (stored.length === 0) {
-    const seeded = MOCK_STORES.map(migrateStore)
-    setStorageItem(STORAGE_KEYS.stores, seeded)
-    return seeded
-  }
-  return stored.map(migrateStore)
+async function requireOrgId() {
+  const userId = (await supabase.auth.getUser()).data.user?.id
+  if (!userId) throw new Error('Not signed in')
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', userId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data?.organization_id) throw new Error('Organization not found')
+  return data.organization_id
 }
 
 function applyFilters(stores: Store[], filters?: StoreFilters): Store[] {
@@ -73,124 +61,112 @@ function applyFilters(stores: Store[], filters?: StoreFilters): Store[] {
       (s) =>
         s.name.toLowerCase().includes(q) ||
         s.invoice_prefix.toLowerCase().includes(q) ||
-        (s.email?.toLowerCase().includes(q) ?? false) ||
         (s.phone?.includes(q) ?? false),
     )
-  }
-  if (filters?.type && filters.type !== 'all') {
-    result = result.filter((s) => s.type === filters.type)
   }
   if (filters?.status && filters.status !== 'all') {
     result = result.filter((s) => s.status === filters.status)
   }
-  if (filters?.api_status && filters.api_status !== 'all') {
-    result = result.filter((s) => s.api_status === filters.api_status)
+  if (filters?.type && filters.type !== 'all') {
+    result = result.filter((s) => s.type === filters.type)
   }
   return result
 }
 
 export const storesService = {
-  async getAll(filters?: StoreFilters) {
-    await delay()
-    return applyFilters(loadStores(), filters)
-  },
+  async getStores(filters?: StoreFilters): Promise<Store[]> {
+    let q = supabase
+      .from('branches')
+      .select(
+        'id, name, code, phone, address, is_active, created_at, updated_at, deleted_at, created_by, updated_by, organization_id',
+      )
+      .order('name')
 
-  async getStores(filters?: StoreFilters) {
-    return this.getAll(filters)
-  },
+    if (!filters?.include_deleted) {
+      q = q.is('deleted_at', null)
+    }
 
-  async getById(id: string) {
-    await delay(150)
-    return loadStores().find((s) => s.id === id) ?? null
+    const { data, error } = await q
+    if (error) throw error
+    return applyFilters((data ?? []).map((b) => branchToStore(b as BranchRow)), filters)
   },
 
   async getStats(): Promise<StoreStats> {
-    await delay(150)
-    const stores = loadStores().filter((s) => !s.deleted_at)
+    const stores = await this.getStores({ include_deleted: false })
     return {
       total: stores.length,
       active: stores.filter((s) => s.status === 'active').length,
       connected: stores.filter((s) => s.api_status === 'connected').length,
-      inactive: stores.filter((s) => s.status !== 'active').length,
+      inactive: stores.filter((s) => s.status === 'inactive').length,
     }
   },
 
-  async create(input: StoreFormInput) {
-    await delay(250)
-    const store = migrateStore(
-      auditCreate(
-        {
-          name: input.name,
-          type: input.type,
-          logo_url: input.logo_url || null,
-          phone: input.phone || null,
-          email: input.email || null,
-          address: input.address || null,
-          invoice_prefix: input.invoice_prefix.toUpperCase(),
-          default_courier_id: input.default_courier_id || null,
-          status: input.status,
-          api_status: input.api_status,
-        },
-        's',
-      ) as Store,
-    )
-
-    updateStorageItem(STORAGE_KEYS.stores, loadStores(), (current) => [store, ...current])
-    return store
+  async getById(id: string): Promise<Store | null> {
+    const { data, error } = await supabase
+      .from('branches')
+      .select(
+        'id, name, code, phone, address, is_active, created_at, updated_at, deleted_at, created_by, updated_by, organization_id',
+      )
+      .eq('id', id)
+      .maybeSingle()
+    if (error) throw error
+    return data ? branchToStore(data as BranchRow) : null
   },
 
-  async update(id: string, input: Partial<StoreFormInput>) {
-    await delay(250)
-    let updated: Store | null = null
-    updateStorageItem(STORAGE_KEYS.stores, loadStores(), (current) =>
-      current.map((s) => {
-        if (s.id !== id) return s
-        updated = migrateStore(
-          auditUpdate(s, {
-            ...input,
-            logo_url: input.logo_url !== undefined ? input.logo_url || null : s.logo_url,
-            phone: input.phone !== undefined ? input.phone || null : s.phone,
-            email: input.email !== undefined ? input.email || null : s.email,
-            address: input.address !== undefined ? input.address || null : s.address,
-            default_courier_id:
-              input.default_courier_id !== undefined
-                ? input.default_courier_id || null
-                : s.default_courier_id,
-            invoice_prefix: input.invoice_prefix
-              ? input.invoice_prefix.toUpperCase()
-              : s.invoice_prefix,
-          }),
-        )
-        return updated
-      }),
-    )
-    if (!updated) throw new Error('Store not found')
-    return updated
+  async create(input: StoreFormInput): Promise<Store> {
+    const orgId = await requireOrgId()
+    const code = (input.invoice_prefix || input.name).trim().toUpperCase().slice(0, 12)
+    const { data, error } = await supabase
+      .from('branches')
+      .insert({
+        organization_id: orgId,
+        name: input.name.trim(),
+        code,
+        phone: input.phone || null,
+        address: input.address || null,
+        is_active: input.status === 'active',
+      })
+      .select(
+        'id, name, code, phone, address, is_active, created_at, updated_at, deleted_at, created_by, updated_by, organization_id',
+      )
+      .single()
+    if (error) throw error
+    return branchToStore(data as BranchRow)
   },
 
-  async softDelete(id: string) {
-    await delay(200)
-    updateStorageItem(STORAGE_KEYS.stores, loadStores(), (current) =>
-      current.map((s) =>
-        s.id === id
-          ? auditUpdate(s, { deleted_at: new Date().toISOString(), status: 'archived' })
-          : s,
-      ),
-    )
+  async update(id: string, input: StoreFormInput): Promise<Store> {
+    const { data, error } = await supabase
+      .from('branches')
+      .update({
+        name: input.name.trim(),
+        code: input.invoice_prefix.trim().toUpperCase().slice(0, 12),
+        phone: input.phone || null,
+        address: input.address || null,
+        is_active: input.status === 'active',
+        deleted_at: input.status === 'archived' ? new Date().toISOString() : null,
+      })
+      .eq('id', id)
+      .select(
+        'id, name, code, phone, address, is_active, created_at, updated_at, deleted_at, created_by, updated_by, organization_id',
+      )
+      .single()
+    if (error) throw error
+    return branchToStore(data as BranchRow)
   },
 
-  async restore(id: string) {
-    await delay(200)
-    updateStorageItem(STORAGE_KEYS.stores, loadStores(), (current) =>
-      current.map((s) => {
-        if (s.id !== id) return s
-        return migrateStore(
-          auditUpdate(s, {
-            deleted_at: null,
-            status: s.status === 'archived' ? 'inactive' : s.status,
-          }),
-        )
-      }),
-    )
+  async softDelete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('branches')
+      .update({ deleted_at: new Date().toISOString(), is_active: false })
+      .eq('id', id)
+    if (error) throw error
+  },
+
+  async restore(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('branches')
+      .update({ deleted_at: null, is_active: true })
+      .eq('id', id)
+    if (error) throw error
   },
 }

@@ -1,0 +1,99 @@
+/** Permission keys enforced by RLS, RPC, route guards, and PermissionGate. */
+export const PERMISSIONS = [
+  'dashboard.read',
+  'pos.create',
+  'pos.discount',
+  'pos.price_override',
+  'sales.read',
+  'sales.correct',
+  'sales.void',
+  'sales.return.review',
+  'products.read',
+  'products.create',
+  'products.update',
+  'inventory.read',
+  'inventory.adjust',
+  'inventory.transfer',
+  'purchases.read',
+  'purchases.create',
+  'customers.read',
+  'customers.manage',
+  'suppliers.read',
+  'suppliers.manage',
+  'courier.read',
+  'courier.manage',
+  'accounts.read',
+  'accounts.post',
+  'accounts.manage',
+  'income.create',
+  'expense.create',
+  'expense.approve',
+  'customer_due.collect',
+  'supplier_due.pay',
+  'transactions.void',
+  'daily_closing.create',
+  'daily_closing.approve',
+  'profit_loss.read',
+  'account_settings.manage',
+  'reports.read',
+  'settings.manage',
+  'audit.read',
+] as const
+
+export type Permission = (typeof PERMISSIONS)[number]
+
+/** Map sidebar/route module ids → required permission (any-of). */
+export const MODULE_PERMISSIONS: Record<string, Permission[]> = {
+  dashboard: ['dashboard.read'],
+  sales: ['sales.read', 'pos.create'],
+  pos: ['pos.create'],
+  'sales-history': ['sales.read'],
+  'sales-returns': ['sales.read', 'sales.return.review'],
+  'due-collection': ['sales.read', 'accounts.post', 'customer_due.collect'],
+  'held-sales': ['pos.create'],
+  products: ['products.read'],
+  categories: ['products.read'],
+  subcategories: ['products.read'],
+  brands: ['products.read'],
+  variants: ['products.read'],
+  inventory: ['inventory.read'],
+  'stock-overview': ['inventory.read'],
+  'stock-ledger': ['inventory.read'],
+  'stock-adjustment': ['inventory.adjust'],
+  'stock-transfer': ['inventory.transfer'],
+  'low-stock': ['inventory.read'],
+  purchases: ['purchases.read'],
+  suppliers: ['suppliers.read'],
+  customers: ['customers.read'],
+  courier: ['courier.read'],
+  accounts: ['accounts.read', 'accounts.manage'],
+  income: ['accounts.read', 'income.create'],
+  expenses: ['accounts.read', 'expense.create'],
+  'customer-due': ['accounts.read', 'customer_due.collect'],
+  'supplier-due': ['accounts.read', 'supplier_due.pay'],
+  'daily-closing': ['accounts.read', 'daily_closing.create'],
+  'profit-loss': ['accounts.read', 'profit_loss.read'],
+  'account-settings': ['accounts.manage', 'account_settings.manage'],
+  hr: ['settings.manage'],
+  reports: ['reports.read'],
+  settings: ['settings.manage'],
+}
+
+export function hasPermission(
+  granted: readonly string[] | undefined,
+  required: Permission | Permission[],
+): boolean {
+  if (!granted?.length) return false
+  if (granted.includes('*')) return true
+  const need = Array.isArray(required) ? required : [required]
+  return need.some((p) => granted.includes(p))
+}
+
+export function hasAnyModuleAccess(
+  granted: readonly string[] | undefined,
+  moduleId: string,
+): boolean {
+  const required = MODULE_PERMISSIONS[moduleId]
+  if (!required) return hasPermission(granted, 'settings.manage')
+  return hasPermission(granted, required)
+}

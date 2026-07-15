@@ -240,7 +240,7 @@ export function InvoicesPage() {
                         <td className="px-4 py-3 sm:px-5">{inv.customer_name}</td>
                         <td className="px-4 py-3 sm:px-5">
                           <Link
-                            to={`/orders`}
+                            to={`/sales`}
                             className="text-blue-600 hover:underline"
                           >
                             {inv.order_number}

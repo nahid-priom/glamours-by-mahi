@@ -4,7 +4,7 @@ import {
 import { customersService } from '@/features/customers/customers.service'
 import { fraudService } from '@/features/fraud/fraud.service'
 import { invoicesService } from '@/features/invoices/invoices.service'
-import { ordersService } from '@/features/orders/orders.service'
+import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
 import { productsService } from '@/features/products/products.service'
 import { calcCartTotal, cartService } from './cart.service'
 import type { CheckoutInput, CheckoutResult } from './storefront.types'

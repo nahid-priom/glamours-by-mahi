@@ -9,7 +9,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { FraudRiskBadge } from '@/features/fraud/FraudRiskBadge'
 import { StatusBadge } from '@/components/shared/StatusBadge'
-import { ordersService } from '@/features/orders/orders.service'
+import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
 import { customersService } from './customers.service'
 import { formatBDT, formatDateShort } from '@/lib/format'
 import type { Customer } from './customers.types'

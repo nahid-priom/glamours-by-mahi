@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { CheckCircle, Download, Printer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatBDT } from '@/lib/format'
-import { ordersService } from '@/features/orders/orders.service'
+import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
 import { invoicesService } from '@/features/invoices/invoices.service'
 import { Skeleton } from '@/components/ui/skeleton'
 
