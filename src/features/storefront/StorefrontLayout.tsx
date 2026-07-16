@@ -21,14 +21,14 @@ function StorefrontShell() {
   return (
     <PWAStorefrontShell>
       <div
-        className="flex min-h-screen flex-col overflow-x-hidden bg-[#F8F6F2] font-sans text-[#111111]"
+        className="flex min-h-screen flex-col overflow-x-hidden bg-[var(--sf-bg)] font-sans text-[var(--sf-ink)]"
         style={layoutStyle}
       >
         <StoreHeader />
         <main
-          className="flex-1 overflow-x-hidden pb-20 lg:pb-0"
+          className="flex-1 overflow-x-hidden pb-24 lg:pb-0"
           style={{
-            paddingTop: `calc(72px + var(--pwa-install-bar-height, 0px) + env(safe-area-inset-top, 0px))`,
+            paddingTop: `calc(108px + var(--pwa-install-bar-height, 0px) + env(safe-area-inset-top, 0px))`,
           }}
         >
           <Outlet />

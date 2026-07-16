@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { cartService, calcCartTotal } from './cart.service'
+import { cartService, calcCartTotal, type AddToCartOptions } from './cart.service'
 import type { CartItem, StorefrontProduct } from './storefront.types'
 
 interface CartContextValue {
@@ -17,9 +17,9 @@ interface CartContextValue {
   deliveryCharge: number
   total: number
   wishlistIds: Set<string>
-  addItem: (product: StorefrontProduct, qty?: number) => void
-  updateQuantity: (productId: string, qty: number) => void
-  removeItem: (productId: string) => void
+  addItem: (product: StorefrontProduct, qty?: number, options?: AddToCartOptions) => void
+  updateQuantity: (productId: string, qty: number, variantId?: string) => void
+  removeItem: (productId: string, variantId?: string) => void
   clearCart: () => void
   toggleWishlist: (productId: string, slug: string) => void
   isWishlisted: (productId: string) => boolean
@@ -49,18 +49,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const totals = useMemo(() => calcCartTotal(items), [items])
 
-  const addItem = useCallback((product: StorefrontProduct, qty = 1) => {
-    cartService.addItem(product, qty)
+  const addItem = useCallback(
+    (product: StorefrontProduct, qty = 1, options?: AddToCartOptions) => {
+      cartService.addItem(product, qty, options)
+      refresh()
+    },
+    [refresh],
+  )
+
+  const updateQuantity = useCallback((productId: string, qty: number, variantId?: string) => {
+    cartService.updateQuantity(productId, qty, variantId)
     refresh()
   }, [refresh])
 
-  const updateQuantity = useCallback((productId: string, qty: number) => {
-    cartService.updateQuantity(productId, qty)
-    refresh()
-  }, [refresh])
-
-  const removeItem = useCallback((productId: string) => {
-    cartService.removeItem(productId)
+  const removeItem = useCallback((productId: string, variantId?: string) => {
+    cartService.removeItem(productId, variantId)
     refresh()
   }, [refresh])
 

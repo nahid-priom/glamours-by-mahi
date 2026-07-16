@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Shield, Truck, RotateCcw, CreditCard } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { storefrontService } from './storefront.service'
-import { HeroBanner } from './components/HeroBanner'
+import { DynamicHeroCarousel } from './components/DynamicHeroCarousel'
+import { BenefitStrip } from './components/BenefitStrip'
 import { CategorySlider } from './components/CategorySlider'
 import { ProductCard } from './components/ProductCard'
 import { ProductCarousel } from './components/ProductCarousel'
@@ -11,7 +12,6 @@ import { LimitedCollection } from './components/LimitedCollection'
 import { FeaturedCollection } from './components/FeaturedCollection'
 import { ShopByStyle } from './components/ShopByStyle'
 import { InstagramGallery } from './components/InstagramGallery'
-import { TestimonialSection } from './components/TestimonialSection'
 import { NewsletterSection } from './components/NewsletterSection'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -21,6 +21,35 @@ function SectionSkeleton() {
       {Array.from({ length: 4 }).map((_, i) => (
         <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />
       ))}
+    </div>
+  )
+}
+
+function SectionHeader({
+  eyebrow,
+  title,
+  to,
+  linkLabel = 'View all',
+}: {
+  eyebrow: string
+  title: string
+  to: string
+  linkLabel?: string
+}) {
+  return (
+    <div className="mb-8 flex items-end justify-between gap-4 sm:mb-10">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.3em] text-[var(--sf-muted)]">{eyebrow}</p>
+        <h2 className="mt-2 font-serif text-2xl text-[var(--sf-ink)] sm:text-3xl lg:text-4xl">
+          {title}
+        </h2>
+      </div>
+      <Link
+        to={to}
+        className="hidden items-center gap-1 text-sm font-semibold text-[var(--sf-primary)] sm:flex"
+      >
+        {linkLabel} <ArrowRight className="h-4 w-4" aria-hidden />
+      </Link>
     </div>
   )
 }
@@ -51,89 +80,105 @@ export function HomePage() {
     queryFn: () => storefrontService.getRecentlyAdded(12),
   })
 
+  const beautyEssentials = (featured ?? trending ?? []).slice(0, 8)
+  const fashionPicks = (newArrivals ?? []).slice(0, 8)
+
   return (
     <div className="overflow-x-hidden">
-      <HeroBanner />
+      <DynamicHeroCarousel />
+      <BenefitStrip />
       <CategorySlider />
 
-      {/* New Arrivals — 4-col grid */}
-      <section className="px-4 py-4 sm:px-6 lg:py-16">
-        <div className="mx-auto max-w-[1400px]">
-          <div className="mb-10 flex items-end justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.3em] text-[#6B7280]">Just dropped</p>
-              <h2 className="mt-2 font-serif text-3xl text-[#111111] sm:text-4xl">New Arrivals</h2>
-            </div>
-            <Link to="/category/new-arrival" className="hidden items-center gap-1 text-sm font-medium text-[#111111] sm:flex">
-              View All <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          {l1 ? <SectionSkeleton /> : (
+      <section className="sf-container max-w-[1440px] py-10 lg:py-16">
+        <SectionHeader
+          eyebrow="Customer favorites"
+          title="Best Sellers"
+          to="/shop"
+        />
+        {l3 ? <SectionSkeleton /> : <MasonryProducts products={bestSellers ?? []} />}
+      </section>
+
+      <section className="bg-white py-10 lg:py-16">
+        <div className="sf-container max-w-[1440px]">
+          <SectionHeader
+            eyebrow="Just dropped"
+            title="New Arrivals"
+            to="/category/new-arrival"
+          />
+          {l1 ? (
+            <SectionSkeleton />
+          ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5 xl:gap-5">
-              {newArrivals?.map((p) => <ProductCard key={p.id} product={p} />)}
+              {newArrivals?.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
             </div>
           )}
         </div>
       </section>
 
-      {/* Trending — horizontal slider */}
-      <section className="bg-white px-4 py-4 sm:px-6 lg:py-16">
-        <div className="mx-auto max-w-[1400px]">
-          {l2 ? <SectionSkeleton /> : (
-            <ProductCarousel products={trending ?? []} title="Trending Now" subtitle="Most loved this week" autoScroll />
-          )}
-        </div>
+      {limited && limited.length > 0 ? <LimitedCollection products={limited} /> : null}
+
+      <section className="sf-container max-w-[1440px] py-10 lg:py-16">
+        {l2 ? (
+          <SectionSkeleton />
+        ) : (
+          <ProductCarousel
+            products={trending ?? []}
+            title="Trending Now"
+            subtitle="Most loved this week"
+            autoScroll
+          />
+        )}
       </section>
 
-      {/* Limited Collection — dark editorial */}
-      {limited && limited.length > 0 && <LimitedCollection products={limited} />}
-
-      {/* Best Sellers — masonry */}
-      <section className="px-4 py-4 sm:px-6 lg:py-16">
-        <div className="mx-auto max-w-[1400px]">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-[#6B7280]">Customer favorites</p>
-          <h2 className="mt-2 font-serif text-3xl text-[#111111] sm:text-4xl">Best Sellers</h2>
-          <div className="mt-10">
-            {l3 ? <SectionSkeleton /> : <MasonryProducts products={bestSellers ?? []} />}
+      {beautyEssentials.length > 0 ? (
+        <section className="border-y border-[var(--sf-border)] bg-[var(--sf-primary-soft)] py-10 lg:py-16">
+          <div className="sf-container max-w-[1440px]">
+            <SectionHeader
+              eyebrow="Glow edit"
+              title="Beauty Essentials"
+              to="/shop"
+            />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:gap-5">
+              {beautyEssentials.map((p) => (
+                <ProductCard key={`beauty-${p.id}`} product={p} />
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
-      {/* Featured — banner + grid */}
-      {featured && featured.length > 0 && <FeaturedCollection products={featured} />}
+      {fashionPicks.length > 0 ? (
+        <section className="sf-container max-w-[1440px] py-10 lg:py-16">
+          <SectionHeader eyebrow="Wardrobe" title="Fashion Picks" to="/category/dress" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-5">
+            {fashionPicks.map((p) => (
+              <ProductCard key={`fashion-${p.id}`} product={p} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {featured && featured.length > 0 ? <FeaturedCollection products={featured} /> : null}
 
       <ShopByStyle />
 
-      {/* Recently Added — carousel */}
-      <section className="bg-[#F8F6F2] px-4 py-4 sm:px-6 lg:py-16">
-        <div className="mx-auto max-w-[1400px]">
-          {l4 ? <SectionSkeleton /> : (
-            <ProductCarousel products={recent ?? []} title="Recently Added" subtitle="Fresh from our atelier" />
+      <section className="bg-white py-10 lg:py-16">
+        <div className="sf-container max-w-[1440px]">
+          {l4 ? (
+            <SectionSkeleton />
+          ) : (
+            <ProductCarousel
+              products={recent ?? []}
+              title="Recently Added"
+              subtitle="Fresh from our shelves"
+            />
           )}
         </div>
       </section>
 
       <InstagramGallery />
-      <TestimonialSection />
-
-      {/* Why shop with us */}
-      <section className="px-4 py-16 sm:px-6">
-        <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
-          {[
-            { icon: Truck, title: 'Fast Delivery', desc: 'Nationwide COD' },
-            { icon: CreditCard, title: 'Cash on Delivery', desc: 'Pay on receipt' },
-            { icon: Shield, title: 'Premium Quality', desc: 'Curated fabrics' },
-            { icon: RotateCcw, title: 'Easy Exchange', desc: '3-day policy' },
-          ].map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="rounded-2xl bg-white p-6 text-center shadow-[0_4px_24px_-8px_rgba(17,17,17,0.08)]">
-              <Icon className="mx-auto h-6 w-6 text-[#E11D48]" />
-              <p className="mt-3 text-sm font-semibold text-[#111111]">{title}</p>
-              <p className="mt-1 text-xs text-[#6B7280]">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <NewsletterSection />
     </div>
   )

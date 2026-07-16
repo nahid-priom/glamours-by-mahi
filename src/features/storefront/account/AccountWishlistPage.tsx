@@ -21,11 +21,11 @@ export function AccountWishlistPage() {
 
   if (wishlistIds.size === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-[#111111]/15 bg-white py-16 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#E11D48]/10">
-          <Heart className="h-7 w-7 text-[#E11D48]" />
+      <div className="rounded-3xl border border-dashed border-[#22171C]/15 bg-white py-16 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#FF3F7F]/10">
+          <Heart className="h-7 w-7 text-[#FF3F7F]" />
         </div>
-        <h2 className="mt-4 font-serif text-2xl text-[#111111]">Your wishlist is empty</h2>
+        <h2 className="mt-4 font-serif text-2xl text-[#22171C]">Your wishlist is empty</h2>
         <p className="mt-2 text-sm text-[#6B7280]">Save pieces you love and shop them anytime.</p>
         <Link to="/shop">
           <Button className="mt-6 rounded-full">Explore Collection</Button>
@@ -46,8 +46,8 @@ export function AccountWishlistPage() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border border-[#111111]/8 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="font-serif text-2xl text-[#111111]">Wishlist</h2>
+      <div className="rounded-3xl border border-[#22171C]/8 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="font-serif text-2xl text-[#22171C]">Wishlist</h2>
         <p className="mt-1 text-sm text-[#6B7280]">{products.length} saved items</p>
       </div>
 

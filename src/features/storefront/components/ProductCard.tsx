@@ -9,6 +9,7 @@ import type { StorefrontProduct, ProductCardVariant } from '../storefront.types'
 import { useCart } from '../cart.context'
 import { useStorefrontUI } from '../storefront-ui.context'
 import { getDisplayStock } from '../utils/product-display'
+import { resolveCatalogVariant } from '../utils/product-variants'
 import {
   buildBadges,
   getCardCategory,
@@ -46,7 +47,7 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
           />
         ))}
       </div>
-      <span className="font-medium text-[#111111]">{rating.toFixed(1)}</span>
+      <span className="font-medium text-[#22171C]">{rating.toFixed(1)}</span>
       <span>({count})</span>
     </div>
   )
@@ -66,7 +67,10 @@ export const ProductCard = memo(function ProductCard({
   const outOfStock = stock <= 0
   const discount = getProductDiscount(product)
   const badges = buildBadges(product, discount)
-  const needsOptions = product.category === 'accessories' || product.isLimited
+  const needsOptions =
+    Boolean(product.catalogSizes?.length || product.catalogColors?.length) ||
+    product.category === 'accessories' ||
+    product.isLimited
   const showRating = variant !== 'compact'
   const showButton = variant !== 'compact'
   const price = getCardPrice(product)
@@ -80,21 +84,33 @@ export const ProductCard = memo(function ProductCard({
       openQuickView(product)
       return
     }
-    addItem(product, 1)
+    const matched = resolveCatalogVariant(product)
+    addItem(
+      product,
+      1,
+      matched
+        ? {
+            variantId: matched.id,
+            price: matched.sellingPrice,
+            sku: matched.sku,
+            maxStock: matched.stock,
+          }
+        : undefined,
+    )
   }
 
   return (
     <article
       className={cn(
-        'group flex h-[320px] flex-col overflow-hidden rounded-[22px] border border-[#E5E7EB] bg-white shadow-sm transition-all duration-300',
+        'group flex h-[320px] flex-col overflow-hidden rounded-[22px] border border-[var(--sf-border)] bg-white shadow-sm transition-all duration-300',
         'md:h-[390px] lg:h-[390px] xl:h-[400px]',
-        'hover:-translate-y-0.5 hover:shadow-md',
+        'hover:-translate-y-0.5 hover:border-[var(--sf-primary)]/40 hover:shadow-[0_16px_40px_-24px_rgba(255,63,127,0.35)]',
         className,
       )}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="relative h-[155px] shrink-0 overflow-hidden bg-[#F8F6F2] md:h-[210px] lg:h-[230px]">
+      <div className="relative h-[155px] shrink-0 overflow-hidden bg-[#FFF9FB] md:h-[210px] lg:h-[230px]">
         <Link to={`/product/${product.slug}`} className="block h-full">
           <AppImage
             src={imageSrc}
@@ -130,7 +146,7 @@ export const ProductCard = memo(function ProductCard({
           onClick={() => toggleWishlist(product.id, product.slug)}
           className={cn(
             'absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition hover:scale-105 sm:right-2 sm:top-2 sm:h-9 sm:w-9',
-            wishlisted && 'text-[#E11D48]',
+            wishlisted && 'text-[#FF3F7F]',
           )}
           aria-label="Wishlist"
         >
@@ -155,7 +171,7 @@ export const ProductCard = memo(function ProductCard({
         </p>
 
         <Link to={`/product/${product.slug}`} className="mt-0.5 block min-h-[20px] sm:min-h-[25px]">
-          <h3 className="line-clamp-2 text-[13px] font-semibold leading-4 text-[#111111] transition hover:text-[#E11D48] sm:text-sm sm:leading-5">
+          <h3 className="line-clamp-2 text-[13px] font-semibold leading-4 text-[#22171C] transition hover:text-[#FF3F7F] sm:text-sm sm:leading-5">
             {getCardProductName(product)}
           </h3>
         </Link>
@@ -163,11 +179,11 @@ export const ProductCard = memo(function ProductCard({
         <div className="mt-1 flex h-5 items-center gap-x-1.5 overflow-hidden sm:mt-1.5 sm:h-6">
           {price > 0 ? (
             <>
-              <span className="text-sm font-bold text-[#111111] sm:text-base">{formatBDT(price)}</span>
+              <span className="text-sm font-bold text-[#22171C] sm:text-base">{formatBDT(price)}</span>
               {product.onSale && product.salePrice && (
                 <>
                   <span className="text-xs text-slate-400 line-through">{formatBDT(product.price)}</span>
-                  <span className="text-[10px] font-semibold text-rose-600">{discount}% OFF</span>
+                  <span className="text-[10px] font-semibold text-primary">{discount}% OFF</span>
                 </>
               )}
             </>
@@ -177,7 +193,7 @@ export const ProductCard = memo(function ProductCard({
         </div>
 
         <div className="mt-0.5 mb-2.5 flex h-4 items-center sm:mt-1 sm:mb-3">
-          {showRating ? (
+          {showRating && getCardReviewCount(product) > 0 && getCardRating(product) > 0 ? (
             <StarRating rating={getCardRating(product)} count={getCardReviewCount(product)} />
           ) : (
             <span className="invisible text-[11px]">—</span>
@@ -192,8 +208,8 @@ export const ProductCard = memo(function ProductCard({
             className={cn(
               'mt-auto flex h-8 w-full items-center justify-center gap-1 rounded-full border text-[10px] font-bold uppercase tracking-[0.12em] transition sm:h-9',
               outOfStock
-                ? 'cursor-not-allowed border-[#111111]/10 bg-[#F8F6F2] text-[#6B7280]'
-                : 'border-[#111111]/10 text-[#111111] hover:border-[#111111] hover:bg-[#111111] hover:text-white',
+                ? 'cursor-not-allowed border-[var(--sf-border)] bg-[var(--sf-bg)] text-[var(--sf-muted)]'
+                : 'border-[var(--sf-border)] text-[var(--sf-ink)] hover:border-[var(--sf-primary)] hover:bg-[var(--sf-primary)] hover:text-white',
             )}
           >
             {!outOfStock && <ShoppingBag className="h-3 w-3 md:hidden" aria-hidden />}

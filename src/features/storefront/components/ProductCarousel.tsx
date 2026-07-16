@@ -44,7 +44,7 @@ export function ProductCarousel({
       {(title || subtitle) && (
         <div className="mb-8">
           {subtitle && <p className="text-[11px] uppercase tracking-[0.3em] text-[#6B7280]">{subtitle}</p>}
-          {title && <h2 className="mt-2 font-serif text-3xl text-[#111111] sm:text-4xl">{title}</h2>}
+          {title && <h2 className="mt-2 font-serif text-3xl text-[#22171C] sm:text-4xl">{title}</h2>}
         </div>
       )}
       <div className="relative">

@@ -29,14 +29,14 @@ export function buildBadges(product: StorefrontProduct, discount: number): Badge
   if (product.onSale && discount > 0) {
     candidates.push({
       label: 'Sale',
-      className: 'bg-[#E11D48] text-white',
+      className: 'bg-[#FF3F7F] text-white',
       priority: 1,
     })
   }
   if (product.isNew) {
     candidates.push({
       label: 'New',
-      className: 'bg-[#111111] text-white',
+      className: 'bg-[#22171C] text-white',
       priority: 2,
     })
   }
@@ -50,14 +50,14 @@ export function buildBadges(product: StorefrontProduct, discount: number): Badge
   if (product.isBestSeller) {
     candidates.push({
       label: 'Bestseller',
-      className: 'bg-[#111111]/90 text-white backdrop-blur-sm',
+      className: 'bg-[#22171C]/90 text-white backdrop-blur-sm',
       priority: 4,
     })
   }
   if (product.isLimited) {
     candidates.push({
       label: 'Limited',
-      className: 'bg-white/95 text-[#111111] backdrop-blur-sm',
+      className: 'bg-white/95 text-[#22171C] backdrop-blur-sm',
       priority: 5,
     })
   }

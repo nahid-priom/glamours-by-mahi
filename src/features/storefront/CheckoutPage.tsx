@@ -77,27 +77,17 @@ export function CheckoutPage() {
       } catch {
         /* profile sync is best-effort */
       }
-      try {
-        const { erpOrdersService } = await import('@/services/erp-orders.service')
-        erpOrdersService.createFromWebsite({
+      sessionStorage.setItem(
+        `order-success:${result.primaryOrderId}`,
+        JSON.stringify({
+          invoiceNo: result.invoiceNo,
+          totalCod: result.totalCod,
+          deliveryCharge: result.deliveryCharge,
+          publicShareToken: result.publicShareToken,
           customerName: variables.customer_name,
           phone: variables.phone,
-          email: variables.email,
-          address: variables.address,
-          district: variables.district,
-          deliveryCharge,
-          note: variables.notes,
-          items: items.map((i) => ({
-            productId: i.productId,
-            name: i.name,
-            sku: i.sku,
-            quantity: i.quantity,
-            unitPrice: i.price,
-          })),
-        })
-      } catch {
-        /* ERP sync best-effort for demo continuity */
-      }
+        }),
+      )
       navigate(`/order-success/${result.primaryOrderId}`)
     },
     onError: (e: Error) => toast(e.message, 'error'),
@@ -105,17 +95,23 @@ export function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6">
-        <p className="text-[#6B7280]">Your cart is empty</p>
-        <Link to="/shop"><Button className="mt-4 rounded-full">Shop Now</Button></Link>
+      <div className="sf-container max-w-[1440px] py-16 text-center">
+        <p className="text-[var(--sf-muted)]">Your cart is empty</p>
+        <Link to="/shop">
+          <Button className="mt-4 rounded-full bg-[var(--sf-primary)] hover:bg-[var(--sf-primary-hover)]">
+            Shop Now
+          </Button>
+        </Link>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <h1 className="font-serif text-3xl text-[#111111]">Checkout</h1>
-      <p className="mt-1 text-sm text-[#6B7280]">Cash on Delivery · Fraud check applied automatically</p>
+    <div className="sf-container max-w-[1440px] py-8">
+      <h1 className="font-serif text-3xl text-[var(--sf-ink)]">Checkout</h1>
+      <p className="mt-1 text-sm text-[var(--sf-muted)]">
+        Cash on Delivery · Secure & distraction-free
+      </p>
 
       <form
         onSubmit={form.handleSubmit((data) =>
@@ -127,21 +123,21 @@ export function CheckoutPage() {
         className="mt-8 grid gap-8 lg:grid-cols-5"
       >
         <div className="space-y-4 lg:col-span-3">
-          <div className="rounded-3xl border border-[#111111]/8 bg-white p-5 shadow-sm">
-            <h2 className="font-medium text-[#111111]">Delivery Details</h2>
+          <div className="rounded-3xl border border-[var(--sf-border)] bg-white p-5 shadow-sm">
+            <h2 className="font-medium text-[var(--sf-ink)]">Delivery Details</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Label htmlFor="customer_name">Full Name *</Label>
                 <Input id="customer_name" {...form.register('customer_name')} className="mt-1 rounded-xl" />
                 {form.formState.errors.customer_name && (
-                  <p className="mt-1 text-xs text-[#E11D48]">{form.formState.errors.customer_name.message}</p>
+                  <p className="mt-1 text-xs text-[#FF3F7F]">{form.formState.errors.customer_name.message}</p>
                 )}
               </div>
               <div>
                 <Label htmlFor="phone">Phone *</Label>
                 <Input id="phone" {...form.register('phone')} placeholder="01XXXXXXXXX" className="mt-1 rounded-xl" />
                 {form.formState.errors.phone && (
-                  <p className="mt-1 text-xs text-[#E11D48]">{form.formState.errors.phone.message}</p>
+                  <p className="mt-1 text-xs text-[#FF3F7F]">{form.formState.errors.phone.message}</p>
                 )}
               </div>
               <div>
@@ -152,7 +148,7 @@ export function CheckoutPage() {
                 <Label htmlFor="address">Full Address *</Label>
                 <Input id="address" {...form.register('address')} className="mt-1 rounded-xl" />
                 {form.formState.errors.address && (
-                  <p className="mt-1 text-xs text-[#E11D48]">{form.formState.errors.address.message}</p>
+                  <p className="mt-1 text-xs text-[#FF3F7F]">{form.formState.errors.address.message}</p>
                 )}
               </div>
               <div>
@@ -173,7 +169,12 @@ export function CheckoutPage() {
 
         <div className="lg:col-span-2">
           <CheckoutSummary subtotal={subtotal} deliveryCharge={deliveryCharge} total={total} itemCount={itemCount} />
-          <Button type="submit" className="mt-4 w-full rounded-full" size="lg" disabled={mutation.isPending}>
+          <Button
+            type="submit"
+            className="mt-4 w-full rounded-full bg-[var(--sf-primary)] hover:bg-[var(--sf-primary-hover)]"
+            size="lg"
+            disabled={mutation.isPending}
+          >
             {mutation.isPending ? 'Placing Order...' : 'Place COD Order'}
           </Button>
         </div>

@@ -39,12 +39,12 @@ export function ProductGrid({
 
   if (products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-[32px] border border-dashed border-[#111111]/10 bg-white/60 px-6 py-16 text-center sm:py-24">
-        <div className="relative mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-[#F8F6F2]">
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#E11D48]/10 to-transparent" />
-          <ShoppingBag className="relative h-10 w-10 text-[#111111]/30" strokeWidth={1.25} />
+      <div className="flex flex-col items-center justify-center rounded-[32px] border border-dashed border-[#22171C]/10 bg-white/60 px-6 py-16 text-center sm:py-24">
+        <div className="relative mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-[#FFF9FB]">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#FF3F7F]/10 to-transparent" />
+          <ShoppingBag className="relative h-10 w-10 text-[#22171C]/30" strokeWidth={1.25} />
         </div>
-        <h3 className="font-serif text-2xl text-[#111111]">No products found</h3>
+        <h3 className="font-serif text-2xl text-[#22171C]">No products found</h3>
         <p className="mt-2 max-w-sm text-sm text-[#6B7280]">
           {emptyMessage ??
             "We couldn't find anything matching your filters. Try adjusting your search or browse our full collection."}
@@ -53,7 +53,7 @@ export function ProductGrid({
           <button
             type="button"
             onClick={onClearFilters}
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#111111] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#E11D48]"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#22171C] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#FF3F7F]"
           >
             <RotateCcw className="h-4 w-4" />
             Clear filters

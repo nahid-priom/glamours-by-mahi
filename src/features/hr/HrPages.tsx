@@ -1,12 +1,12 @@
 import { ModulePlaceholder } from '@/features/common/ModulePlaceholder'
 
-/** HR module pages — schema/permissions ready; full UI lands in a later phase. */
+/** HR module — tables/permissions ready; connect UI to repositories next. */
 export function HrEmployeesPage() {
   return (
     <ModulePlaceholder
       title="Employees"
-      description="Employee records will load from Supabase HR tables. Use Settings → Roles for access control today."
-      permissionHint="settings.manage"
+      description="Employee records, device user IDs and branch assignment load from Supabase HR tables (migration 017)."
+      permissionHint="hr.read / hr.employee.create"
     />
   )
 }
@@ -15,8 +15,8 @@ export function HrAttendancePage() {
   return (
     <ModulePlaceholder
       title="Attendance"
-      description="Daily attendance tracking will connect to Supabase. Payroll-related accounting stays in Accounts → Expenses."
-      permissionHint="settings.manage"
+      description="Device raw logs → daily attendance records → payroll. Adapters: ZKTeco, webhook, CSV, manual."
+      permissionHint="hr.attendance.read / hr.device.manage"
     />
   )
 }
@@ -25,8 +25,8 @@ export function HrLeavesPage() {
   return (
     <ModulePlaceholder
       title="Leave"
-      description="Leave requests will be managed in Supabase once the HR tables are activated for this deployment."
-      permissionHint="settings.manage"
+      description="Leave requests are stored in leave_requests with approve/reject workflow."
+      permissionHint="hr.leave.read / hr.leave.approve"
     />
   )
 }
@@ -35,8 +35,8 @@ export function HrPayrollPage() {
   return (
     <ModulePlaceholder
       title="Payroll"
-      description="Payroll runs will post salary expenses through Simple Accounting. Full payroll UI is coming next."
-      permissionHint="settings.manage"
+      description="Payroll runs use attendance summaries (never raw punches). Approved payroll posts to Accounts."
+      permissionHint="hr.payroll.read / hr.payroll.approve"
     />
   )
 }

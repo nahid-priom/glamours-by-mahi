@@ -26,7 +26,7 @@ export function CategoryPage() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:py-14">
       <p className="text-[11px] uppercase tracking-[0.3em] text-[#6B7280]">Category</p>
-      <h1 className="mt-2 font-serif text-4xl text-[#111111]">{category?.label ?? slug}</h1>
+      <h1 className="mt-2 font-serif text-4xl text-[#22171C]">{category?.label ?? slug}</h1>
       <p className="mt-2 text-sm text-[#6B7280]">{data ? `${data.total} pieces` : ''}</p>
       <div className="mt-10">
         <ProductGrid products={data?.products ?? []} loading={isLoading} emptyMessage="No products in this category yet." />
@@ -37,7 +37,7 @@ export function CategoryPage() {
             type="button"
             disabled={isFetching}
             onClick={() => setPageSize((s) => s + 24)}
-            className="rounded-full border border-[#111111]/15 px-8 py-3 text-sm font-medium transition hover:border-[#111111]"
+            className="rounded-full border border-[#22171C]/15 px-8 py-3 text-sm font-medium transition hover:border-[#22171C]"
           >
             {isFetching ? 'Loading...' : 'Load More'}
           </button>

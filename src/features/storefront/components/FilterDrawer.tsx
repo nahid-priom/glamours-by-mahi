@@ -32,7 +32,7 @@ export function FilterDrawer({ open, onOpenChange, filters, onChange, focus = 'f
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[88vh] overflow-y-auto rounded-t-[28px] px-0 pb-8">
-        <SheetHeader className="border-b border-[#111111]/5 px-6 pb-4">
+        <SheetHeader className="border-b border-[#22171C]/5 px-6 pb-4">
           <SheetTitle className="font-serif text-xl">
             {focus === 'sort' ? 'Sort Products' : 'Filter & Sort'}
           </SheetTitle>
@@ -49,7 +49,7 @@ export function FilterDrawer({ open, onOpenChange, filters, onChange, focus = 'f
               onChange={(e) =>
                 onChange({ ...filters, category: e.target.value as StorefrontFilters['category'], page: 1 })
               }
-              className="w-full rounded-xl border border-[#111111]/10 bg-[#F8F6F2] px-4 py-3 text-sm outline-none focus:border-[#111111]/25"
+              className="w-full rounded-xl border border-[#22171C]/10 bg-[#FFF9FB] px-4 py-3 text-sm outline-none focus:border-[#22171C]/25"
             >
               <option value="all">All Categories</option>
               {STOREFRONT_CATEGORIES.map((c) => (
@@ -77,7 +77,7 @@ export function FilterDrawer({ open, onOpenChange, filters, onChange, focus = 'f
                     page: 1,
                   })
                 }
-                className="rounded-xl border border-[#111111]/10 bg-[#F8F6F2] px-4 py-3 text-sm outline-none focus:border-[#111111]/25"
+                className="rounded-xl border border-[#22171C]/10 bg-[#FFF9FB] px-4 py-3 text-sm outline-none focus:border-[#22171C]/25"
               />
               <input
                 type="number"
@@ -91,7 +91,7 @@ export function FilterDrawer({ open, onOpenChange, filters, onChange, focus = 'f
                     page: 1,
                   })
                 }
-                className="rounded-xl border border-[#111111]/10 bg-[#F8F6F2] px-4 py-3 text-sm outline-none focus:border-[#111111]/25"
+                className="rounded-xl border border-[#22171C]/10 bg-[#FFF9FB] px-4 py-3 text-sm outline-none focus:border-[#22171C]/25"
               />
             </div>
           </div>
@@ -109,8 +109,8 @@ export function FilterDrawer({ open, onOpenChange, filters, onChange, focus = 'f
                   className={cn(
                     'flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition',
                     filters.sort === opt.value
-                      ? 'border-[#111111] bg-[#111111] text-white'
-                      : 'border-[#111111]/10 bg-white hover:border-[#111111]/20',
+                      ? 'border-[#22171C] bg-[#22171C] text-white'
+                      : 'border-[#22171C]/10 bg-white hover:border-[#22171C]/20',
                   )}
                 >
                   {opt.label}
@@ -124,14 +124,14 @@ export function FilterDrawer({ open, onOpenChange, filters, onChange, focus = 'f
             <button
               type="button"
               onClick={reset}
-              className="flex-1 rounded-full border border-[#111111]/15 py-3 text-sm font-medium transition hover:border-[#111111]"
+              className="flex-1 rounded-full border border-[#22171C]/15 py-3 text-sm font-medium transition hover:border-[#22171C]"
             >
               Reset
             </button>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="flex-1 rounded-full bg-[#111111] py-3 text-sm font-medium text-white transition hover:bg-[#E11D48]"
+              className="flex-1 rounded-full bg-[#22171C] py-3 text-sm font-medium text-white transition hover:bg-[#FF3F7F]"
             >
               Apply
             </button>

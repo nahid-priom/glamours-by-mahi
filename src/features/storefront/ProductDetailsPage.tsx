@@ -16,8 +16,7 @@ import { RelatedProducts } from './components/RelatedProducts'
 import { getDisplayName, getDisplayPrice, getDisplayStock } from './utils/product-display'
 import {
   getProductVariantOptions,
-  type ProductColor,
-  type ProductSize,
+  resolveCatalogVariant,
 } from './utils/product-variants'
 
 export function ProductDetailsPage() {
@@ -28,8 +27,8 @@ export function ProductDetailsPage() {
   const { toast } = useToast()
 
   const [qty, setQty] = useState(1)
-  const [selectedSize, setSelectedSize] = useState<ProductSize | undefined>()
-  const [selectedColor, setSelectedColor] = useState<ProductColor | undefined>()
+  const [selectedSize, setSelectedSize] = useState<string | undefined>()
+  const [selectedColor, setSelectedColor] = useState<string | undefined>()
   const [isAdding, setIsAdding] = useState(false)
   const [isBuying, setIsBuying] = useState(false)
   const initializedRef = useRef<string | null>(null)
@@ -45,7 +44,15 @@ export function ProductDetailsPage() {
   const outOfStock = stock <= 0
   const needsSize = Boolean(variantOptions?.sizes.length) && !selectedSize
   const needsColor = Boolean(variantOptions?.colors.length) && !selectedColor
-  const canPurchase = Boolean(product) && !outOfStock && !needsSize && !needsColor
+  const matchedVariant = product
+    ? resolveCatalogVariant(product, selectedSize, selectedColor)
+    : null
+  const canPurchase =
+    Boolean(product) &&
+    !outOfStock &&
+    !needsSize &&
+    !needsColor &&
+    Boolean(matchedVariant?.id || !product?.catalogVariants?.length)
 
   useEffect(() => {
     if (!product?.id) return
@@ -66,7 +73,22 @@ export function ProductDetailsPage() {
     if (!product || !canPurchase) return
     setIsAdding(true)
     try {
-      addItem(product, qty)
+      const variant =
+        resolveCatalogVariant(product, selectedSize, selectedColor) ??
+        product.catalogVariants?.[0]
+      if (!variant?.id) {
+        toast('This product is not ready for checkout yet', 'error')
+        return
+      }
+      addItem(product, qty, {
+        variantId: variant.id,
+        size: selectedSize,
+        color: selectedColor,
+        price: variant.sellingPrice,
+        sku: variant.sku,
+        name: `${getDisplayName(product)} (${variant.label})`,
+        maxStock: variant.stock,
+      })
       toast(`${getDisplayName(product)} added to cart`)
       openCart()
     } finally {
@@ -78,7 +100,22 @@ export function ProductDetailsPage() {
     if (!product || !canPurchase) return
     setIsBuying(true)
     try {
-      addItem(product, qty)
+      const variant =
+        resolveCatalogVariant(product, selectedSize, selectedColor) ??
+        product.catalogVariants?.[0]
+      if (!variant?.id) {
+        toast('This product is not ready for checkout yet', 'error')
+        return
+      }
+      addItem(product, qty, {
+        variantId: variant.id,
+        size: selectedSize,
+        color: selectedColor,
+        price: variant.sellingPrice,
+        sku: variant.sku,
+        name: `${getDisplayName(product)} (${variant.label})`,
+        maxStock: variant.stock,
+      })
       navigate('/checkout')
     } finally {
       setIsBuying(false)
@@ -106,7 +143,7 @@ export function ProductDetailsPage() {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-[1440px] flex-col items-center justify-center px-4 py-20 text-center sm:px-6">
         <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-[#6B7280]">Unavailable</p>
-        <h1 className="mt-3 font-serif text-3xl text-[#111111] sm:text-4xl">Product not available</h1>
+        <h1 className="mt-3 font-serif text-3xl text-[#22171C] sm:text-4xl">Product not available</h1>
         <p className="mt-3 max-w-md text-sm text-[#6B7280]">
           This piece may have sold out or been removed from our collection.
         </p>
@@ -118,7 +155,7 @@ export function ProductDetailsPage() {
   }
 
   return (
-    <div className="min-w-0 overflow-x-hidden bg-[#F8F6F2] pb-28 lg:pb-20">
+    <div className="min-w-0 overflow-x-hidden bg-[#FFF9FB] pb-28 lg:pb-20">
       <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:pt-10 xl:px-10">
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           <ProductGallery product={product} />
@@ -144,20 +181,20 @@ export function ProductDetailsPage() {
           </div>
         </div>
 
-        <div className="mt-16 border-t border-[#111111]/8 pt-16 lg:mt-20 lg:pt-20">
+        <div className="mt-16 border-t border-[#22171C]/8 pt-16 lg:mt-20 lg:pt-20">
           <RelatedProducts product={product} />
         </div>
       </div>
 
       {/* Mobile sticky CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#111111]/8 bg-white/95 p-4 backdrop-blur-md lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#22171C]/8 bg-white/95 p-4 backdrop-blur-md lg:hidden">
         <div className="mx-auto flex max-w-[1440px] items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[#111111]">{getDisplayName(product)}</p>
-            <p className="text-lg font-bold text-[#111111]">{formatBDT(getDisplayPrice(product))}</p>
+            <p className="truncate text-sm font-semibold text-[#22171C]">{getDisplayName(product)}</p>
+            <p className="text-lg font-bold text-[#22171C]">{formatBDT(getDisplayPrice(product))}</p>
           </div>
           <Button
-            className="h-12 shrink-0 rounded-full bg-[#111111] px-5 text-xs font-semibold hover:bg-[#E11D48]"
+            className="h-12 shrink-0 rounded-full bg-[#22171C] px-5 text-xs font-semibold hover:bg-[#FF3F7F]"
             disabled={!canPurchase || isAdding}
             onClick={handleAddToCart}
           >
@@ -173,7 +210,7 @@ export function ProductDetailsPage() {
         </div>
         <Button
           variant="outline"
-          className="mt-2 h-11 w-full rounded-full border-[#111111]/15 text-xs font-semibold"
+          className="mt-2 h-11 w-full rounded-full border-[#22171C]/15 text-xs font-semibold"
           disabled={!canPurchase || isBuying}
           onClick={handleBuyNow}
         >

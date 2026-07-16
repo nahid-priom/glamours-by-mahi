@@ -42,7 +42,7 @@ export function getDisplayStock(product: StorefrontProduct): number {
 
 export function getDisplayRating(product: StorefrontProduct): number {
   const rating = product.rating
-  return Number.isFinite(rating) && rating > 0 ? rating : 4.5
+  return Number.isFinite(rating) && rating > 0 ? rating : 0
 }
 
 export function getDisplayReviewCount(product: StorefrontProduct): number {

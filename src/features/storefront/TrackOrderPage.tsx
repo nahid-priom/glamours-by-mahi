@@ -25,36 +25,43 @@ export function TrackOrderPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      <h1 className="font-serif text-3xl text-stone-900">Track Your Order</h1>
-      <p className="mt-1 text-sm text-stone-500">Search by Order ID or phone number</p>
+    <div className="sf-container mx-auto max-w-2xl py-8">
+      <h1 className="font-serif text-3xl text-[var(--sf-ink)]">Track Your Order</h1>
+      <p className="mt-1 text-sm text-[var(--sf-muted)]">Search by Order ID or phone number</p>
 
       <form onSubmit={handleSubmit} className="mt-6 flex gap-2">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Order ID or phone number"
-          className="flex-1"
+          className="flex-1 rounded-full border-[var(--sf-border)]"
         />
-        <Button type="submit" className="rounded-full px-6">
+        <Button
+          type="submit"
+          className="rounded-full bg-[var(--sf-primary)] px-6 hover:bg-[var(--sf-primary-hover)]"
+        >
           <Search className="mr-2 h-4 w-4" /> Track
         </Button>
       </form>
 
-      {isLoading && submitted && (
+      {isLoading && submitted ? (
         <div className="mt-8 space-y-4">
           <Skeleton className="h-40 w-full rounded-xl" />
           <Skeleton className="h-60 w-full rounded-xl" />
         </div>
-      )}
+      ) : null}
 
-      {isFetched && submitted && !data && (
-        <p className="mt-8 rounded-xl border border-dashed border-stone-200 py-12 text-center text-sm text-stone-500">
-          No order found for &quot;{submitted}&quot;
+      {isFetched && submitted && !data ? (
+        <p className="mt-8 rounded-2xl border border-dashed border-[var(--sf-border)] bg-white py-12 text-center text-sm text-[var(--sf-muted)]">
+          No order found for &quot;{submitted}&quot;. Try another ID or browse the shop.
         </p>
-      )}
+      ) : null}
 
-      {data && <div className="mt-8"><OrderTrackingCard tracking={data} /></div>}
+      {data ? (
+        <div className="mt-8">
+          <OrderTrackingCard tracking={data} />
+        </div>
+      ) : null}
     </div>
   )
 }

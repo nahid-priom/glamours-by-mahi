@@ -50,6 +50,9 @@ function mapVariantRow(row: Record<string, unknown>, locationIds: string[]): Pos
     | undefined
 
   if (!product || product.deleted_at || !product.is_active) return null
+  if ((product as { status?: string }).status && (product as { status?: string }).status !== 'active') {
+    return null
+  }
   if (row.deleted_at || row.is_active === false) return null
 
   const balances = (row.inventory_balances as Array<{
@@ -105,10 +108,11 @@ export async function searchPosVariants({
       product_id,
       is_active,
       deleted_at,
-      products!inner (
+          products!inner (
         id,
         name,
         is_active,
+        status,
         deleted_at,
         product_images (
           storage_path,
@@ -126,6 +130,7 @@ export async function searchPosVariants({
     )
     .eq('is_active', true)
     .is('deleted_at', null)
+    .eq('products.status', 'active')
     .order('sku', { ascending: true })
     .limit(pageSize)
 
@@ -183,10 +188,11 @@ export async function findVariantByBarcodeExact(
       product_id,
       is_active,
       deleted_at,
-      products!inner (
+          products!inner (
         id,
         name,
         is_active,
+        status,
         deleted_at,
         product_images (
           storage_path,
@@ -204,6 +210,7 @@ export async function findVariantByBarcodeExact(
     )
     .eq('is_active', true)
     .is('deleted_at', null)
+    .eq('products.status', 'active')
     .ilike('barcode', code)
     .limit(5)
 

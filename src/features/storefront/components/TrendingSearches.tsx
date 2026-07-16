@@ -24,7 +24,7 @@ export function TrendingSearches({ className }: TrendingSearchesProps) {
           <Link
             key={item.label}
             to={item.to}
-            className="rounded-full border border-[#111111]/10 bg-white px-4 py-2 text-xs font-medium text-[#111111] shadow-sm transition hover:border-[#E11D48]/30 hover:text-[#E11D48] hover:shadow-md"
+            className="rounded-full border border-[#22171C]/10 bg-white px-4 py-2 text-xs font-medium text-[#22171C] shadow-sm transition hover:border-[#FF3F7F]/30 hover:text-[#FF3F7F] hover:shadow-md"
           >
             {item.label}
           </Link>

@@ -64,7 +64,7 @@ export function ProductToolbar({
   return (
     <>
       <div className="sticky top-[72px] z-40 -mx-4 mb-6 px-4 sm:-mx-6 sm:px-6 lg:top-[76px]">
-        <div className="rounded-2xl border border-[#111111]/8 bg-white shadow-sm">
+        <div className="rounded-2xl border border-[#22171C]/8 bg-white shadow-sm">
           {/* Desktop toolbar */}
           <div className="hidden min-h-[72px] items-center gap-3 px-4 py-3 lg:flex xl:px-5">
             <ToolbarSelect
@@ -102,7 +102,7 @@ export function ProductToolbar({
                         page: 1,
                       })
                     }
-                    className="w-20 rounded-lg border border-[#111111]/10 px-2.5 py-2 text-xs outline-none focus:border-[#111111]/25"
+                    className="w-20 rounded-lg border border-[#22171C]/10 px-2.5 py-2 text-xs outline-none focus:border-[#22171C]/25"
                   />
                   <span className="text-[#6B7280]">–</span>
                   <input
@@ -117,7 +117,7 @@ export function ProductToolbar({
                         page: 1,
                       })
                     }
-                    className="w-20 rounded-lg border border-[#111111]/10 px-2.5 py-2 text-xs outline-none focus:border-[#111111]/25"
+                    className="w-20 rounded-lg border border-[#22171C]/10 px-2.5 py-2 text-xs outline-none focus:border-[#22171C]/25"
                   />
                 </div>
               </div>
@@ -130,7 +130,7 @@ export function ProductToolbar({
                 placeholder="Search products..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full rounded-xl border border-[#111111]/10 bg-[#F8F6F2]/60 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-[#111111]/20 focus:bg-white"
+                className="w-full rounded-xl border border-[#22171C]/10 bg-[#FFF9FB]/60 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-[#22171C]/20 focus:bg-white"
               />
             </div>
 
@@ -138,11 +138,11 @@ export function ProductToolbar({
               <button
                 type="button"
                 onClick={clearFilters}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#111111]/10 px-3 py-2 text-xs font-medium text-[#6B7280] transition hover:border-[#E11D48]/30 hover:text-[#E11D48]"
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-[#22171C]/10 px-3 py-2 text-xs font-medium text-[#6B7280] transition hover:border-[#FF3F7F]/30 hover:text-[#FF3F7F]"
               >
                 <X className="h-3.5 w-3.5" />
                 Clear
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#E11D48] px-1 text-[10px] font-bold text-white">
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FF3F7F] px-1 text-[10px] font-bold text-white">
                   {activeCount}
                 </span>
               </button>
@@ -155,12 +155,12 @@ export function ProductToolbar({
               <button
                 type="button"
                 onClick={() => openDrawer('filter')}
-                className="relative flex items-center gap-2 rounded-full border border-[#111111]/10 bg-[#F8F6F2] px-4 py-2 text-xs font-medium"
+                className="relative flex items-center gap-2 rounded-full border border-[#22171C]/10 bg-[#FFF9FB] px-4 py-2 text-xs font-medium"
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 Filter
                 {activeCount > 0 && (
-                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#E11D48] px-1 text-[9px] font-bold text-white">
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FF3F7F] px-1 text-[9px] font-bold text-white">
                     {activeCount}
                   </span>
                 )}
@@ -168,7 +168,7 @@ export function ProductToolbar({
               <button
                 type="button"
                 onClick={() => openDrawer('sort')}
-                className="flex items-center gap-2 rounded-full border border-[#111111]/10 bg-[#F8F6F2] px-4 py-2 text-xs font-medium"
+                className="flex items-center gap-2 rounded-full border border-[#22171C]/10 bg-[#FFF9FB] px-4 py-2 text-xs font-medium"
               >
                 <ArrowUpDown className="h-4 w-4" />
                 Sort
@@ -181,7 +181,7 @@ export function ProductToolbar({
                 placeholder="Search..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full rounded-full border border-[#111111]/10 bg-[#F8F6F2]/60 py-2 pl-8 pr-3 text-xs outline-none"
+                className="w-full rounded-full border border-[#22171C]/10 bg-[#FFF9FB]/60 py-2 pl-8 pr-3 text-xs outline-none"
               />
             </div>
           </div>
@@ -199,7 +199,7 @@ export function ProductToolbar({
               <select
                 value={filters.sort ?? 'newest'}
                 onChange={(e) => onChange({ ...filters, sort: e.target.value as StorefrontFilters['sort'], page: 1 })}
-                className="rounded-lg border border-[#111111]/10 bg-white px-3 py-1.5 text-xs font-medium outline-none"
+                className="rounded-lg border border-[#22171C]/10 bg-white px-3 py-1.5 text-xs font-medium outline-none"
               >
                 {SORT_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -209,14 +209,14 @@ export function ProductToolbar({
               </select>
             </div>
 
-            <div className="flex items-center rounded-full border border-[#111111]/10 bg-white p-1">
+            <div className="flex items-center rounded-full border border-[#22171C]/10 bg-white p-1">
               <button
                 type="button"
                 onClick={() => onViewModeChange('grid')}
                 aria-label="Grid view"
                 className={cn(
                   'rounded-full p-2 transition',
-                  viewMode === 'grid' ? 'bg-[#111111] text-white' : 'text-[#6B7280] hover:text-[#111111]',
+                  viewMode === 'grid' ? 'bg-[#22171C] text-white' : 'text-[#6B7280] hover:text-[#22171C]',
                 )}
               >
                 <Grid3X3 className="h-4 w-4" />
@@ -227,7 +227,7 @@ export function ProductToolbar({
                 aria-label="Large grid view"
                 className={cn(
                   'rounded-full p-2 transition',
-                  viewMode === 'large' ? 'bg-[#111111] text-white' : 'text-[#6B7280] hover:text-[#111111]',
+                  viewMode === 'large' ? 'bg-[#22171C] text-white' : 'text-[#6B7280] hover:text-[#22171C]',
                 )}
               >
                 <Grid2X2 className="h-4 w-4" />
@@ -267,7 +267,7 @@ function ToolbarSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-lg border border-[#111111]/10 bg-white px-3 py-2 text-xs font-medium outline-none focus:border-[#111111]/25"
+        className="rounded-lg border border-[#22171C]/10 bg-white px-3 py-2 text-xs font-medium outline-none focus:border-[#22171C]/25"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

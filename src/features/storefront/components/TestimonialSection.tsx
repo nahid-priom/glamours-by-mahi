@@ -21,10 +21,10 @@ const TESTIMONIALS = [
 
 export function TestimonialSection() {
   return (
-    <section className="border-y border-[#111111]/5 bg-[#F8F6F2] px-4 py-4 sm:px-6 lg:py-16">
+    <section className="border-y border-[#22171C]/5 bg-[#FFF9FB] px-4 py-4 sm:px-6 lg:py-16">
       <div className="mx-auto max-w-[1400px]">
         <p className="text-center text-[11px] uppercase tracking-[0.3em] text-[#6B7280]">Reviews</p>
-        <h2 className="mt-2 text-center font-serif text-3xl text-[#111111] sm:text-4xl">Loved by Our Customers</h2>
+        <h2 className="mt-2 text-center font-serif text-3xl text-[#22171C] sm:text-4xl">Loved by Our Customers</h2>
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           {TESTIMONIALS.map((t) => (
             <blockquote
@@ -33,7 +33,7 @@ export function TestimonialSection() {
             >
               <p className="text-sm leading-relaxed text-[#6B7280]">&ldquo;{t.quote}&rdquo;</p>
               <footer className="mt-6">
-                <p className="font-medium text-[#111111]">{t.name}</p>
+                <p className="font-medium text-[#22171C]">{t.name}</p>
                 <p className="text-xs text-[#6B7280]">{t.location}</p>
               </footer>
             </blockquote>

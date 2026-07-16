@@ -27,8 +27,8 @@ export function GuestAccountPanel() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <div className="overflow-hidden rounded-3xl border border-[#111111]/8 bg-white shadow-sm">
-        <div className="bg-gradient-to-br from-[#111111] to-[#2a2a2a] px-6 py-8 text-white sm:px-8">
+      <div className="overflow-hidden rounded-3xl border border-[#22171C]/8 bg-white shadow-sm">
+        <div className="bg-gradient-to-br from-[#22171C] to-[#2a2a2a] px-6 py-8 text-white sm:px-8">
           <div className="inline-flex rounded-2xl bg-white/10 p-2.5">
             <Sparkles className="h-5 w-5" />
           </div>
@@ -61,7 +61,7 @@ export function GuestAccountPanel() {
 
           <Link
             to="/track-order"
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-[#111111]/10 py-3 text-sm font-medium text-[#111111] transition hover:border-[#111111]/25"
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-[#22171C]/10 py-3 text-sm font-medium text-[#22171C] transition hover:border-[#22171C]/25"
           >
             <Search className="h-4 w-4" />
             Track Order

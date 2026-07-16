@@ -4,7 +4,7 @@ import { formatBDT } from '@/lib/format'
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '@/lib/storage'
 import { MOCK_STORES } from '@/lib/mock-data'
 import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
-import { productsService } from '@/features/products/products.service'
+import { listProducts } from '@/features/products/repositories/catalog.repository'
 import { customersService } from '@/features/customers/customers.service'
 import { invoicesService } from '@/features/invoices/invoices.service'
 import {
@@ -456,25 +456,26 @@ export const reportsService = {
   },
 
   async buildProductStockReport(): Promise<ReportResult> {
-    const products = await productsService.getProducts()
-    const lowStock = products.filter((p) => p.stock > 0 && p.stock <= 10)
-    const outOfStock = products.filter((p) => p.status === 'out_of_stock')
+    const { items } = await listProducts({ page: 1, pageSize: 500, activeOnly: true })
+    const lowStock = items.filter((p) => (p.totalStock ?? 0) > 0 && (p.totalStock ?? 0) <= 10)
+    const outOfStock = items.filter((p) => (p.totalStock ?? 0) <= 0)
 
     const columns = [
       { key: 'product', label: 'Product' },
-      { key: 'store', label: 'Store' },
+      { key: 'category', label: 'Category' },
       { key: 'inventory', label: 'Inventory' },
       { key: 'price', label: 'Price' },
       { key: 'status', label: 'Status' },
     ]
 
-    const rows = products.map((p) => {
-      const label = stockStatusLabel(p.stock, p.status)
+    const rows = items.map((p) => {
+      const stock = p.totalStock ?? 0
+      const label = stockStatusLabel(stock, stock <= 0 ? 'out_of_stock' : p.is_active ? 'active' : 'inactive')
       return {
-        product: reportCell(p.name, p.sku ? `SKU: ${p.sku}` : undefined),
-        store: reportCell(p.store_name),
-        inventory: reportCell(`${p.stock} units`, p.status.replace('_', ' ')),
-        price: reportCell(formatBDT(p.price)),
+        product: reportCell(p.name, p.base_sku ? `SKU: ${p.base_sku}` : undefined),
+        category: reportCell(p.categories?.name ?? '—'),
+        inventory: reportCell(`${stock} units`, `${p.variantCount ?? 0} variants`),
+        price: reportCell(formatBDT(Number(p.selling_price))),
         status: reportCell(label),
       }
     })
@@ -483,10 +484,10 @@ export const reportsService = {
       type: 'product_stock',
       title: 'Product Stock Report',
       summary: [
-        { label: 'Total Products', value: products.length },
+        { label: 'Total Products', value: items.length },
         { label: 'Low Stock', value: lowStock.length, color: 'text-warning' },
         { label: 'Out of Stock', value: outOfStock.length, color: 'text-danger' },
-        { label: 'Total Units', value: products.reduce((s, p) => s + p.stock, 0) },
+        { label: 'Total Units', value: items.reduce((s, p) => s + (p.totalStock ?? 0), 0) },
       ],
       columns,
       rows,

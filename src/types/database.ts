@@ -3421,6 +3421,27 @@ export type Database = {
           name: string
           organization_id: string
           product_type: string
+          published_at: string | null
+          status: string
+          approved_at: string | null
+          approved_by: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          batch_tracking_enabled: boolean
+          expiry_tracking_enabled: boolean
+          allocation_strategy: string
+          ingredients: string | null
+          skin_type: string | null
+          gender_target: string | null
+          country_of_origin: string | null
+          manufacturer: string | null
+          importer: string | null
+          regulatory_notes: string | null
+          default_expiry_alert_days: number
+          tags: string[]
           purchase_price: number
           reorder_level: number
           selling_price: number
@@ -3447,6 +3468,27 @@ export type Database = {
           name: string
           organization_id: string
           product_type?: string
+          published_at?: string | null
+          status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          batch_tracking_enabled?: boolean
+          expiry_tracking_enabled?: boolean
+          allocation_strategy?: string
+          ingredients?: string | null
+          skin_type?: string | null
+          gender_target?: string | null
+          country_of_origin?: string | null
+          manufacturer?: string | null
+          importer?: string | null
+          regulatory_notes?: string | null
+          default_expiry_alert_days?: number
+          tags?: string[]
           purchase_price?: number
           reorder_level?: number
           selling_price?: number
@@ -3473,6 +3515,27 @@ export type Database = {
           name?: string
           organization_id?: string
           product_type?: string
+          published_at?: string | null
+          status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          batch_tracking_enabled?: boolean
+          expiry_tracking_enabled?: boolean
+          allocation_strategy?: string
+          ingredients?: string | null
+          skin_type?: string | null
+          gender_target?: string | null
+          country_of_origin?: string | null
+          manufacturer?: string | null
+          importer?: string | null
+          regulatory_notes?: string | null
+          default_expiry_alert_days?: number
+          tags?: string[]
           purchase_price?: number
           reorder_level?: number
           selling_price?: number

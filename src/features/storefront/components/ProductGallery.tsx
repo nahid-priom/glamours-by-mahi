@@ -64,7 +64,7 @@ function MobileGallery({
             onClick={() => scrollToIndex(index)}
             className={cn(
               'h-1.5 rounded-full transition-all',
-              activeIndex === index ? 'w-5 bg-[#111111]' : 'w-1.5 bg-[#111111]/20',
+              activeIndex === index ? 'w-5 bg-[#22171C]' : 'w-1.5 bg-[#22171C]/20',
             )}
             aria-label={`View image ${index + 1}`}
           />
@@ -100,8 +100,8 @@ export function ProductGallery({ product, className }: ProductGalleryProps) {
                 type="button"
                 onClick={() => setActiveIndex(index)}
                 className={cn(
-                  'relative overflow-hidden rounded-2xl border-2 bg-[#F8F6F2] transition',
-                  activeIndex === index ? 'border-[#111111]' : 'border-transparent opacity-70 hover:opacity-100',
+                  'relative overflow-hidden rounded-2xl border-2 bg-[#FFF9FB] transition',
+                  activeIndex === index ? 'border-[#22171C]' : 'border-transparent opacity-70 hover:opacity-100',
                 )}
               >
                 <AppImage src={src} alt="" aspectRatio="portrait" className="w-full" objectFit="cover" />

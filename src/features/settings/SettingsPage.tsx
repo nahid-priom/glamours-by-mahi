@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Archive, RotateCcw } from 'lucide-react'
 import { PageShell } from '@/components/layout/PageShell'
@@ -114,6 +115,17 @@ export function SettingsPage() {
         <p className="mt-1 text-sm text-[#6B7280]">
           Company profile, print defaults, and roles are stored in your linked Supabase project.
         </p>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+        <div>
+          <p className="font-semibold text-text-primary">Website &amp; Hero Carousel</p>
+          <p className="mt-1 text-sm text-text-muted">
+            Manage homepage campaign banners, CTA filters and storefront media.
+          </p>
+        </div>
+        <Button asChild className="rounded-full">
+          <Link to="/settings/website">Open Website Settings</Link>
+        </Button>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

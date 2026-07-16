@@ -1,0 +1,50 @@
+import type { RouteObject } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
+import { PermissionRoute } from '@/app/guards/PermissionRoute'
+import {
+  AccountSettingsPage,
+  AccountsDashboardPage,
+  CashBankPage,
+  CustomerDuePage,
+  DailyClosingPage,
+  DueCollectionPage,
+  ExpensesPage,
+  IncomePage,
+  ProfitLossPage,
+  SupplierDuePage,
+  SupplierPaymentsPage,
+  TransactionsPage,
+  withSuspense,
+} from './lazy'
+
+export const accountsRoutes: RouteObject = {
+  element: <PermissionRoute permission="accounts.read" />,
+  children: [
+    { path: '/accounts', element: withSuspense(AccountsDashboardPage) },
+    { path: '/accounts/cash-bank', element: withSuspense(CashBankPage) },
+    { path: '/accounts/income', element: withSuspense(IncomePage) },
+    { path: '/accounts/expenses', element: withSuspense(ExpensesPage) },
+    { path: '/accounts/customer-due', element: withSuspense(CustomerDuePage) },
+    { path: '/accounts/supplier-due', element: withSuspense(SupplierDuePage) },
+    { path: '/accounts/collections', element: withSuspense(DueCollectionPage) },
+    { path: '/accounts/supplier-payments', element: withSuspense(SupplierPaymentsPage) },
+    { path: '/accounts/daily-closing', element: withSuspense(DailyClosingPage) },
+    { path: '/accounts/transactions', element: withSuspense(TransactionsPage) },
+    { path: '/accounts/profit-loss', element: withSuspense(ProfitLossPage) },
+    { path: '/accounts/settings', element: withSuspense(AccountSettingsPage) },
+    { path: '/accounts/chart', element: <Navigate to="/accounts/settings" replace /> },
+    { path: '/accounts/journals', element: <Navigate to="/accounts/transactions" replace /> },
+    { path: '/accounts/general-ledger', element: <Navigate to="/accounts/transactions" replace /> },
+    { path: '/accounts/trial-balance', element: <Navigate to="/accounts/profit-loss" replace /> },
+    { path: '/accounts/balance-sheet', element: <Navigate to="/accounts/profit-loss" replace /> },
+    { path: '/accounts/cash-flow', element: <Navigate to="/accounts/transactions" replace /> },
+    { path: '/accounts/setup', element: <Navigate to="/accounts/settings" replace /> },
+    { path: '/accounts/customer-ledger', element: <Navigate to="/accounts/customer-due" replace /> },
+    { path: '/accounts/supplier-ledger', element: <Navigate to="/accounts/supplier-due" replace /> },
+    { path: '/accounts/cashbook', element: <Navigate to="/accounts/cash-bank" replace /> },
+    { path: '/accounts/banks', element: <Navigate to="/accounts/cash-bank" replace /> },
+    { path: '/accounts/mobile-banking', element: <Navigate to="/accounts/cash-bank" replace /> },
+    { path: '/accounts/customer-dues', element: <Navigate to="/accounts/customer-due" replace /> },
+    { path: '/accounts/supplier-dues', element: <Navigate to="/accounts/supplier-due" replace /> },
+  ],
+}

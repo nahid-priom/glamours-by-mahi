@@ -1,22 +1,25 @@
 import { Link } from 'react-router-dom'
 import { STOREFRONT_BRAND } from '@/lib/constants'
-import { Truck, Shield, RotateCcw, CreditCard } from 'lucide-react'
+import { brandConfig } from '@/config/brand'
+import { CreditCard, RotateCcw, Shield, Truck } from 'lucide-react'
+
+const trust = [
+  { icon: Truck, title: 'Free Delivery', desc: 'On orders over ৳3,000' },
+  { icon: Shield, title: 'Authentic Products', desc: 'Verified beauty & fashion' },
+  { icon: RotateCcw, title: 'Easy Return', desc: '3-day exchange policy' },
+  { icon: CreditCard, title: 'Secure Payment', desc: 'COD & online checkout' },
+]
 
 export function Footer() {
   return (
-    <footer className="bg-[#111111] text-white">
-      <div className="border-b border-white/10 px-4 py-12 sm:px-6">
-        <div className="mx-auto grid max-w-[1400px] gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: Truck, title: 'Nationwide Delivery', desc: '2–5 business days' },
-            { icon: CreditCard, title: 'Cash on Delivery', desc: 'Pay when you receive' },
-            { icon: Shield, title: 'Quality Assured', desc: 'Premium curated pieces' },
-            { icon: RotateCcw, title: 'Easy Exchange', desc: '3-day return policy' },
-          ].map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="flex gap-4">
-              <Icon className="h-5 w-5 shrink-0 text-[#E11D48]" />
+    <footer className="bg-[var(--sf-ink)] text-white">
+      <div className="border-b border-white/10">
+        <div className="sf-container grid max-w-[1440px] gap-6 py-10 sm:grid-cols-2 lg:grid-cols-4">
+          {trust.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="flex gap-3">
+              <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[var(--sf-primary)]" aria-hidden />
               <div>
-                <p className="text-sm font-medium">{title}</p>
+                <p className="text-sm font-semibold">{title}</p>
                 <p className="text-xs text-white/50">{desc}</p>
               </div>
             </div>
@@ -24,44 +27,112 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-[1400px] gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-5 sm:px-6">
+      <div className="sf-container grid max-w-[1440px] gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-2">
-          <p className="font-serif text-2xl tracking-[0.15em]">{STOREFRONT_BRAND}</p>
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/50">
-            Minimal luxury fashion for the modern woman. Curated collections with nationwide COD delivery across Bangladesh.
+          <p className="font-serif text-2xl tracking-[0.12em]">{STOREFRONT_BRAND}</p>
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/55">
+            {brandConfig.tagline}. Authentic cosmetics, trendy fashion and premium lifestyle products —
+            delivered nationwide.
+          </p>
+          <p className="mt-4 text-xs text-white/40">
+            {brandConfig.address}
+            <br />
+            {brandConfig.phone} · {brandConfig.email}
           </p>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Shop</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">Shop</p>
           <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-            <li><Link to="/shop" className="hover:text-white">All Products</Link></li>
-            <li><Link to="/category/new-arrival" className="hover:text-white">New Arrivals</Link></li>
-            <li><Link to="/category/dress" className="hover:text-white">Dresses</Link></li>
-            <li><Link to="/category/sale" className="hover:text-white">Sale</Link></li>
+            <li>
+              <Link to="/shop" className="transition hover:text-[var(--sf-primary)]">
+                All products
+              </Link>
+            </li>
+            <li>
+              <Link to="/category/new-arrival" className="transition hover:text-[var(--sf-primary)]">
+                New arrivals
+              </Link>
+            </li>
+            <li>
+              <Link to="/category/dress" className="transition hover:text-[var(--sf-primary)]">
+                Dress
+              </Link>
+            </li>
+            <li>
+              <Link to="/category/sale" className="transition hover:text-[var(--sf-primary)]">
+                Offers
+              </Link>
+            </li>
           </ul>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Support</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
+            Customer care
+          </p>
           <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-            <li><Link to="/track-order" className="hover:text-white">Track Order</Link></li>
-            <li><Link to="/account/orders" className="hover:text-white">My Orders</Link></li>
-            <li><Link to="/account" className="hover:text-white">Account</Link></li>
-            <li><Link to="/dashboard" className="hover:text-white">Admin OMS</Link></li>
+            <li>
+              <Link to="/track-order" className="transition hover:text-[var(--sf-primary)]">
+                Track order
+              </Link>
+            </li>
+            <li>
+              <Link to="/account/orders" className="transition hover:text-[var(--sf-primary)]">
+                My orders
+              </Link>
+            </li>
+            <li>
+              <Link to="/account/wishlist" className="transition hover:text-[var(--sf-primary)]">
+                Wishlist
+              </Link>
+            </li>
+            <li>
+              <a href={`tel:${brandConfig.phone}`} className="transition hover:text-[var(--sf-primary)]">
+                Call support
+              </a>
+            </li>
           </ul>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Company</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">
+            My account
+          </p>
           <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-            <li><a href="#" className="hover:text-white">About Us</a></li>
-            <li><a href="#" className="hover:text-white">Contact</a></li>
-            <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
+            <li>
+              <Link to="/account" className="transition hover:text-[var(--sf-primary)]">
+                Dashboard
+              </Link>
+            </li>
+            <li>
+              <Link to="/account/profile" className="transition hover:text-[var(--sf-primary)]">
+                Profile
+              </Link>
+            </li>
+            <li>
+              <Link to="/account/addresses" className="transition hover:text-[var(--sf-primary)]">
+                Addresses
+              </Link>
+            </li>
+            <li>
+              <Link to="/admin/login" className="transition hover:text-[var(--sf-primary)]">
+                Admin
+              </Link>
+            </li>
           </ul>
         </div>
       </div>
 
-      <div className="border-t border-white/10 px-4 py-5 text-center text-xs text-white/40 sm:px-6">
-        © {new Date().getFullYear()} {STOREFRONT_BRAND}. Powered by{' '}
-        <span className="text-[#E11D48]">Glamourous by Mahi</span>
+      <div className="border-t border-white/10">
+        <div className="sf-container flex max-w-[1440px] flex-col items-center justify-between gap-2 py-5 text-center text-xs text-white/40 sm:flex-row sm:text-left">
+          <p>
+            © {new Date().getFullYear()} {STOREFRONT_BRAND}. All rights reserved.
+          </p>
+          <p>
+            Powered by{' '}
+            <span className="bg-gradient-to-r from-[var(--sf-primary)] via-[#f7b4c9] to-[var(--sf-primary)] bg-clip-text font-semibold text-transparent">
+              Code Bondhu IT
+            </span>
+          </p>
+        </div>
       </div>
     </footer>
   )

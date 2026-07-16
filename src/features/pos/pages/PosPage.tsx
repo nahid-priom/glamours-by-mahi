@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Pause, ShoppingCart } from 'lucide-react'
+import { Pause, Plus, ShoppingCart } from 'lucide-react'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { AppImage } from '@/components/common/AppImage'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,7 @@ import {
 } from '../repositories/pos.repository'
 import type { PosVariant } from '../types'
 import { usePosCart } from '../use-pos-cart'
+import { QuickAddProductDialog } from '@/features/products/components/QuickAddProductDialog'
 
 export function PosPage() {
   const { activeBranchId, profile, can } = useAuth()
@@ -47,6 +48,7 @@ export function PosPage() {
   const [payMethod, setPayMethod] = useState('cash')
   const [payAmount, setPayAmount] = useState('')
   const [payAccountId, setPayAccountId] = useState('')
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
 
   const loadPage = useCallback(
     async (q: string, reset: boolean) => {
@@ -213,7 +215,23 @@ export function PosPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] min-h-[520px] flex-col gap-3 p-3 lg:flex-row">
       <section className="flex min-h-0 flex-1 flex-col gap-3">
-        <PosBarcodeInput ref={barcodeRef} onScan={handleScan} disabled={busy} />
+        <div className="flex gap-2">
+          <div className="min-w-0 flex-1">
+            <PosBarcodeInput ref={barcodeRef} onScan={handleScan} disabled={busy} />
+          </div>
+          {can('products.create') && profile?.organization_id ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0"
+              disabled={busy}
+              onClick={() => setQuickAddOpen(true)}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Quick add
+            </Button>
+          ) : null}
+        </div>
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -390,6 +408,21 @@ export function PosPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {profile?.organization_id ? (
+        <QuickAddProductDialog
+          open={quickAddOpen}
+          onOpenChange={setQuickAddOpen}
+          orgId={profile.organization_id}
+          branchId={branchId}
+          onCreated={() => {
+            setCursor(null)
+            void loadPage(search, true)
+            toast('Product created')
+          }}
+          onError={(m) => toast(m, 'error')}
+        />
+      ) : null}
     </div>
   )
 }

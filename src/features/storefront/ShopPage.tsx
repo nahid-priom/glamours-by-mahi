@@ -1,29 +1,35 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import type { StyleTag } from '@/lib/fashion-catalog'
 import { storefrontService } from './storefront.service'
 import { CollectionHero } from './components/CollectionHero'
 import { ProductToolbar, type GridViewMode } from './components/ProductToolbar'
 import { ProductGrid } from './components/ProductGrid'
 import { RecommendedProducts } from './components/RecommendedProducts'
 import { DEFAULT_SHOP_FILTERS } from './lib/shop-utils'
+import {
+  buildShopSearchParams,
+  parseShopFiltersFromSearchParams,
+} from './lib/shop-filter-url'
 import type { StorefrontFilters, StorefrontProduct } from './storefront.types'
 
 export function ShopPage() {
-  const [searchParams] = useSearchParams()
-  const styleParam = searchParams.get('style') as StyleTag | null
+  const [searchParams, setSearchParams] = useSearchParams()
   const [page, setPage] = useState(1)
   const [viewMode, setViewMode] = useState<GridViewMode>('grid')
-  const [filters, setFilters] = useState<StorefrontFilters>({
+  const [filters, setFilters] = useState<StorefrontFilters>(() => ({
     ...DEFAULT_SHOP_FILTERS,
-    style: styleParam ?? 'all',
-  })
+    ...parseShopFiltersFromSearchParams(searchParams),
+  }))
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (styleParam) setFilters((f) => ({ ...f, style: styleParam }))
-  }, [styleParam])
+    setFilters({
+      ...DEFAULT_SHOP_FILTERS,
+      ...parseShopFiltersFromSearchParams(searchParams),
+    })
+    setPage(1)
+  }, [searchParams])
 
   const queryFilters = useMemo(() => ({ ...filters, page }), [filters, page])
 
@@ -48,7 +54,16 @@ export function ShopPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [filters.category, filters.sort, filters.style, filters.minPrice, filters.maxPrice, filters.search])
+  }, [
+    filters.category,
+    filters.sort,
+    filters.style,
+    filters.brand,
+    filters.onSale,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.search,
+  ])
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -71,6 +86,7 @@ export function ShopPage() {
   const handleFilterChange = (next: StorefrontFilters) => {
     setFilters(next)
     setPage(1)
+    setSearchParams(buildShopSearchParams(next), { replace: true })
   }
 
   return (

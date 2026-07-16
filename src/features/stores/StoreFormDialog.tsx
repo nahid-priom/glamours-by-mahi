@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useQuery } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { MOCK_COURIERS } from '@/lib/mock-data'
+import { courierRepository } from '@/features/couriers'
 import type { Store } from './stores.types'
 import type { StoreFormInput } from './stores.types'
 
@@ -67,6 +68,11 @@ export function StoreFormDialog({
   const form = useForm<StoreFormInput>({
     resolver: zodResolver(schema),
     defaultValues,
+  })
+
+  const { data: couriers = [] } = useQuery({
+    queryKey: ['courier-companies', 'store-form'],
+    queryFn: () => courierRepository.listCompanies(),
   })
 
   useEffect(() => {
@@ -148,7 +154,7 @@ export function StoreFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  {MOCK_COURIERS.map((c) => (
+                  {couriers.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>

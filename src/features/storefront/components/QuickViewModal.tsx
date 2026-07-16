@@ -28,7 +28,7 @@ export function QuickViewModal() {
           </div>
           <div className="p-6 sm:p-8">
             <p className="text-[11px] uppercase tracking-widest text-[#6B7280]">{p.category.replace('-', ' ')}</p>
-            <h2 className="mt-2 font-serif text-2xl text-[#111111]">{p.name}</h2>
+            <h2 className="mt-2 font-serif text-2xl text-[#22171C]">{p.name}</h2>
             <p className="mt-3 text-xl font-semibold">{formatBDT(p.displayPrice)}</p>
             <p className="mt-4 text-sm leading-relaxed text-[#6B7280] line-clamp-4">{p.description}</p>
             <div className="mt-6 flex flex-col gap-3">
@@ -55,7 +55,7 @@ export function QuickViewModal() {
               <Link
                 to={`/product/${p.slug}`}
                 onClick={closeQuickView}
-                className="text-center text-sm text-[#6B7280] hover:text-[#111111]"
+                className="text-center text-sm text-[#6B7280] hover:text-[#22171C]"
               >
                 View full details
               </Link>
@@ -77,7 +77,7 @@ export function CartDrawer() {
     <div className="fixed inset-0 z-[65]">
       <button type="button" className="absolute inset-0 bg-black/40" onClick={closeCart} aria-label="Close cart" />
       <div className="absolute bottom-0 right-0 top-0 flex w-full max-w-md flex-col bg-white shadow-2xl sm:bottom-auto lg:max-w-md">
-        <div className="flex items-center justify-between border-b border-[#111111]/5 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-[#22171C]/5 px-5 py-4">
           <h2 className="font-serif text-xl">Shopping Bag ({items.length})</h2>
           <button type="button" onClick={closeCart}><X className="h-5 w-5" /></button>
         </div>
@@ -106,7 +106,7 @@ export function CartDrawer() {
                       <button type="button" onClick={() => updateQuantity(item.productId, item.quantity + 1)} className="flex h-7 w-7 items-center justify-center rounded-full border" disabled={item.quantity >= item.maxStock}>
                         <Plus className="h-3 w-3" />
                       </button>
-                      <button type="button" onClick={() => removeItem(item.productId)} className="ml-auto text-xs text-[#6B7280] hover:text-[#E11D48]">Remove</button>
+                      <button type="button" onClick={() => removeItem(item.productId)} className="ml-auto text-xs text-[#6B7280] hover:text-[#FF3F7F]">Remove</button>
                     </div>
                   </div>
                 </li>
@@ -116,14 +116,14 @@ export function CartDrawer() {
         </div>
 
         {items.length > 0 && (
-          <div className="border-t border-[#111111]/5 px-4 py-4">
-            <div className="rounded-xl border border-dashed border-[#111111]/10 px-3 py-2 text-xs text-[#6B7280]">
+          <div className="border-t border-[#22171C]/5 px-4 py-4">
+            <div className="rounded-xl border border-dashed border-[#22171C]/10 px-3 py-2 text-xs text-[#6B7280]">
               Coupon code — coming soon
             </div>
             <div className="mt-4 space-y-1.5 text-sm">
               <div className="flex justify-between"><span className="text-[#6B7280]">Subtotal</span><span>{formatBDT(subtotal)}</span></div>
               <div className="flex justify-between"><span className="text-[#6B7280]">Delivery</span><span>{deliveryCharge === 0 ? 'Free' : formatBDT(deliveryCharge)}</span></div>
-              <div className="flex justify-between pt-2 text-base font-semibold"><span>Total</span><span className="text-[#E11D48]">{formatBDT(total)}</span></div>
+              <div className="flex justify-between pt-2 text-base font-semibold"><span>Total</span><span className="text-[#FF3F7F]">{formatBDT(total)}</span></div>
             </div>
             <Link to="/checkout" onClick={closeCart}>
               <Button className="mt-4 w-full rounded-full" size="lg">Checkout</Button>

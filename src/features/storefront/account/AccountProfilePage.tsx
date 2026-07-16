@@ -66,18 +66,18 @@ export function AccountProfilePage() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border border-[#111111]/8 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="font-serif text-2xl text-[#111111]">Profile</h2>
+      <div className="rounded-3xl border border-[#22171C]/8 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="font-serif text-2xl text-[#22171C]">Profile</h2>
         <p className="mt-1 text-sm text-[#6B7280]">Keep your contact and delivery details up to date</p>
 
         <div className="mt-5">
           <div className="flex items-center justify-between text-xs font-medium uppercase tracking-[0.15em] text-[#6B7280]">
             <span>Profile completion</span>
-            <span className="text-[#111111]">{completion}%</span>
+            <span className="text-[#22171C]">{completion}%</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#F8F6F2]">
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#FFF9FB]">
             <div
-              className="h-full rounded-full bg-[#E11D48] transition-all duration-500"
+              className="h-full rounded-full bg-[#FF3F7F] transition-all duration-500"
               style={{ width: `${completion}%` }}
             />
           </div>
@@ -86,13 +86,13 @@ export function AccountProfilePage() {
 
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-4 rounded-3xl border border-[#111111]/8 bg-white p-5 shadow-sm sm:p-6"
+        className="space-y-4 rounded-3xl border border-[#22171C]/8 bg-white p-5 shadow-sm sm:p-6"
       >
         <div>
           <Label htmlFor="name">Full Name</Label>
           <Input id="name" {...form.register('name')} className="mt-1.5 rounded-xl" />
           {form.formState.errors.name && (
-            <p className="mt-1 text-xs text-[#E11D48]">{form.formState.errors.name.message}</p>
+            <p className="mt-1 text-xs text-[#FF3F7F]">{form.formState.errors.name.message}</p>
           )}
         </div>
 
@@ -100,7 +100,7 @@ export function AccountProfilePage() {
           <Label htmlFor="phone">Phone</Label>
           <Input id="phone" {...form.register('phone')} className="mt-1.5 rounded-xl" />
           {form.formState.errors.phone && (
-            <p className="mt-1 text-xs text-[#E11D48]">{form.formState.errors.phone.message}</p>
+            <p className="mt-1 text-xs text-[#FF3F7F]">{form.formState.errors.phone.message}</p>
           )}
         </div>
 
@@ -108,7 +108,7 @@ export function AccountProfilePage() {
           <Label htmlFor="email">Email</Label>
           <Input id="email" type="email" {...form.register('email')} className="mt-1.5 rounded-xl" />
           {form.formState.errors.email && (
-            <p className="mt-1 text-xs text-[#E11D48]">{form.formState.errors.email.message}</p>
+            <p className="mt-1 text-xs text-[#FF3F7F]">{form.formState.errors.email.message}</p>
           )}
         </div>
 
@@ -116,7 +116,7 @@ export function AccountProfilePage() {
           <Label htmlFor="district">District</Label>
           <Input id="district" {...form.register('district')} className="mt-1.5 rounded-xl" />
           {form.formState.errors.district && (
-            <p className="mt-1 text-xs text-[#E11D48]">{form.formState.errors.district.message}</p>
+            <p className="mt-1 text-xs text-[#FF3F7F]">{form.formState.errors.district.message}</p>
           )}
         </div>
 
@@ -124,7 +124,7 @@ export function AccountProfilePage() {
           <Label htmlFor="address">Full Address</Label>
           <Input id="address" {...form.register('address')} className="mt-1.5 rounded-xl" />
           {form.formState.errors.address && (
-            <p className="mt-1 text-xs text-[#E11D48]">{form.formState.errors.address.message}</p>
+            <p className="mt-1 text-xs text-[#FF3F7F]">{form.formState.errors.address.message}</p>
           )}
         </div>
 

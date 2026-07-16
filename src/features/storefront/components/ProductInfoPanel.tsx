@@ -15,7 +15,7 @@ import {
   getOriginalPrice,
   getStockStatus,
 } from '../utils/product-display'
-import type { ProductColor, ProductSize, ProductVariantOptions } from '../utils/product-variants'
+import type { ProductVariantOptions } from '../utils/product-variants'
 import { ProductVariantSelector } from './ProductVariantSelector'
 import { ProductTrustCards } from './ProductTrustCards'
 import { ProductDetailsAccordion } from './ProductDetailsAccordion'
@@ -24,10 +24,10 @@ interface ProductInfoPanelProps {
   product: StorefrontProduct
   qty: number
   onQtyChange: (qty: number) => void
-  selectedSize?: ProductSize
-  selectedColor?: ProductColor
-  onSizeChange: (size: ProductSize) => void
-  onColorChange: (color: ProductColor) => void
+  selectedSize?: string
+  selectedColor?: string
+  onSizeChange: (size: string) => void
+  onColorChange: (color: string) => void
   variantOptions: ProductVariantOptions | null
   canPurchase: boolean
   wishlisted: boolean
@@ -66,36 +66,40 @@ export function ProductInfoPanel({
         <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
           {getDisplayCategory(product)}
         </p>
-        <h1 className="mt-3 font-serif text-3xl leading-tight text-[#111111] lg:text-5xl">
+        <h1 className="mt-3 font-serif text-3xl leading-tight text-[#22171C] lg:text-5xl">
           {getDisplayName(product)}
         </h1>
 
-        <div className="mt-4 flex items-center gap-2 text-sm text-[#6B7280]">
-          <div className="flex items-center gap-0.5" aria-hidden>
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Star
-                key={index}
-                className={cn(
-                  'h-3.5 w-3.5',
-                  index < Math.floor(getDisplayRating(product))
-                    ? 'fill-amber-400 text-amber-400'
-                    : 'fill-[#E5E7EB] text-[#E5E7EB]',
-                )}
-              />
-            ))}
+        {getDisplayReviewCount(product) > 0 && getDisplayRating(product) > 0 ? (
+          <div className="mt-4 flex items-center gap-2 text-sm text-[var(--sf-muted)]">
+            <div className="flex items-center gap-0.5" aria-hidden>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Star
+                  key={index}
+                  className={cn(
+                    'h-3.5 w-3.5',
+                    index < Math.floor(getDisplayRating(product))
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'fill-[#E5E7EB] text-[#E5E7EB]',
+                  )}
+                />
+              ))}
+            </div>
+            <span className="font-medium text-[var(--sf-ink)]">
+              {getDisplayRating(product).toFixed(1)}
+            </span>
+            <span>({getDisplayReviewCount(product)} reviews)</span>
           </div>
-          <span className="font-medium text-[#111111]">{getDisplayRating(product).toFixed(1)}</span>
-          <span>({getDisplayReviewCount(product)} reviews)</span>
-        </div>
+        ) : null}
 
         <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="text-3xl font-bold text-[#111111]">{formatBDT(getDisplayPrice(product))}</span>
+          <span className="text-3xl font-bold text-[var(--sf-ink)]">{formatBDT(getDisplayPrice(product))}</span>
           {product.onSale && product.salePrice && (
             <>
-              <span className="text-base text-[#6B7280] line-through">
+              <span className="text-base text-[var(--sf-muted)] line-through">
                 {formatBDT(getOriginalPrice(product))}
               </span>
-              <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-600">
+              <span className="rounded-full bg-[var(--sf-primary-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--sf-primary)]">
                 {discount}% OFF
               </span>
             </>
@@ -107,7 +111,7 @@ export function ProductInfoPanel({
             'mt-3 text-sm font-medium',
             stockStatus === 'in_stock' && 'text-green-600',
             stockStatus === 'low_stock' && 'text-amber-600',
-            stockStatus === 'out_of_stock' && 'text-[#E11D48]',
+            stockStatus === 'out_of_stock' && 'text-[#FF3F7F]',
           )}
         >
           {stockStatus === 'in_stock' && `In stock — ${stock} available`}
@@ -133,11 +137,11 @@ export function ProductInfoPanel({
       {!outOfStock && (
         <div className="flex items-center gap-4">
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6B7280]">Quantity</span>
-          <div className="flex items-center rounded-full border border-[#111111]/10 bg-white">
+          <div className="flex items-center rounded-full border border-[#22171C]/10 bg-white">
             <button
               type="button"
               onClick={() => onQtyChange(Math.max(1, qty - 1))}
-              className="px-4 py-3 text-[#111111] transition hover:bg-[#F8F6F2]"
+              className="px-4 py-3 text-[#22171C] transition hover:bg-[#FFF9FB]"
               aria-label="Decrease quantity"
             >
               <Minus className="h-4 w-4" />
@@ -147,7 +151,7 @@ export function ProductInfoPanel({
               type="button"
               onClick={() => onQtyChange(Math.min(stock, qty + 1))}
               disabled={qty >= stock}
-              className="px-4 py-3 text-[#111111] transition hover:bg-[#F8F6F2] disabled:opacity-40"
+              className="px-4 py-3 text-[#22171C] transition hover:bg-[#FFF9FB] disabled:opacity-40"
               aria-label="Increase quantity"
             >
               <Plus className="h-4 w-4" />
@@ -159,7 +163,7 @@ export function ProductInfoPanel({
       <div className="hidden lg:block">
         <div className="flex gap-3">
           <Button
-            className="h-14 flex-[0.6] rounded-full bg-[#111111] text-sm font-semibold hover:bg-[#E11D48]"
+            className="h-14 flex-[0.6] rounded-full bg-[var(--sf-primary)] text-sm font-semibold hover:bg-[var(--sf-primary-hover)]"
             disabled={!canPurchase || isAdding}
             onClick={onAddToCart}
           >
@@ -174,7 +178,7 @@ export function ProductInfoPanel({
           </Button>
           <Button
             variant="outline"
-            className="h-14 flex-[0.4] rounded-full border-[#111111]/15 text-sm font-semibold hover:bg-[#111111] hover:text-white"
+            className="h-14 flex-[0.4] rounded-full border-[var(--sf-border)] text-sm font-semibold hover:border-[var(--sf-primary)] hover:bg-[var(--sf-primary-soft)] hover:text-[var(--sf-primary)]"
             disabled={!canPurchase || isBuying}
             onClick={onBuyNow}
           >
@@ -185,8 +189,8 @@ export function ProductInfoPanel({
             variant="outline"
             size="icon"
             className={cn(
-              'h-14 w-14 shrink-0 rounded-full border-[#111111]/15',
-              wishlisted && 'border-[#E11D48] text-[#E11D48]',
+              'h-14 w-14 shrink-0 rounded-full border-[#22171C]/15',
+              wishlisted && 'border-[#FF3F7F] text-[#FF3F7F]',
             )}
             onClick={onToggleWishlist}
             aria-label="Toggle wishlist"

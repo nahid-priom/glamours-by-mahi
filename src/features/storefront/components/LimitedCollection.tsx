@@ -13,7 +13,7 @@ export function LimitedCollection({ products }: LimitedCollectionProps) {
   const featured = products.slice(0, 2)
 
   return (
-    <section className="bg-[#111111] px-4 py-16 text-white sm:px-6 lg:py-24">
+    <section className="bg-[#22171C] px-4 py-16 text-white sm:px-6 lg:py-24">
       <div className="mx-auto max-w-[1400px]">
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
           <div className="relative overflow-hidden rounded-2xl lg:col-span-7 lg:min-h-[520px]">

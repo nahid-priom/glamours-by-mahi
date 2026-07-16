@@ -105,10 +105,10 @@ const groups: NavGroup[] = [
     module: 'courier',
     children: [
       { to: '/couriers', label: 'Courier Companies', end: true, permission: 'courier.read' },
-      { to: '/couriers/parcels', label: 'Parcel Booking', permission: 'courier.manage' },
+      { to: '/couriers/parcels', label: 'Parcel Booking', permission: ['courier.manage', 'courier.book'] },
       { to: '/couriers/tracking', label: 'Delivery Tracking', permission: 'courier.read' },
       { to: '/couriers/returns', label: 'Return Requests', permission: 'sales.return.review' },
-      { to: '/couriers/settlements', label: 'Courier Settlements', permission: 'courier.read' },
+      { to: '/couriers/settlements', label: 'Courier Settlements', permission: ['courier.read', 'courier.settle'] },
     ],
   },
   {
@@ -151,11 +151,25 @@ const groups: NavGroup[] = [
     module: 'reports',
   },
   {
+    id: 'stores',
+    label: 'Stores',
+    icon: Building2,
+    to: '/stores',
+    module: 'stores',
+  },
+  {
     id: 'settings',
     label: 'Settings',
     icon: Settings,
-    to: '/settings',
     module: 'settings',
+    children: [
+      { to: '/settings', label: 'General', end: true, permission: 'settings.manage' },
+      {
+        to: '/settings/website',
+        label: 'Website',
+        permission: ['website.hero.read', 'website.manage', 'settings.manage'],
+      },
+    ],
   },
 ]
 

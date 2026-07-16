@@ -17,8 +17,8 @@ function AccountShell() {
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-4 sm:px-6 sm:py-8 lg:py-10">
       <div className="mb-6 lg:mb-8">
-        <h1 className="font-serif text-3xl text-[#111111] sm:text-4xl">My Account</h1>
-        <p className="mt-1 text-sm text-[#6B7280]">Manage orders, profile, and saved details</p>
+        <h1 className="font-serif text-3xl text-[var(--sf-ink)] sm:text-4xl">My Account</h1>
+        <p className="mt-1 text-sm text-[var(--sf-muted)]">Manage orders, profile, and saved details</p>
       </div>
 
       <AccountMobileTabs />

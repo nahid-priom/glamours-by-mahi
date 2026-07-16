@@ -17,7 +17,7 @@ export function ShopByStyle() {
     <section className="bg-white px-4 py-4 sm:px-6 lg:py-16">
       <div className="mx-auto max-w-[1400px]">
         <p className="text-[11px] uppercase tracking-[0.3em] text-[#6B7280]">Curated for you</p>
-        <h2 className="mt-2 font-serif text-3xl text-[#111111] sm:text-4xl">Shop by Style</h2>
+        <h2 className="mt-2 font-serif text-3xl text-[#22171C] sm:text-4xl">Shop by Style</h2>
         <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:gap-6">
           {STYLES.map((style) => (
             <Link

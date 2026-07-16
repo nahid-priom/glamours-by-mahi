@@ -92,7 +92,7 @@ export const HeroSlider = memo(function HeroSlider({
                   <p className="line-clamp-2 text-xs font-medium leading-snug text-slate-900">
                     {p.name || 'Fashion Item'}
                   </p>
-                  <p className="mt-0.5 text-xs font-semibold text-rose-600">
+                  <p className="mt-0.5 text-xs font-semibold text-primary">
                     {formatBDT(p.displayPrice ?? p.price ?? 0)}
                   </p>
                 </div>

@@ -39,7 +39,7 @@ export function RecommendedProducts() {
   })
 
   return (
-    <div className="mt-16 space-y-14 border-t border-[#111111]/5 pt-14 sm:mt-20 sm:pt-16">
+    <div className="mt-16 space-y-14 border-t border-[#22171C]/5 pt-14 sm:mt-20 sm:pt-16">
       {recentlyViewed.length > 0 && (
         <ProductCarousel
           subtitle="Your History"

@@ -40,10 +40,10 @@ export function SearchModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-[70] bg-[#F8F6F2]/98 backdrop-blur-md">
+    <div className="fixed inset-0 z-[70] bg-[#FFF9FB]/98 backdrop-blur-md">
       <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-16">
         <div className="flex items-center justify-between">
-          <p className="font-serif text-2xl text-[#111111]">Search</p>
+          <p className="font-serif text-2xl text-[#22171C]">Search</p>
           <button type="button" onClick={closeSearch} className="rounded-full p-2 hover:bg-white">
             <X className="h-6 w-6" />
           </button>
@@ -54,8 +54,8 @@ export function SearchModal() {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search products, categories, styles..."
-            className="w-full rounded-2xl border border-[#111111]/10 bg-white py-4 pl-12 pr-4 text-lg outline-none focus:border-[#111111]/30"
+            placeholder="Search products, brands, categories..."
+            className="w-full rounded-2xl border border-[var(--sf-border)] bg-white py-4 pl-12 pr-4 text-lg outline-none focus:border-[var(--sf-primary)]"
           />
         </form>
 

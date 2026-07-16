@@ -31,18 +31,18 @@ export function AccountSidebar() {
 
   return (
     <aside className="hidden shrink-0 lg:block lg:w-[280px]">
-      <div className="sticky top-[88px] rounded-3xl border border-[#111111]/8 bg-white p-6 shadow-sm">
+      <div className="sticky top-[88px] rounded-3xl border border-[var(--sf-border)] bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#111111] font-serif text-lg text-white">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--sf-primary)] font-serif text-lg text-white">
             {initials || 'RS'}
           </div>
           <div className="min-w-0">
-            <p className="truncate font-medium text-[#111111]">{session.name || 'Customer'}</p>
-            <p className="truncate text-sm text-[#6B7280]">{session.phone}</p>
+            <p className="truncate font-medium text-[var(--sf-ink)]">{session.name || 'Customer'}</p>
+            <p className="truncate text-sm text-[var(--sf-muted)]">{session.phone}</p>
           </div>
         </div>
 
-        <span className="mt-4 inline-flex rounded-full bg-[#E11D48]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#E11D48]">
+        <span className="mt-4 inline-flex rounded-full bg-[var(--sf-primary-soft)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--sf-primary)]">
           COD Customer
         </span>
 
@@ -56,8 +56,8 @@ export function AccountSidebar() {
                 className={cn(
                   'flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition',
                   active
-                    ? 'bg-[#111111] text-white'
-                    : 'text-[#6B7280] hover:bg-[#F8F6F2] hover:text-[#111111]',
+                    ? 'bg-[var(--sf-primary)] text-white'
+                    : 'text-[var(--sf-muted)] hover:bg-[var(--sf-primary-soft)] hover:text-[var(--sf-primary)]',
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -70,7 +70,7 @@ export function AccountSidebar() {
         <button
           type="button"
           onClick={logout}
-          className="mt-6 flex w-full items-center gap-3 rounded-2xl border border-[#111111]/10 px-3 py-2.5 text-sm font-medium text-[#6B7280] transition hover:border-[#E11D48]/30 hover:text-[#E11D48]"
+          className="mt-6 flex w-full items-center gap-3 rounded-2xl border border-[var(--sf-border)] px-3 py-2.5 text-sm font-medium text-[var(--sf-muted)] transition hover:border-[var(--sf-primary)]/30 hover:text-[var(--sf-primary)]"
         >
           <LogOut className="h-4 w-4" />
           Sign Out
@@ -96,8 +96,8 @@ export function AccountMobileTabs() {
             className={cn(
               'shrink-0 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition',
               active
-                ? 'bg-[#111111] text-white'
-                : 'border border-[#111111]/10 bg-white text-[#6B7280]',
+                ? 'bg-[#22171C] text-white'
+                : 'border border-[#22171C]/10 bg-white text-[#6B7280]',
             )}
           >
             {label}

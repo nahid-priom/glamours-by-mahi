@@ -1,14 +1,24 @@
-import {
-  ECOMMERCE_STORE_ID,
-} from '@/lib/constants'
-import { customersService } from '@/features/customers/customers.service'
+import { STOREFRONT_ORG_SLUG } from '@/config/catalog'
 import { fraudService } from '@/features/fraud/fraud.service'
-import { invoicesService } from '@/features/invoices/invoices.service'
-import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
-import { productsService } from '@/features/products/products.service'
 import { calcCartTotal, cartService } from './cart.service'
 import type { CheckoutInput, CheckoutResult } from './storefront.types'
+import {
+  placeEcommerceOrder,
+  type PlaceEcommerceOrderResult,
+} from './repositories/storefront-orders.repository'
+import { invalidateStorefrontCache } from './storefront.service'
 
+function newClientTxnKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `web-${crypto.randomUUID()}`
+  }
+  return `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+/**
+ * Storefront checkout — writes to Supabase via create_ecommerce_order RPC.
+ * Cart UI state may remain in localStorage; business records do not.
+ */
 export const checkoutService = {
   async placeOrder(input: CheckoutInput): Promise<CheckoutResult> {
     const cart = cartService.getCart()
@@ -16,36 +26,14 @@ export const checkoutService = {
       throw new Error('Your cart is empty')
     }
 
-    for (const item of cart.items) {
-      const product = await productsService.getProductById(item.productId)
-      if (!product || product.deleted_at) {
-        throw new Error(`${item.name} is no longer available`)
-      }
-      if (product.stock < item.quantity) {
-        throw new Error(`Insufficient stock for ${item.name}`)
-      }
+    const missingVariant = cart.items.find((i) => !i.variantId)
+    if (missingVariant) {
+      throw new Error(
+        `${missingVariant.name} needs a size/color selection. Remove it and add it again from the product page.`,
+      )
     }
 
     const { deliveryCharge, total } = calcCartTotal(cart.items)
-
-    let customer = await customersService.getByPhone(input.phone)
-    if (!customer) {
-      customer = await customersService.create({
-        name: input.customer_name,
-        phone: input.phone,
-        email: input.email ?? '',
-        address: input.address,
-        district: input.district,
-        status: 'active',
-      })
-    } else {
-      customer = await customersService.update(customer.id, {
-        name: input.customer_name,
-        email: input.email ?? customer.email,
-        address: input.address,
-        district: input.district,
-      })
-    }
 
     const fraudResult = await fraudService.runHybridCheck(input.phone, {
       cod_amount: total,
@@ -57,70 +45,51 @@ export const checkoutService = {
       )
     }
 
-    const orderIds: string[] = []
-    let primaryOrderId = ''
-    let primaryOrderNumber = ''
-    let invoiceId = ''
-    let invoiceNo = ''
-
-    for (let i = 0; i < cart.items.length; i++) {
-      const item = cart.items[i]
-      const itemTotal = item.price * item.quantity
-      const codAmount = i === 0 ? itemTotal + deliveryCharge : itemTotal
-
-      await productsService.adjustStock(item.productId, -item.quantity)
-
-      const order = await ordersService.createOrder({
-        store_id: ECOMMERCE_STORE_ID,
-        customer_id: customer.id,
-        customer_name: input.customer_name,
-        customer_phone: input.phone,
-        delivery_address: input.address,
-        product_id: item.productId,
-        product_name: item.name,
-        sku: item.sku,
-        quantity: item.quantity,
-        unit_price: item.price,
-        cod_amount: codAmount,
-        delivery_area: input.delivery_area,
-        customer_note: input.notes,
-        order_note: `Source: E-commerce Website | District: ${input.district}${input.email ? ` | Email: ${input.email}` : ''}`,
-        fraud_level: fraudResult.risk_level,
-        fraud_score: fraudResult.final_score,
-        assigned_to: 'Order Manager',
+    let result: PlaceEcommerceOrderResult
+    try {
+      result = await placeEcommerceOrder({
+        org_slug: STOREFRONT_ORG_SLUG,
+        client_txn_key: newClientTxnKey(),
+        customer_name: input.customer_name.trim(),
+        customer_phone: input.phone.trim(),
+        customer_email: input.email?.trim() || null,
+        delivery_address: input.address.trim(),
+        district: input.district.trim(),
+        shipping: deliveryCharge,
+        note: [
+          `Delivery area: ${input.delivery_area}`,
+          input.notes ? `Notes: ${input.notes}` : null,
+          `Fraud: ${fraudResult.risk_level} (${fraudResult.final_score})`,
+        ]
+          .filter(Boolean)
+          .join(' | '),
+        items: cart.items.map((item) => ({
+          variant_id: item.variantId!,
+          quantity: item.quantity,
+        })),
       })
-
-      orderIds.push(order.id)
-      if (i === 0) {
-        primaryOrderId = order.id
-        primaryOrderNumber = order.order_id
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Checkout failed'
+      if (msg.includes('Insufficient stock')) {
+        throw new Error('এই শাখায় পর্যাপ্ত স্টক নেই।')
       }
-
-      try {
-        const invoice = await invoicesService.generateFromOrder(order.id)
-        if (i === 0) {
-          invoiceId = invoice.id
-          invoiceNo = invoice.invoice_no
-        }
-      } catch {
-        // invoice may already exist in edge cases
-      }
+      throw new Error(msg)
     }
 
-    await customersService.recordOrderPlacement(input.phone, total)
-
     cartService.clearCart()
+    invalidateStorefrontCache()
 
     return {
-      orderIds,
-      primaryOrderId,
-      primaryOrderNumber,
-      invoiceId,
-      invoiceNo,
+      orderIds: [result.sale_id],
+      primaryOrderId: result.sale_id,
+      primaryOrderNumber: result.invoice_no,
+      invoiceId: result.sale_id,
+      invoiceNo: result.invoice_no,
+      publicShareToken: result.public_share_token,
       fraudLevel: fraudResult.risk_level,
       fraudScore: fraudResult.final_score,
-      totalCod: total,
-      deliveryCharge,
+      totalCod: Number(result.grand_total ?? total),
+      deliveryCharge: Number(result.shipping ?? deliveryCharge),
     }
   },
 }

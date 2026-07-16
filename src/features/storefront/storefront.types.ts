@@ -24,10 +24,24 @@ export interface StorefrontProduct extends Product {
   displayPrice: number
   rating: number
   reviewCount: number
+  /** Real Supabase variant data (when loaded from catalog) */
+  hasVariants?: boolean
+  catalogSizes?: string[]
+  catalogColors?: string[]
+  catalogVariants?: Array<{
+    id: string
+    sku: string
+    label: string
+    sellingPrice: number
+    stock: number
+    optionValues: Array<{ option: string; value: string }>
+  }>
 }
 
 export interface CartItem {
   productId: string
+  /** Required for Supabase checkout — product_variants.id */
+  variantId?: string
   slug: string
   name: string
   sku: string
@@ -36,6 +50,8 @@ export interface CartItem {
   image: string
   alt: string
   maxStock: number
+  size?: string
+  color?: string
 }
 
 export interface CartState {
@@ -59,6 +75,7 @@ export interface CheckoutResult {
   primaryOrderNumber: string
   invoiceId: string
   invoiceNo: string
+  publicShareToken?: string
   fraudLevel: string
   fraudScore: number
   totalCod: number
@@ -76,8 +93,10 @@ export interface AccountSession {
 export interface StorefrontFilters {
   search?: string
   category?: StorefrontCategorySlug | 'all'
+  brand?: string
   style?: StyleTag | 'all'
   sort?: 'newest' | 'price-asc' | 'price-desc' | 'popular'
+  onSale?: boolean
   minPrice?: number
   maxPrice?: number
   page?: number

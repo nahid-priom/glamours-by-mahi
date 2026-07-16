@@ -26,11 +26,11 @@ function OrderRowImage({ order }: { order: Order }) {
   })
 
   if (!product) {
-    return <div className="h-16 w-14 shrink-0 rounded-xl bg-[#F8F6F2]" />
+    return <div className="h-16 w-14 shrink-0 rounded-xl bg-[#FFF9FB]" />
   }
 
   return (
-    <div className="h-16 w-14 shrink-0 overflow-hidden rounded-xl bg-[#F8F6F2]">
+    <div className="h-16 w-14 shrink-0 overflow-hidden rounded-xl bg-[#FFF9FB]">
       <LazyImage src={product.image} alt={product.alt} className="h-16 w-14" aspectRatio="portrait" />
     </div>
   )
@@ -70,8 +70,8 @@ export function AccountOrdersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border border-[#111111]/8 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="font-serif text-2xl text-[#111111]">Order History</h2>
+      <div className="rounded-3xl border border-[#22171C]/8 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="font-serif text-2xl text-[#22171C]">Order History</h2>
         <p className="mt-1 text-sm text-[#6B7280]">Search, filter, and manage your purchases</p>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
@@ -87,7 +87,7 @@ export function AccountOrdersPage() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as AccountOrderFilters['status'])}
-            className="rounded-full border border-[#111111]/10 bg-[#F8F6F2] px-4 py-2 text-sm outline-none"
+            className="rounded-full border border-[#22171C]/10 bg-[#FFF9FB] px-4 py-2 text-sm outline-none"
           >
             <option value="all">All Status</option>
             {ORDER_STATUSES.map((s) => (
@@ -108,8 +108,8 @@ export function AccountOrdersPage() {
       )}
 
       {!isLoading && orders.length === 0 && (
-        <div className="rounded-3xl border border-dashed border-[#111111]/15 bg-white py-16 text-center">
-          <p className="font-serif text-xl text-[#111111]">No orders found</p>
+        <div className="rounded-3xl border border-dashed border-[#22171C]/15 bg-white py-16 text-center">
+          <p className="font-serif text-xl text-[#22171C]">No orders found</p>
           <p className="mt-2 text-sm text-[#6B7280]">Try a different search or place your first order.</p>
           <Link to="/shop">
             <Button className="mt-4 rounded-full">Shop Now</Button>
@@ -121,7 +121,7 @@ export function AccountOrdersPage() {
         {orders.map((order) => (
           <li
             key={order.id}
-            className="overflow-hidden rounded-3xl border border-[#111111]/8 bg-white shadow-sm"
+            className="overflow-hidden rounded-3xl border border-[#22171C]/8 bg-white shadow-sm"
           >
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
               <OrderRowImage order={order} />
@@ -129,13 +129,13 @@ export function AccountOrdersPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <p className="font-mono text-xs font-semibold text-[#111111]">{order.order_id}</p>
-                    <p className="mt-1 text-sm font-medium text-[#111111]">{order.product_name}</p>
+                    <p className="font-mono text-xs font-semibold text-[#22171C]">{order.order_id}</p>
+                    <p className="mt-1 text-sm font-medium text-[#22171C]">{order.product_name}</p>
                     <p className="mt-1 text-xs text-[#6B7280]">{formatDateShort(order.created_at)}</p>
                   </div>
                   <div className="text-right">
                     <StatusBadge status={order.status} />
-                    <p className="mt-1 text-sm font-semibold text-[#E11D48]">{formatBDT(order.cod_amount)}</p>
+                    <p className="mt-1 text-sm font-semibold text-[#FF3F7F]">{formatBDT(order.cod_amount)}</p>
                   </div>
                 </div>
 

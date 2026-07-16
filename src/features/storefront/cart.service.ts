@@ -27,17 +27,43 @@ function saveWishlist(items: WishlistItem[]): WishlistItem[] {
   return items
 }
 
-function toCartItem(product: StorefrontProduct, quantity: number): CartItem {
+function cartKey(item: Pick<CartItem, 'productId' | 'variantId'>): string {
+  return item.variantId ? `${item.productId}:${item.variantId}` : item.productId
+}
+
+export type AddToCartOptions = {
+  variantId?: string
+  size?: string
+  color?: string
+  price?: number
+  sku?: string
+  name?: string
+  maxStock?: number
+}
+
+function toCartItem(
+  product: StorefrontProduct,
+  quantity: number,
+  options?: AddToCartOptions,
+): CartItem {
+  const variant =
+    (options?.variantId
+      ? product.catalogVariants?.find((v) => v.id === options.variantId)
+      : undefined) ?? product.catalogVariants?.[0]
+
   return {
     productId: product.id,
+    variantId: options?.variantId ?? variant?.id,
     slug: product.slug,
-    name: product.name,
-    sku: product.sku,
-    price: product.displayPrice,
+    name: options?.name ?? (variant ? `${product.name} (${variant.label})` : product.name),
+    sku: options?.sku ?? variant?.sku ?? product.sku,
+    price: options?.price ?? variant?.sellingPrice ?? product.displayPrice,
     quantity,
     image: product.image,
     alt: product.alt,
-    maxStock: product.stock,
+    maxStock: options?.maxStock ?? variant?.stock ?? product.stock,
+    size: options?.size,
+    color: options?.color,
   }
 }
 
@@ -70,39 +96,47 @@ export const cartService = {
     return saveCart({ items, updatedAt: new Date().toISOString() })
   },
 
-  addItem(product: StorefrontProduct, quantity = 1): CartState {
+  addItem(product: StorefrontProduct, quantity = 1, options?: AddToCartOptions): CartState {
     const cart = loadCart()
-    const existing = cart.items.find((i) => i.productId === product.id)
-    const qty = Math.min(
-      (existing?.quantity ?? 0) + quantity,
-      product.stock,
-    )
+    const draft = toCartItem(product, quantity, options)
+    const key = cartKey(draft)
+    const existing = cart.items.find((i) => cartKey(i) === key)
+    const maxStock = draft.maxStock
+    const qty = Math.min((existing?.quantity ?? 0) + quantity, maxStock)
 
     const items = existing
       ? cart.items.map((i) =>
-          i.productId === product.id ? { ...i, quantity: qty, price: product.displayPrice } : i,
+          cartKey(i) === key
+            ? { ...i, ...draft, quantity: qty }
+            : i,
         )
-      : [...cart.items, toCartItem(product, Math.min(quantity, product.stock))]
+      : [...cart.items, { ...draft, quantity: Math.min(quantity, maxStock) }]
 
     return saveCart({ ...cart, items })
   },
 
-  updateQuantity(productId: string, quantity: number): CartState {
+  updateQuantity(productId: string, quantity: number, variantId?: string): CartState {
     const cart = loadCart()
+    const key = cartKey({ productId, variantId })
     if (quantity <= 0) {
-      return saveCart({ ...cart, items: cart.items.filter((i) => i.productId !== productId) })
+      return saveCart({
+        ...cart,
+        items: cart.items.filter((i) => cartKey(i) !== key),
+      })
     }
     const items = cart.items.map((i) =>
-      i.productId === productId
-        ? { ...i, quantity: Math.min(quantity, i.maxStock) }
-        : i,
+      cartKey(i) === key ? { ...i, quantity: Math.min(quantity, i.maxStock) } : i,
     )
     return saveCart({ ...cart, items })
   },
 
-  removeItem(productId: string): CartState {
+  removeItem(productId: string, variantId?: string): CartState {
     const cart = loadCart()
-    return saveCart({ ...cart, items: cart.items.filter((i) => i.productId !== productId) })
+    const key = cartKey({ productId, variantId })
+    return saveCart({
+      ...cart,
+      items: cart.items.filter((i) => cartKey(i) !== key),
+    })
   },
 
   clearCart(): CartState {

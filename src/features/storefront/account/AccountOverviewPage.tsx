@@ -61,9 +61,9 @@ export function AccountOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-[#111111]/8 bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#E11D48]">Dashboard</p>
-        <h2 className="mt-2 font-serif text-2xl text-[#111111] sm:text-3xl">
+      <div className="rounded-3xl border border-[#22171C]/8 bg-white p-6 shadow-sm sm:p-8">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#FF3F7F]">Dashboard</p>
+        <h2 className="mt-2 font-serif text-2xl text-[#22171C] sm:text-3xl">
           Welcome back, {firstName} 👋
         </h2>
         <p className="mt-2 text-sm text-[#6B7280]">
@@ -81,10 +81,10 @@ export function AccountOverviewPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-3xl border border-[#111111]/8 bg-white p-5 shadow-sm sm:p-6">
+        <section className="rounded-3xl border border-[#22171C]/8 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="font-serif text-xl text-[#111111]">Recent Orders</h3>
-            <Link to="/account/orders" className="text-xs font-semibold uppercase tracking-[0.15em] text-[#E11D48]">
+            <h3 className="font-serif text-xl text-[#22171C]">Recent Orders</h3>
+            <Link to="/account/orders" className="text-xs font-semibold uppercase tracking-[0.15em] text-[#FF3F7F]">
               View all
             </Link>
           </div>
@@ -95,10 +95,10 @@ export function AccountOverviewPage() {
               {recentOrders.map((order) => (
                 <li
                   key={order.id}
-                  className="flex items-start justify-between gap-3 rounded-2xl border border-[#111111]/6 bg-[#F8F6F2]/50 p-3"
+                  className="flex items-start justify-between gap-3 rounded-2xl border border-[#22171C]/6 bg-[#FFF9FB]/50 p-3"
                 >
                   <div className="min-w-0">
-                    <p className="font-mono text-xs font-semibold text-[#111111]">{order.order_id}</p>
+                    <p className="font-mono text-xs font-semibold text-[#22171C]">{order.order_id}</p>
                     <p className="mt-0.5 truncate text-sm text-[#6B7280]">{order.product_name}</p>
                     <p className="mt-1 text-[10px] text-[#6B7280]">{formatDateShort(order.created_at)}</p>
                   </div>
@@ -112,23 +112,23 @@ export function AccountOverviewPage() {
           )}
         </section>
 
-        <section className="rounded-3xl border border-[#111111]/8 bg-white p-5 shadow-sm sm:p-6">
+        <section className="rounded-3xl border border-[#22171C]/8 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="font-serif text-xl text-[#111111]">Saved Address</h3>
-            <Link to="/account/addresses" className="text-xs font-semibold uppercase tracking-[0.15em] text-[#E11D48]">
+            <h3 className="font-serif text-xl text-[#22171C]">Saved Address</h3>
+            <Link to="/account/addresses" className="text-xs font-semibold uppercase tracking-[0.15em] text-[#FF3F7F]">
               Manage
             </Link>
           </div>
           {defaultAddress ? (
-            <div className="mt-4 rounded-2xl border border-[#111111]/6 bg-[#F8F6F2]/50 p-4">
+            <div className="mt-4 rounded-2xl border border-[#22171C]/6 bg-[#FFF9FB]/50 p-4">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-[#E11D48]" />
+                <MapPin className="h-4 w-4 text-[#FF3F7F]" />
                 <span className="text-xs font-bold uppercase tracking-[0.15em] text-[#6B7280]">
                   {defaultAddress.label}
                   {defaultAddress.isDefault && ' · Default'}
                 </span>
               </div>
-              <p className="mt-2 text-sm font-medium text-[#111111]">{defaultAddress.fullName}</p>
+              <p className="mt-2 text-sm font-medium text-[#22171C]">{defaultAddress.fullName}</p>
               <p className="mt-1 text-sm text-[#6B7280]">{defaultAddress.address}</p>
               <p className="text-sm text-[#6B7280]">
                 {defaultAddress.area}, {defaultAddress.district}
@@ -137,7 +137,7 @@ export function AccountOverviewPage() {
           ) : (
             <p className="mt-4 text-sm text-[#6B7280]">
               No saved address yet.{' '}
-              <Link to="/account/addresses" className="font-medium text-[#E11D48] hover:underline">
+              <Link to="/account/addresses" className="font-medium text-[#FF3F7F] hover:underline">
                 Add one
               </Link>
             </p>
@@ -145,13 +145,13 @@ export function AccountOverviewPage() {
 
           <Link
             to="/track-order"
-            className="mt-4 flex items-center gap-3 rounded-2xl border border-[#111111]/8 p-4 transition hover:border-[#111111]/20 hover:shadow-sm"
+            className="mt-4 flex items-center gap-3 rounded-2xl border border-[#22171C]/8 p-4 transition hover:border-[#22171C]/20 hover:shadow-sm"
           >
-            <div className="rounded-xl bg-[#111111]/5 p-2.5">
-              <Search className="h-4 w-4 text-[#111111]" />
+            <div className="rounded-xl bg-[#22171C]/5 p-2.5">
+              <Search className="h-4 w-4 text-[#22171C]" />
             </div>
             <div>
-              <p className="text-sm font-medium text-[#111111]">Track Order</p>
+              <p className="text-sm font-medium text-[#22171C]">Track Order</p>
               <p className="text-xs text-[#6B7280]">Search by order ID or phone</p>
             </div>
           </Link>
@@ -159,10 +159,10 @@ export function AccountOverviewPage() {
       </div>
 
       {wishlistProducts.length > 0 && (
-        <section className="rounded-3xl border border-[#111111]/8 bg-white p-5 shadow-sm sm:p-6">
+        <section className="rounded-3xl border border-[#22171C]/8 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="font-serif text-xl text-[#111111]">Wishlist Preview</h3>
-            <Link to="/account/wishlist" className="text-xs font-semibold uppercase tracking-[0.15em] text-[#E11D48]">
+            <h3 className="font-serif text-xl text-[#22171C]">Wishlist Preview</h3>
+            <Link to="/account/wishlist" className="text-xs font-semibold uppercase tracking-[0.15em] text-[#FF3F7F]">
               View all
             </Link>
           </div>

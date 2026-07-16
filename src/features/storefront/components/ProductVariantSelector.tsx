@@ -1,20 +1,19 @@
 import { cn } from '@/lib/utils'
-import type { ProductColor, ProductSize } from '../utils/product-variants'
 
 interface ProductVariantSelectorProps {
-  sizes: ProductSize[]
-  colors: ProductColor[]
-  disabledSizes: ProductSize[]
-  selectedSize?: ProductSize
-  selectedColor?: ProductColor
-  onSizeChange: (size: ProductSize) => void
-  onColorChange: (color: ProductColor) => void
+  sizes: string[]
+  colors: string[]
+  disabledSizes: string[]
+  selectedSize?: string
+  selectedColor?: string
+  onSizeChange: (size: string) => void
+  onColorChange: (color: string) => void
 }
 
-const COLOR_SWATCHES: Record<ProductColor, string> = {
-  Black: 'bg-[#111111]',
-  White: 'bg-white border border-[#111111]/15',
-  Red: 'bg-[#E11D48]',
+const COLOR_SWATCHES: Record<string, string> = {
+  Black: 'bg-[#22171C]',
+  White: 'bg-white border border-[#22171C]/15',
+  Red: 'bg-[#FF3F7F]',
   Blue: 'bg-[#2563EB]',
   Beige: 'bg-[#E8DCC8]',
 }
@@ -46,10 +45,10 @@ export function ProductVariantSelector({
                   onClick={() => onSizeChange(size)}
                   className={cn(
                     'min-w-[44px] rounded-full border px-3 py-2 text-xs font-semibold transition',
-                    disabled && 'cursor-not-allowed border-[#111111]/10 text-[#6B7280]/50 line-through',
+                    disabled && 'cursor-not-allowed border-[#22171C]/10 text-[#6B7280]/50 line-through',
                     !disabled && selectedSize === size
-                      ? 'border-[#111111] bg-[#111111] text-white'
-                      : !disabled && 'border-[#111111]/15 text-[#111111] hover:border-[#111111]',
+                      ? 'border-[#22171C] bg-[#22171C] text-white'
+                      : !disabled && 'border-[#22171C]/15 text-[#22171C] hover:border-[#22171C]',
                   )}
                 >
                   {size}
@@ -73,11 +72,16 @@ export function ProductVariantSelector({
                 onClick={() => onColorChange(color)}
                 className={cn(
                   'h-9 w-9 rounded-full p-0.5 transition',
-                  selectedColor === color ? 'ring-2 ring-[#111111] ring-offset-2' : 'ring-0',
+                  selectedColor === color ? 'ring-2 ring-[#22171C] ring-offset-2' : 'ring-0',
                 )}
                 aria-label={color}
               >
-                <span className={cn('block h-full w-full rounded-full', COLOR_SWATCHES[color])} />
+                <span
+                  className={cn(
+                    'block h-full w-full rounded-full',
+                    COLOR_SWATCHES[color] ?? 'bg-slate-300 border border-[#22171C]/15',
+                  )}
+                />
               </button>
             ))}
           </div>

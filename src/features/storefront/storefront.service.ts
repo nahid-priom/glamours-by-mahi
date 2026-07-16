@@ -1,9 +1,11 @@
-import type { Product } from '@/types'
-import type { StorefrontCategorySlug } from '@/lib/constants'
-import { getCatalogMeta, type StyleTag } from '@/lib/fashion-catalog'
-import { getProductImageMeta } from '@/lib/product-images'
-import { productsService } from '@/features/products/products.service'
-import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
+import type { StyleTag } from '@/lib/fashion-catalog'
+import {
+  fetchPublishedCatalog,
+  fetchPublishedProductById,
+  invalidateStorefrontOrgCache,
+} from './repositories/storefront-catalog.repository'
+import { trackOnlineSale } from './repositories/storefront-orders.repository'
+import { mapCatalogToStorefront } from './utils/map-catalog-product'
 import type {
   StorefrontFilters,
   StorefrontListResult,
@@ -11,84 +13,9 @@ import type {
   OrderTrackingInfo,
 } from './storefront.types'
 import type { OrderStatus } from '@/lib/constants'
-import { createProductSlug, matchesProductSlug, safeProductName } from './utils/product-slug'
-import { getDisplayAlt, getDisplayGallery, getDisplayImage } from './utils/product-display'
+import { matchesProductSlug } from './utils/product-slug'
 
-const delay = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms))
-
-const CATEGORY_MAP: Record<string, StorefrontCategorySlug> = {
-  dress: 'dress',
-  kurti: 'kurti',
-  'tops-tunic': 'tops-tunic',
-  'co-ord-set': 'co-ord-set',
-  accessories: 'accessories',
-  shoes: 'accessories',
-  bags: 'accessories',
-}
-
-function slugify(name: string, sku: string): string {
-  return createProductSlug(name, sku)
-}
-
-function productIndex(product: Product): number {
-  const match = product.id.match(/\d+/)
-  return match ? parseInt(match[0], 10) - 1 : 0
-}
-
-function safeEnrichProduct(product: Product): StorefrontProduct {
-  const safeName = safeProductName(product.name)
-  const safeSku = product.sku?.trim() || product.id
-  const index = productIndex({ ...product, name: safeName, sku: safeSku })
-  const meta = getCatalogMeta(safeSku, safeName, product.price ?? 0, index)
-  const images = getProductImageMeta(safeSku, safeName, meta.category)
-  const category = CATEGORY_MAP[meta.category] ?? 'new-arrival'
-  const tags = [...new Set([...meta.tags, category])] as string[]
-  const displayPrice = meta.onSale && meta.salePrice ? meta.salePrice : (product.price ?? 0)
-  const enriched = {
-    ...product,
-    name: safeName,
-    sku: safeSku,
-    price: product.price ?? 0,
-    stock: product.stock ?? 0,
-    slug: slugify(safeName, safeSku),
-    category,
-    catalogCategory: meta.category,
-    tags,
-    style: meta.style,
-    description: meta.description?.includes('undefined')
-      ? `${safeName} — thoughtfully designed for the ${meta.style} wardrobe. Premium fabrics, refined fit, and nationwide COD delivery.`
-      : meta.description,
-    image: images.main,
-    hoverImage: images.hover || images.main,
-    gallery: images.gallery,
-    alt: images.alt || safeName,
-    isNew: meta.isNew,
-    isTrending: meta.isTrending,
-    isFeatured: meta.isFeatured,
-    isBestSeller: meta.isBestSeller,
-    isLimited: meta.isLimited,
-    onSale: meta.onSale,
-    salePrice: meta.salePrice,
-    displayPrice,
-    rating: meta.rating ?? 4.5,
-    reviewCount: meta.reviewCount ?? 0,
-  } as StorefrontProduct
-
-  return {
-    ...enriched,
-    image: getDisplayImage(enriched),
-    gallery: getDisplayGallery(enriched),
-    alt: getDisplayAlt(enriched),
-  }
-}
-
-export function enrichProduct(product: Product): StorefrontProduct {
-  return safeEnrichProduct(product)
-}
-
-function isShopVisible(product: Product): boolean {
-  return product.status === 'active' && product.stock > 0 && !product.deleted_at
-}
+const delay = (ms = 80) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function applyStorefrontFilters(products: StorefrontProduct[], filters?: StorefrontFilters): StorefrontProduct[] {
   let result = [...products]
@@ -100,17 +27,30 @@ function applyStorefrontFilters(products: StorefrontProduct[], filters?: Storefr
         p.name.toLowerCase().includes(q) ||
         p.sku.toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q) ||
-        p.style.includes(q as StyleTag),
+        (p.catalogVariants ?? []).some(
+          (v) => v.sku.toLowerCase().includes(q) || v.label.toLowerCase().includes(q),
+        ),
     )
   }
 
   const categoryFilter = filters?.category
   if (categoryFilter && categoryFilter !== 'all') {
-    result = result.filter((p) => p.tags.includes(categoryFilter))
+    result = result.filter((p) => p.tags.includes(categoryFilter) || p.category === categoryFilter)
   }
 
   if (filters?.style && filters.style !== 'all') {
     result = result.filter((p) => p.style === filters.style)
+  }
+
+  if (filters?.brand?.trim()) {
+    const brand = filters.brand.trim().toLowerCase()
+    result = result.filter((p) =>
+      p.tags.some((t) => t.toLowerCase() === brand || t.toLowerCase().includes(brand)),
+    )
+  }
+
+  if (filters?.onSale) {
+    result = result.filter((p) => p.onSale || p.tags.includes('sale') || p.category === 'sale')
   }
 
   if (filters?.minPrice !== undefined) {
@@ -137,38 +77,30 @@ function applyStorefrontFilters(products: StorefrontProduct[], filters?: Storefr
   return result
 }
 
-const STATUS_TIMELINE: OrderStatus[] = ['New', 'Confirmed', 'Packed', 'Courier Booked', 'Shipped', 'Delivered']
-
-let cachedShopProducts: StorefrontProduct[] | null = null
-let cachedCatalogProducts: StorefrontProduct[] | null = null
-
-async function getAllCatalogProducts(): Promise<StorefrontProduct[]> {
-  if (cachedCatalogProducts) return cachedCatalogProducts
-  const all = (await productsService.getProducts())
-    .filter((p) => !p.deleted_at && p.status !== 'inactive')
-    .map(enrichProduct)
-  cachedCatalogProducts = all
-  return all
+function isShopVisible(product: StorefrontProduct): boolean {
+  return product.status === 'active' && product.stock > 0
 }
 
-async function getAllShopProducts(): Promise<StorefrontProduct[]> {
-  if (cachedShopProducts) return cachedShopProducts
-  const all = (await productsService.getProducts({ status: 'active' }))
-    .filter(isShopVisible)
-    .map(enrichProduct)
-  cachedShopProducts = all
-  return all
+const STATUS_TIMELINE: OrderStatus[] = ['New', 'Confirmed', 'Packed', 'Courier Booked', 'Shipped', 'Delivered']
+
+let cachedCatalog: StorefrontProduct[] | null = null
+
+async function loadCatalog(): Promise<StorefrontProduct[]> {
+  if (cachedCatalog) return cachedCatalog
+  const rows = await fetchPublishedCatalog()
+  cachedCatalog = await Promise.all(rows.map(mapCatalogToStorefront))
+  return cachedCatalog
 }
 
 export function invalidateStorefrontCache() {
-  cachedShopProducts = null
-  cachedCatalogProducts = null
+  cachedCatalog = null
+  invalidateStorefrontOrgCache()
 }
 
 export const storefrontService = {
   async getShopProducts(filters?: StorefrontFilters): Promise<StorefrontListResult> {
     await delay()
-    const all = await getAllShopProducts()
+    const all = (await loadCatalog()).filter(isShopVisible)
     const filtered = applyStorefrontFilters(all, filters)
     const page = filters?.page ?? 1
     const pageSize = filters?.pageSize ?? 24
@@ -183,66 +115,63 @@ export const storefrontService = {
   },
 
   async getProductBySlug(slug: string): Promise<StorefrontProduct | null> {
-    await delay(80)
+    await delay(40)
     const trimmed = slug?.trim()
     if (!trimmed) return null
 
-    const all = await getAllCatalogProducts()
+    const all = await loadCatalog()
     const direct = all.find((p) => p.slug === trimmed || matchesProductSlug(p.slug, trimmed))
     if (direct) return direct
 
-    const byId = all.find((p) => p.id === trimmed)
-    if (byId) return byId
-
-    const product = await productsService.getProductById(trimmed)
-    if (!product || product.deleted_at || product.status === 'inactive') return null
-    return enrichProduct(product)
+    return all.find((p) => p.id === trimmed) ?? null
   },
 
   async getProductById(id: string): Promise<StorefrontProduct | null> {
-    await delay(80)
-    const product = await productsService.getProductById(id)
-    if (!product || product.deleted_at || product.status === 'inactive') return null
-    return enrichProduct(product)
+    await delay(40)
+    const row = await fetchPublishedProductById(id)
+    if (!row) return null
+    return mapCatalogToStorefront(row)
   },
 
   async getNewArrivals(limit = 12): Promise<StorefrontProduct[]> {
-    const all = await getAllShopProducts()
+    const all = (await loadCatalog()).filter(isShopVisible)
     return all.filter((p) => p.isNew).slice(0, limit)
   },
 
   async getTrending(limit = 12): Promise<StorefrontProduct[]> {
-    const all = await getAllShopProducts()
+    const all = (await loadCatalog()).filter(isShopVisible)
     return all.filter((p) => p.isTrending).slice(0, limit)
   },
 
   async getFeatured(limit = 8): Promise<StorefrontProduct[]> {
-    const all = await getAllShopProducts()
+    const all = (await loadCatalog()).filter(isShopVisible)
     return all.filter((p) => p.isFeatured).slice(0, limit)
   },
 
   async getBestSellers(limit = 16): Promise<StorefrontProduct[]> {
-    const all = await getAllShopProducts()
+    const all = (await loadCatalog()).filter(isShopVisible)
     return all.filter((p) => p.isBestSeller).slice(0, limit)
   },
 
   async getLimited(limit = 6): Promise<StorefrontProduct[]> {
-    const all = await getAllShopProducts()
+    const all = (await loadCatalog()).filter(isShopVisible)
     return all.filter((p) => p.isLimited).slice(0, limit)
   },
 
   async getRecentlyAdded(limit = 12): Promise<StorefrontProduct[]> {
-    const all = await getAllShopProducts()
-    return [...all].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, limit)
+    const all = (await loadCatalog()).filter(isShopVisible)
+    return [...all]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit)
   },
 
   async getByStyle(style: StyleTag, limit = 12): Promise<StorefrontProduct[]> {
-    const all = await getAllShopProducts()
+    const all = (await loadCatalog()).filter(isShopVisible)
     return all.filter((p) => p.style === style).slice(0, limit)
   },
 
   async getRelated(product: StorefrontProduct, limit = 4): Promise<StorefrontProduct[]> {
-    const all = await getAllShopProducts()
+    const all = (await loadCatalog()).filter(isShopVisible)
     return all.filter((p) => p.id !== product.id && p.category === product.category).slice(0, limit)
   },
 
@@ -270,15 +199,32 @@ export const storefrontService = {
     await delay(150)
     const q = query.trim()
     if (!q) return null
-    const orders = await ordersService.getOrders({ search: q })
-    const matched = orders.filter(
-      (o) =>
-        !o.deleted_at &&
-        (o.order_id.toLowerCase() === q.toLowerCase() ||
-          o.customer_phone.includes(q) ||
-          o.order_id.toLowerCase().includes(q.toLowerCase())),
-    )
-    if (matched.length === 0) return null
+
+    const rows = await trackOnlineSale(q)
+    if (!rows.length) return null
+
+    const matched = rows.map((sale) => {
+      const customer = sale.customers as { name?: string; phone?: string } | null
+      return {
+        id: sale.id,
+        order_id: sale.invoice_no,
+        customer_name: customer?.name ?? '',
+        customer_phone: customer?.phone ?? '',
+        product_name: 'Online order',
+        sku: '',
+        quantity: 1,
+        unit_price: Number(sale.grand_total),
+        cod_amount: Number(sale.due_total ?? sale.grand_total),
+        status: (sale.status === 'completed' ? 'Confirmed' : 'New') as OrderStatus,
+        store_id: '',
+        delivery_address: '',
+        delivery_area: '',
+        created_at: sale.completed_at ?? new Date().toISOString(),
+        updated_at: sale.completed_at ?? new Date().toISOString(),
+        deleted_at: null as string | null,
+      }
+    })
+
     const primary = matched[0]
     const currentIdx = STATUS_TIMELINE.indexOf(primary.status)
     const timeline = STATUS_TIMELINE.map((status, idx) => ({
@@ -286,9 +232,7 @@ export const storefrontService = {
       date: idx <= currentIdx ? primary.updated_at : '',
       done: idx <= currentIdx,
     }))
-    if (primary.status === 'Returned' || primary.status === 'Cancelled') {
-      timeline.push({ status: primary.status, date: primary.updated_at, done: true })
-    }
-    return { orders: matched, timeline }
+
+    return { orders: matched as unknown as OrderTrackingInfo['orders'], timeline }
   },
 }

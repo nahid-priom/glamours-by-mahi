@@ -40,8 +40,8 @@ export function AccountOrderDetailsDialog({ order, open, onOpenChange }: Account
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-3xl border-[#111111]/8 p-0">
-        <div className="border-b border-[#111111]/8 p-6">
+      <DialogContent className="max-w-2xl rounded-3xl border-[#22171C]/8 p-0">
+        <div className="border-b border-[#22171C]/8 p-6">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl">Order Details</DialogTitle>
             <DialogDescription className="font-mono text-sm">{order.order_id}</DialogDescription>
@@ -58,7 +58,7 @@ export function AccountOrderDetailsDialog({ order, open, onOpenChange }: Account
         </div>
 
         <div className="max-h-[70vh] space-y-5 overflow-y-auto p-6">
-          <div className="flex gap-4 rounded-2xl border border-[#111111]/8 bg-[#F8F6F2]/50 p-4">
+          <div className="flex gap-4 rounded-2xl border border-[#22171C]/8 bg-[#FFF9FB]/50 p-4">
             <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-white">
               {product ? (
                 <LazyImage src={product.image} alt={product.alt} className="h-20 w-16" aspectRatio="portrait" />
@@ -67,9 +67,9 @@ export function AccountOrderDetailsDialog({ order, open, onOpenChange }: Account
               )}
             </div>
             <div className="min-w-0">
-              <p className="font-medium text-[#111111]">{order.product_name}</p>
+              <p className="font-medium text-[#22171C]">{order.product_name}</p>
               <p className="mt-1 text-sm text-[#6B7280]">Qty: {order.quantity}</p>
-              <p className="mt-2 text-sm font-semibold text-[#E11D48]">{formatBDT(order.cod_amount)}</p>
+              <p className="mt-2 text-sm font-semibold text-[#FF3F7F]">{formatBDT(order.cod_amount)}</p>
             </div>
           </div>
 
@@ -96,21 +96,21 @@ export function AccountOrderDetailsDialog({ order, open, onOpenChange }: Account
           </div>
 
           {timeline.length > 0 && (
-            <div className="rounded-2xl border border-[#111111]/8 p-4">
-              <h4 className="font-serif text-lg text-[#111111]">Delivery Timeline</h4>
+            <div className="rounded-2xl border border-[#22171C]/8 p-4">
+              <h4 className="font-serif text-lg text-[#22171C]">Delivery Timeline</h4>
               <ol className="mt-4 space-y-3">
                 {timeline.map((step, idx) => (
                   <li key={`${step.status}-${idx}`} className="flex gap-3">
                     <div
                       className={cn(
                         'flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
-                        step.done ? 'bg-emerald-500 text-white' : 'border-2 border-[#111111]/10 text-[#6B7280]',
+                        step.done ? 'bg-emerald-500 text-white' : 'border-2 border-[#22171C]/10 text-[#6B7280]',
                       )}
                     >
                       {step.done ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-3 w-3" />}
                     </div>
                     <div>
-                      <p className={cn('text-sm font-medium', step.done ? 'text-[#111111]' : 'text-[#6B7280]')}>
+                      <p className={cn('text-sm font-medium', step.done ? 'text-[#22171C]' : 'text-[#6B7280]')}>
                         {step.status}
                       </p>
                       {step.date && <p className="text-xs text-[#6B7280]">{formatDateTime(step.date)}</p>}
@@ -122,7 +122,7 @@ export function AccountOrderDetailsDialog({ order, open, onOpenChange }: Account
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 border-t border-[#111111]/8 p-6">
+        <div className="flex flex-wrap gap-2 border-t border-[#22171C]/8 p-6">
           <Button
             type="button"
             variant="outline"
@@ -148,11 +148,11 @@ function InfoBlock({
   className?: string
 }) {
   return (
-    <div className={cn('rounded-2xl border border-[#111111]/8 p-4', className)}>
+    <div className={cn('rounded-2xl border border-[#22171C]/8 p-4', className)}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6B7280]">{title}</p>
       <div className="mt-2 space-y-1">
         {lines.map((line) => (
-          <p key={line} className="text-sm text-[#111111]">
+          <p key={line} className="text-sm text-[#22171C]">
             {line}
           </p>
         ))}

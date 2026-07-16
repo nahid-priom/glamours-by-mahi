@@ -27,7 +27,7 @@ export function RelatedProducts({ product }: RelatedProductsProps) {
     <div className="space-y-16">
       {(relatedLoading || (related && related.length > 0)) && (
         <section>
-          <h2 className="font-serif text-2xl text-[#111111] sm:text-3xl">You May Also Like</h2>
+          <h2 className="font-serif text-2xl text-[#22171C] sm:text-3xl">You May Also Like</h2>
           <div className="mt-6">
             {relatedLoading ? (
               <ProductGridSkeleton count={4} />
@@ -44,7 +44,7 @@ export function RelatedProducts({ product }: RelatedProductsProps) {
 
       {(recentLoading || (recentlyViewed && recentlyViewed.length > 0)) && (
         <section>
-          <h2 className="font-serif text-2xl text-[#111111] sm:text-3xl">Recently Viewed</h2>
+          <h2 className="font-serif text-2xl text-[#22171C] sm:text-3xl">Recently Viewed</h2>
           <div className="mt-6">
             {recentLoading ? (
               <ProductGridSkeleton count={4} />

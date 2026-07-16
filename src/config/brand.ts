@@ -2,7 +2,7 @@ export const brandConfig = {
   name: 'Glamourous by Mahi',
   shortName: 'Glamourous',
   description: 'Multi-Branch Fashion Retail & E-commerce Business Automation System',
-  tagline: 'Premium fashion for every occasion',
+  tagline: 'Beauty, fashion & lifestyle — curated for modern women',
   currency: 'BDT',
   currencySymbol: '৳',
   locale: 'en-BD',
@@ -11,10 +11,15 @@ export const brandConfig = {
   phone: '01700-000001',
   email: 'hello@glamourousbymahi.com',
   website: 'https://glamourousbymahi.com',
-  themeColor: '#F8F6F2',
-  backgroundColor: '#F8F6F2',
-  accentColor: '#E11D48',
-  textColor: '#111111',
+  themeColor: '#FF3F7F',
+  backgroundColor: '#FFF9FB',
+  accentColor: '#FF3F7F',
+  accentHover: '#D91E5B',
+  accentSoft: '#FFF1F6',
+  accentLight: '#FFE3EC',
+  textColor: '#22171C',
+  mutedText: '#6F6268',
+  borderColor: '#F1DCE4',
 } as const
 
 export type BrandConfig = typeof brandConfig

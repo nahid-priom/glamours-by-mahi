@@ -16,6 +16,8 @@ export function countActiveFilters(filters: StorefrontFilters): number {
   let count = 0
   if (filters.category && filters.category !== 'all') count++
   if (filters.style && filters.style !== 'all') count++
+  if (filters.brand?.trim()) count++
+  if (filters.onSale) count++
   if (filters.minPrice !== undefined && filters.minPrice > 0) count++
   if (filters.maxPrice !== undefined) count++
   if (filters.search?.trim()) count++
