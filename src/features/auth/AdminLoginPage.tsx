@@ -28,7 +28,7 @@ function LoginForm() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: 'mahi@codebondhu.com', password: '' },
   })
 
   if (loading) return <FullPageLoader label="Checking session…" />
