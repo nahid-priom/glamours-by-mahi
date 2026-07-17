@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Loader2, ShoppingBag } from 'lucide-react'
@@ -10,117 +10,165 @@ import { storefrontService } from './storefront.service'
 import { trackRecentlyViewed } from './hooks/useRecentlyViewed'
 import { useCart } from './cart.context'
 import { useStorefrontUI } from './storefront-ui.context'
+import { useVariantSelection } from './hooks/useVariantSelection'
 import { ProductGallery } from './components/ProductGallery'
 import { ProductInfoPanel } from './components/ProductInfoPanel'
 import { RelatedProducts } from './components/RelatedProducts'
 import { getDisplayName, getDisplayPrice, getDisplayStock } from './utils/product-display'
-import {
-  getProductVariantOptions,
-  resolveCatalogVariant,
-} from './utils/product-variants'
+import { getAutoSelectableVariant } from './utils/product-variants'
+import type { StorefrontProduct } from './storefront.types'
 
-export function ProductDetailsPage() {
-  const { slug } = useParams<{ slug: string }>()
+function ProductDetailsContent({ product }: { product: StorefrontProduct }) {
   const navigate = useNavigate()
   const { addItem, toggleWishlist, isWishlisted } = useCart()
   const { openCart } = useStorefrontUI()
   const { toast } = useToast()
 
   const [qty, setQty] = useState(1)
-  const [selectedSize, setSelectedSize] = useState<string | undefined>()
-  const [selectedColor, setSelectedColor] = useState<string | undefined>()
   const [isAdding, setIsAdding] = useState(false)
   const [isBuying, setIsBuying] = useState(false)
-  const initializedRef = useRef<string | null>(null)
+
+  const selection = useVariantSelection(product)
+  const { attributes, selectedVariant, missingAttributes } = selection
+
+  const hasAttributes = attributes.length > 0
+  const resolved = hasAttributes ? selectedVariant : getAutoSelectableVariant(product)
+  const stock = resolved ? resolved.stock : getDisplayStock(product)
+  const outOfStock = stock <= 0
+  const canPurchase = hasAttributes
+    ? resolved !== null && resolved.stock > 0
+    : !outOfStock && (Boolean(resolved) || !product.catalogVariants?.length)
+
+  const selectionHint =
+    hasAttributes && missingAttributes.length > 0
+      ? `Please select ${missingAttributes.join(' and ')}.`
+      : hasAttributes && !resolved
+        ? 'This combination is currently out of stock.'
+        : null
+
+  useEffect(() => {
+    trackRecentlyViewed(product.id)
+  }, [product.id])
+
+  const addResolvedToCart = (): boolean => {
+    // Products backed by catalog variants must carry a real variant id.
+    if (product.catalogVariants?.length && !resolved?.id) {
+      toast('Please select the available options.', 'error')
+      return false
+    }
+    addItem(
+      product,
+      qty,
+      resolved
+        ? {
+            variantId: resolved.id,
+            price: resolved.sellingPrice,
+            sku: resolved.sku,
+            maxStock: resolved.stock,
+            name: getDisplayName(product),
+          }
+        : undefined,
+    )
+    return true
+  }
+
+  const handleAddToCart = () => {
+    if (!canPurchase) return
+    setIsAdding(true)
+    try {
+      if (addResolvedToCart()) {
+        toast(`${getDisplayName(product)} added to cart`)
+        openCart()
+      }
+    } finally {
+      setIsAdding(false)
+    }
+  }
+
+  const handleBuyNow = () => {
+    if (!canPurchase) return
+    setIsBuying(true)
+    try {
+      if (addResolvedToCart()) navigate('/checkout')
+    } finally {
+      setIsBuying(false)
+    }
+  }
+
+  return (
+    <div className="min-w-0 overflow-x-hidden bg-[#FFF9FB] pb-28 lg:pb-20">
+      <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:pt-10 xl:px-10">
+        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+          <ProductGallery product={product} />
+
+          <div className="lg:sticky lg:top-28 lg:self-start">
+            <ProductInfoPanel
+              product={product}
+              qty={qty}
+              onQtyChange={setQty}
+              selection={selection}
+              canPurchase={canPurchase}
+              selectionHint={selectionHint}
+              wishlisted={isWishlisted(product.id)}
+              onToggleWishlist={() => toggleWishlist(product.id, product.slug)}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              isAdding={isAdding}
+              isBuying={isBuying}
+            />
+          </div>
+        </div>
+
+        <div className="mt-16 border-t border-[#22171C]/8 pt-16 lg:mt-20 lg:pt-20">
+          <RelatedProducts product={product} />
+        </div>
+      </div>
+
+      {/* Mobile sticky CTA */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#22171C]/8 bg-white/95 p-4 backdrop-blur-md lg:hidden">
+        <div className="mx-auto flex max-w-[1440px] items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-[#22171C]">{getDisplayName(product)}</p>
+            <p className="text-lg font-bold text-[#22171C]">
+              {formatBDT(resolved?.sellingPrice ?? getDisplayPrice(product))}
+            </p>
+          </div>
+          <Button
+            className="h-12 shrink-0 rounded-full bg-[#22171C] px-5 text-xs font-semibold hover:bg-[#FF3F7F]"
+            disabled={!canPurchase || isAdding}
+            onClick={handleAddToCart}
+          >
+            {isAdding ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <ShoppingBag className="h-4 w-4" />
+                Add to Cart
+              </>
+            )}
+          </Button>
+        </div>
+        <Button
+          variant="outline"
+          className="mt-2 h-11 w-full rounded-full border-[#22171C]/15 text-xs font-semibold"
+          disabled={!canPurchase || isBuying}
+          onClick={handleBuyNow}
+        >
+          {isBuying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buy Now'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export function ProductDetailsPage() {
+  const { slug } = useParams<{ slug: string }>()
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['storefront', 'product', slug],
     queryFn: () => storefrontService.getProductBySlug(slug!),
     enabled: !!slug,
   })
-
-  const variantOptions = product ? getProductVariantOptions(product) : null
-  const stock = product ? getDisplayStock(product) : 0
-  const outOfStock = stock <= 0
-  const needsSize = Boolean(variantOptions?.sizes.length) && !selectedSize
-  const needsColor = Boolean(variantOptions?.colors.length) && !selectedColor
-  const matchedVariant = product
-    ? resolveCatalogVariant(product, selectedSize, selectedColor)
-    : null
-  const canPurchase =
-    Boolean(product) &&
-    !outOfStock &&
-    !needsSize &&
-    !needsColor &&
-    Boolean(matchedVariant?.id || !product?.catalogVariants?.length)
-
-  useEffect(() => {
-    if (!product?.id) return
-    trackRecentlyViewed(product.id)
-  }, [product?.id])
-
-  useEffect(() => {
-    if (!product || initializedRef.current === product.id) return
-    initializedRef.current = product.id
-    setQty(1)
-    setSelectedSize(
-      variantOptions?.sizes.find((size) => !variantOptions.disabledSizes.includes(size)),
-    )
-    setSelectedColor(variantOptions?.colors[0])
-  }, [product, variantOptions])
-
-  const handleAddToCart = async () => {
-    if (!product || !canPurchase) return
-    setIsAdding(true)
-    try {
-      const variant =
-        resolveCatalogVariant(product, selectedSize, selectedColor) ??
-        product.catalogVariants?.[0]
-      if (!variant?.id) {
-        toast('This product is not ready for checkout yet', 'error')
-        return
-      }
-      addItem(product, qty, {
-        variantId: variant.id,
-        size: selectedSize,
-        color: selectedColor,
-        price: variant.sellingPrice,
-        sku: variant.sku,
-        name: `${getDisplayName(product)} (${variant.label})`,
-        maxStock: variant.stock,
-      })
-      toast(`${getDisplayName(product)} added to cart`)
-      openCart()
-    } finally {
-      setIsAdding(false)
-    }
-  }
-
-  const handleBuyNow = async () => {
-    if (!product || !canPurchase) return
-    setIsBuying(true)
-    try {
-      const variant =
-        resolveCatalogVariant(product, selectedSize, selectedColor) ??
-        product.catalogVariants?.[0]
-      if (!variant?.id) {
-        toast('This product is not ready for checkout yet', 'error')
-        return
-      }
-      addItem(product, qty, {
-        variantId: variant.id,
-        size: selectedSize,
-        color: selectedColor,
-        price: variant.sellingPrice,
-        sku: variant.sku,
-        name: `${getDisplayName(product)} (${variant.label})`,
-        maxStock: variant.stock,
-      })
-      navigate('/checkout')
-    } finally {
-      setIsBuying(false)
-    }
-  }
 
   if (isLoading) {
     return (
@@ -154,69 +202,5 @@ export function ProductDetailsPage() {
     )
   }
 
-  return (
-    <div className="min-w-0 overflow-x-hidden bg-[#FFF9FB] pb-28 lg:pb-20">
-      <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:pt-10 xl:px-10">
-        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-          <ProductGallery product={product} />
-
-          <div className="lg:sticky lg:top-28 lg:self-start">
-            <ProductInfoPanel
-              product={product}
-              qty={qty}
-              onQtyChange={setQty}
-              selectedSize={selectedSize}
-              selectedColor={selectedColor}
-              onSizeChange={setSelectedSize}
-              onColorChange={setSelectedColor}
-              variantOptions={variantOptions}
-              canPurchase={canPurchase}
-              wishlisted={isWishlisted(product.id)}
-              onToggleWishlist={() => toggleWishlist(product.id, product.slug)}
-              onAddToCart={handleAddToCart}
-              onBuyNow={handleBuyNow}
-              isAdding={isAdding}
-              isBuying={isBuying}
-            />
-          </div>
-        </div>
-
-        <div className="mt-16 border-t border-[#22171C]/8 pt-16 lg:mt-20 lg:pt-20">
-          <RelatedProducts product={product} />
-        </div>
-      </div>
-
-      {/* Mobile sticky CTA */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#22171C]/8 bg-white/95 p-4 backdrop-blur-md lg:hidden">
-        <div className="mx-auto flex max-w-[1440px] items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[#22171C]">{getDisplayName(product)}</p>
-            <p className="text-lg font-bold text-[#22171C]">{formatBDT(getDisplayPrice(product))}</p>
-          </div>
-          <Button
-            className="h-12 shrink-0 rounded-full bg-[#22171C] px-5 text-xs font-semibold hover:bg-[#FF3F7F]"
-            disabled={!canPurchase || isAdding}
-            onClick={handleAddToCart}
-          >
-            {isAdding ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <ShoppingBag className="h-4 w-4" />
-                Add to Cart
-              </>
-            )}
-          </Button>
-        </div>
-        <Button
-          variant="outline"
-          className="mt-2 h-11 w-full rounded-full border-[#22171C]/15 text-xs font-semibold"
-          disabled={!canPurchase || isBuying}
-          onClick={handleBuyNow}
-        >
-          {isBuying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buy Now'}
-        </Button>
-      </div>
-    </div>
-  )
+  return <ProductDetailsContent key={product.id} product={product} />
 }

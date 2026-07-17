@@ -18,6 +18,11 @@ interface CartContextValue {
   total: number
   wishlistIds: Set<string>
   addItem: (product: StorefrontProduct, qty?: number, options?: AddToCartOptions) => void
+  changeItemVariant: (
+    previous: { productId: string; variantId?: string },
+    product: StorefrontProduct,
+    options: AddToCartOptions & { variantId: string },
+  ) => void
   updateQuantity: (productId: string, qty: number, variantId?: string) => void
   removeItem: (productId: string, variantId?: string) => void
   clearCart: () => void
@@ -57,6 +62,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [refresh],
   )
 
+  const changeItemVariant = useCallback(
+    (
+      previous: { productId: string; variantId?: string },
+      product: StorefrontProduct,
+      options: AddToCartOptions & { variantId: string },
+    ) => {
+      cartService.changeItemVariant(previous, product, options)
+      refresh()
+    },
+    [refresh],
+  )
+
   const updateQuantity = useCallback((productId: string, qty: number, variantId?: string) => {
     cartService.updateQuantity(productId, qty, variantId)
     refresh()
@@ -91,6 +108,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       total: totals.total,
       wishlistIds,
       addItem,
+      changeItemVariant,
       updateQuantity,
       removeItem,
       clearCart,
@@ -98,7 +116,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isWishlisted,
       refresh,
     }),
-    [items, totals, wishlistIds, addItem, updateQuantity, removeItem, clearCart, toggleWishlist, isWishlisted, refresh],
+    [items, totals, wishlistIds, addItem, changeItemVariant, updateQuantity, removeItem, clearCart, toggleWishlist, isWishlisted, refresh],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

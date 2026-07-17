@@ -6,6 +6,10 @@ import { getStorageItem, setStorageItem, STORAGE_KEYS } from '@/lib/storage'
 import { resolveProductImage } from '@/lib/images/product-image-utils'
 import type { CartItem, CartState, WishlistItem } from './storefront.types'
 import type { StorefrontProduct } from './storefront.types'
+import {
+  formatVariantLabel,
+  getAutoSelectableVariant,
+} from './utils/product-variants'
 
 const EMPTY_CART: CartState = { items: [], updatedAt: new Date().toISOString() }
 
@@ -47,24 +51,32 @@ function toCartItem(
   quantity: number,
   options?: AddToCartOptions,
 ): CartItem {
+  // Only a variant explicitly chosen by the caller, or one that requires no
+  // customer choice, may be used. Never guess between multiple combinations.
   const variant =
     (options?.variantId
       ? product.catalogVariants?.find((v) => v.id === options.variantId)
-      : undefined) ?? product.catalogVariants?.[0]
+      : undefined) ?? getAutoSelectableVariant(product)
+
+  const selectedOptions = variant?.optionValues?.filter((ov) => ov.option && ov.value)
+  const variantLabel = formatVariantLabel(selectedOptions)
+  const safeName = options?.name?.trim() || product.name?.trim() || 'Product'
 
   return {
     productId: product.id,
-    variantId: options?.variantId ?? variant?.id,
+    variantId: variant?.id,
     slug: product.slug,
-    name: options?.name ?? (variant ? `${product.name} (${variant.label})` : product.name),
+    name: safeName,
     sku: options?.sku ?? variant?.sku ?? product.sku,
     price: options?.price ?? variant?.sellingPrice ?? product.displayPrice,
     quantity,
     image: resolveProductImage(product),
-    alt: product.alt,
+    alt: product.alt || safeName,
     maxStock: options?.maxStock ?? variant?.stock ?? product.stock,
     size: options?.size,
     color: options?.color,
+    selectedOptions,
+    variantLabel: variantLabel || undefined,
   }
 }
 
@@ -128,6 +140,39 @@ export const cartService = {
     const items = cart.items.map((i) =>
       cartKey(i) === key ? { ...i, quantity: Math.min(quantity, i.maxStock) } : i,
     )
+    return saveCart({ ...cart, items })
+  },
+
+  /**
+   * Replace an existing cart row with a different variant of the same
+   * product. Quantity is preserved up to the new variant's stock; rows for
+   * the same target variant are merged instead of duplicated.
+   */
+  changeItemVariant(
+    previous: Pick<CartItem, 'productId' | 'variantId'>,
+    product: StorefrontProduct,
+    options: AddToCartOptions & { variantId: string },
+  ): CartState {
+    const cart = loadCart()
+    const previousKey = cartKey(previous)
+    const current = cart.items.find((i) => cartKey(i) === previousKey)
+    const quantity = Math.max(1, current?.quantity ?? 1)
+
+    const draft = toCartItem(product, quantity, options)
+    const targetKey = cartKey(draft)
+    const withoutPrevious = cart.items.filter((i) => cartKey(i) !== previousKey)
+    const existingTarget = withoutPrevious.find((i) => cartKey(i) === targetKey)
+
+    const mergedQty = Math.min(
+      (existingTarget?.quantity ?? 0) + quantity,
+      draft.maxStock,
+    )
+    const items = existingTarget
+      ? withoutPrevious.map((i) =>
+          cartKey(i) === targetKey ? { ...i, ...draft, quantity: mergedQty } : i,
+        )
+      : [...withoutPrevious, { ...draft, quantity: Math.min(quantity, draft.maxStock) }]
+
     return saveCart({ ...cart, items })
   },
 

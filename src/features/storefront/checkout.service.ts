@@ -1,7 +1,25 @@
 import { STOREFRONT_ORG_SLUG } from '@/config/catalog'
 import { fraudService } from '@/features/fraud/fraud.service'
 import { calcCartTotal, cartService } from './cart.service'
+import { validateCartItemVariant } from './utils/product-variants'
 import type { CheckoutInput, CheckoutResult } from './storefront.types'
+
+export interface CheckoutValidationIssue {
+  code: 'VARIANT_SELECTION_REQUIRED' | 'EMPTY_CART'
+  productId?: string
+  message: string
+}
+
+/** Structured error the UI can translate without leaking internals. */
+export class CheckoutValidationError extends Error {
+  issues: CheckoutValidationIssue[]
+
+  constructor(issues: CheckoutValidationIssue[]) {
+    super(issues[0]?.message ?? 'Please review your cart before checkout.')
+    this.name = 'CheckoutValidationError'
+    this.issues = issues
+  }
+}
 import {
   placeEcommerceOrder,
   type PlaceEcommerceOrderResult,
@@ -45,13 +63,22 @@ export const checkoutService = {
   async placeOrder(input: CheckoutInput): Promise<CheckoutResult> {
     const cart = cartService.getCart()
     if (cart.items.length === 0) {
-      throw new Error('Your cart is empty')
+      throw new CheckoutValidationError([
+        { code: 'EMPTY_CART', message: 'Your cart is empty.' },
+      ])
     }
 
-    const missingVariant = cart.items.find((i) => !i.variantId)
-    if (missingVariant) {
-      throw new Error(
-        `${missingVariant.name} needs a size/color selection. Remove it and add it again from the product page.`,
+    const invalidItems = cart.items.filter(
+      (item) => validateCartItemVariant(item) !== 'valid',
+    )
+    if (invalidItems.length > 0) {
+      throw new CheckoutValidationError(
+        invalidItems.map((item) => ({
+          code: 'VARIANT_SELECTION_REQUIRED' as const,
+          productId: item.productId,
+          message:
+            'Please choose the options for the highlighted items in your cart before checkout.',
+        })),
       )
     }
 
@@ -91,11 +118,17 @@ export const checkoutService = {
         })),
       })
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Checkout failed'
-      if (msg.includes('Insufficient') || msg.includes('available stock')) {
-        throw new Error('এই শাখায় পর্যাপ্ত স্টক নেই।')
+      const msg = e instanceof Error ? e.message : ''
+      // Technical details stay out of the UI; the customer only sees a
+      // friendly, actionable message.
+      console.error('[checkout] place order failed:', e)
+      if (msg.toLowerCase().includes('variant')) {
+        throw new Error('This product option is no longer available. Please update your cart.')
       }
-      throw new Error(msg)
+      if (msg.includes('Insufficient') || msg.includes('available stock')) {
+        throw new Error('Some items no longer have enough stock. Please update your cart.')
+      }
+      throw new Error('Checkout could not be completed. Please try again.')
     }
 
     clearClientTxnKey()

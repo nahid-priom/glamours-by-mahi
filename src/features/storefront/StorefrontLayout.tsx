@@ -6,6 +6,7 @@ import { Footer } from './components/Footer'
 import { MobileBottomNav } from './components/MobileBottomNav'
 import { SearchModal } from './components/SearchModal'
 import { QuickViewModal, CartDrawer } from './components/QuickViewModal'
+import { VariantSelectionModal } from './components/VariantSelectionModal'
 import { PWAStorefrontShell } from '@/features/pwa'
 import { usePWAOptional } from '@/features/pwa'
 import type { CSSProperties } from 'react'
@@ -39,6 +40,7 @@ function StorefrontShell() {
         <MobileBottomNav />
         <SearchModal />
         <QuickViewModal />
+        <VariantSelectionModal />
         <CartDrawer />
       </div>
     </PWAStorefrontShell>

@@ -53,6 +53,10 @@ export interface CartItem {
   maxStock: number
   size?: string
   color?: string
+  /** Snapshot of the chosen option values, e.g. [{ option: 'Size', value: 'M' }] */
+  selectedOptions?: Array<{ option: string; value: string }>
+  /** Human label like "Size: M • Color: Pink" */
+  variantLabel?: string
 }
 
 export interface CartState {

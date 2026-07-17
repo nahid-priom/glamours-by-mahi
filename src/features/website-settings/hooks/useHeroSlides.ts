@@ -28,7 +28,12 @@ export function useActiveHeroSlides() {
   return useQuery({
     queryKey: heroQueryKeys.publicActive,
     queryFn: () => heroService.fetchActive(),
-    staleTime: 60_000,
+    // Keep slides warm across SPA navigation so returning home renders
+    // instantly from cache instead of flashing a blank carousel.
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 }
 

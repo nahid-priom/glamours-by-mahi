@@ -25,8 +25,11 @@ export function normalizeImageUrl(src: unknown, fallback = PRODUCT_PLACEHOLDER):
   if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:') || value.startsWith('blob:')) {
     return value
   }
-  if (value.startsWith('/')) return value
-  return `/${value.replace(/^\.?\//, '')}`
+  // Root the path so it survives navigation from nested routes, and strip a
+  // mistakenly stored `public/` prefix (Vite serves public assets from `/`).
+  let path = value.replace(/^\.?\//, '').replace(/^\.\.\//, '')
+  if (path.startsWith('public/')) path = path.slice('public/'.length)
+  return `/${path}`
 }
 
 export function getFallbackImage(): string {

@@ -15,8 +15,8 @@ import {
   getOriginalPrice,
   getStockStatus,
 } from '../utils/product-display'
-import type { ProductVariantOptions } from '../utils/product-variants'
-import { ProductVariantSelector } from './ProductVariantSelector'
+import type { VariantSelection } from '../hooks/useVariantSelection'
+import { VariantAttributePicker } from './VariantAttributePicker'
 import { ProductTrustCards } from './ProductTrustCards'
 import { ProductDetailsAccordion } from './ProductDetailsAccordion'
 
@@ -24,12 +24,9 @@ interface ProductInfoPanelProps {
   product: StorefrontProduct
   qty: number
   onQtyChange: (qty: number) => void
-  selectedSize?: string
-  selectedColor?: string
-  onSizeChange: (size: string) => void
-  onColorChange: (color: string) => void
-  variantOptions: ProductVariantOptions | null
+  selection: VariantSelection
   canPurchase: boolean
+  selectionHint: string | null
   wishlisted: boolean
   onToggleWishlist: () => void
   onAddToCart: () => void
@@ -42,12 +39,9 @@ export function ProductInfoPanel({
   product,
   qty,
   onQtyChange,
-  selectedSize,
-  selectedColor,
-  onSizeChange,
-  onColorChange,
-  variantOptions,
+  selection,
   canPurchase,
+  selectionHint,
   wishlisted,
   onToggleWishlist,
   onAddToCart,
@@ -55,10 +49,18 @@ export function ProductInfoPanel({
   isAdding = false,
   isBuying = false,
 }: ProductInfoPanelProps) {
-  const stock = getDisplayStock(product)
-  const stockStatus = getStockStatus(product)
+  const variant = selection.selectedVariant
+  const stock = variant ? variant.stock : getDisplayStock(product)
+  const stockStatus = variant
+    ? variant.stock <= 0
+      ? 'out_of_stock'
+      : variant.stock <= 8
+        ? 'low_stock'
+        : 'in_stock'
+    : getStockStatus(product)
   const discount = getDiscountPercent(product)
   const outOfStock = stock <= 0
+  const displayPrice = variant?.sellingPrice ?? getDisplayPrice(product)
 
   return (
     <div className="space-y-8">
@@ -93,7 +95,7 @@ export function ProductInfoPanel({
         ) : null}
 
         <div className="mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="text-3xl font-bold text-[var(--sf-ink)]">{formatBDT(getDisplayPrice(product))}</span>
+          <span className="text-3xl font-bold text-[var(--sf-ink)]">{formatBDT(displayPrice)}</span>
           {product.onSale && product.salePrice && (
             <>
               <span className="text-base text-[var(--sf-muted)] line-through">
@@ -122,16 +124,13 @@ export function ProductInfoPanel({
 
       <p className="text-sm leading-relaxed text-[#6B7280]">{getDisplayDescription(product)}</p>
 
-      {variantOptions && (
-        <ProductVariantSelector
-          sizes={variantOptions.sizes}
-          colors={variantOptions.colors}
-          disabledSizes={variantOptions.disabledSizes}
-          selectedSize={selectedSize}
-          selectedColor={selectedColor}
-          onSizeChange={onSizeChange}
-          onColorChange={onColorChange}
-        />
+      {selection.attributes.length > 0 && (
+        <div>
+          <VariantAttributePicker selection={selection} />
+          {selectionHint ? (
+            <p className="mt-3 text-xs font-medium text-[#6B7280]">{selectionHint}</p>
+          ) : null}
+        </div>
       )}
 
       {!outOfStock && (

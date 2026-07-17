@@ -1,7 +1,7 @@
-import { useState } from 'react'
 import { FALLBACK_PRODUCT_IMAGE } from '@/lib/product-images'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useReliableImage } from '@/lib/images/use-reliable-image'
 
 interface LazyImageProps {
   src: string
@@ -24,27 +24,25 @@ export function LazyImage({
   imgClassName,
   aspectRatio = 'portrait',
 }: LazyImageProps) {
-  const [loaded, setLoaded] = useState(false)
-  const [error, setError] = useState(false)
-  const imgSrc = error ? FALLBACK_PRODUCT_IMAGE : src
+  const { imgRef, currentSrc, status, handleLoad, handleError } = useReliableImage(src, [
+    FALLBACK_PRODUCT_IMAGE,
+  ])
 
   return (
     <div className={cn('relative overflow-hidden bg-stone-100', aspectClasses[aspectRatio], className)}>
-      {!loaded && <Skeleton className="absolute inset-0 rounded-none" />}
+      {status === 'loading' && <Skeleton className="absolute inset-0 z-10 rounded-none" />}
       <img
-        src={imgSrc}
+        ref={imgRef}
+        src={currentSrc}
         alt={alt}
         loading="lazy"
         decoding="async"
         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-        onLoad={() => setLoaded(true)}
-        onError={() => {
-          setError(true)
-          setLoaded(true)
-        }}
+        onLoad={handleLoad}
+        onError={handleError}
         className={cn(
           'h-full w-full object-cover transition-opacity duration-300',
-          loaded ? 'opacity-100' : 'opacity-0',
+          status === 'loaded' ? 'opacity-100' : 'opacity-0',
           imgClassName,
         )}
       />

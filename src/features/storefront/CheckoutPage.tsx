@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useCart } from './cart.context'
 import { checkoutService } from './checkout.service'
+import { hasUnresolvedCartItems } from './utils/product-variants'
 import { CheckoutSummary } from './components/CheckoutSummary'
 import { getDefaultAddress, getSession, saveSession, syncProfile } from './account/account.service'
 import type { AccountSession } from './account/account.types'
@@ -100,6 +101,22 @@ export function CheckoutPage() {
         <Link to="/shop">
           <Button className="mt-4 rounded-full bg-[var(--sf-primary)] hover:bg-[var(--sf-primary-hover)]">
             Shop Now
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
+  if (hasUnresolvedCartItems(items)) {
+    return (
+      <div className="sf-container max-w-[1440px] py-16 text-center">
+        <h1 className="font-serif text-2xl text-[var(--sf-ink)]">Almost there</h1>
+        <p className="mx-auto mt-3 max-w-md text-sm text-[var(--sf-muted)]">
+          Please choose the options for the highlighted items in your cart before checkout.
+        </p>
+        <Link to="/cart">
+          <Button className="mt-6 rounded-full bg-[var(--sf-primary)] hover:bg-[var(--sf-primary-hover)]">
+            Review Cart
           </Button>
         </Link>
       </div>

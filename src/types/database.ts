@@ -573,10 +573,14 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           description: string | null
+          icon: string | null
           id: string
+          image_url: string | null
           is_active: boolean
           name: string
           organization_id: string
+          show_in_menu: boolean
+          slug: string | null
           sort_order: number
           updated_at: string
           updated_by: string | null
@@ -587,10 +591,14 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          icon?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name: string
           organization_id: string
+          show_in_menu?: boolean
+          slug?: string | null
           sort_order?: number
           updated_at?: string
           updated_by?: string | null
@@ -601,10 +609,14 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
+          icon?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name?: string
           organization_id?: string
+          show_in_menu?: boolean
+          slug?: string | null
           sort_order?: number
           updated_at?: string
           updated_by?: string | null
@@ -5590,9 +5602,12 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           id: string
+          image_url: string | null
           is_active: boolean
           name: string
           organization_id: string
+          show_in_menu: boolean
+          slug: string | null
           sort_order: number
           updated_at: string
           updated_by: string | null
@@ -5605,9 +5620,12 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name: string
           organization_id: string
+          show_in_menu?: boolean
+          slug?: string | null
           sort_order?: number
           updated_at?: string
           updated_by?: string | null
@@ -5620,9 +5638,12 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name?: string
           organization_id?: string
+          show_in_menu?: boolean
+          slug?: string | null
           sort_order?: number
           updated_at?: string
           updated_by?: string | null

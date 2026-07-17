@@ -1,86 +1,170 @@
-import type { StorefrontProduct } from '../storefront.types'
+import type { CartItem, StorefrontProduct } from '../storefront.types'
 
-export const PRODUCT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const
-export const PRODUCT_COLORS = ['Black', 'White', 'Red', 'Blue', 'Beige'] as const
+export type CatalogVariant = NonNullable<StorefrontProduct['catalogVariants']>[number]
 
-export type ProductSize = (typeof PRODUCT_SIZES)[number]
-export type ProductColor = (typeof PRODUCT_COLORS)[number]
+/** Attribute name → chosen value (e.g. { Size: 'M', Color: 'Pink' }). */
+export type SelectedOptions = Record<string, string>
 
-export interface ProductVariantOptions {
-  sizes: string[]
-  colors: string[]
-  disabledSizes: string[]
+export interface VariantAttribute {
+  name: string
+  values: string[]
 }
 
-function hashString(value: string): number {
-  return value.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+export interface VariantValueAvailability {
+  value: string
+  disabled: boolean
 }
 
-export function getProductVariantOptions(product: StorefrontProduct): ProductVariantOptions | null {
-  if (product.catalogSizes?.length || product.catalogColors?.length) {
-    const sizes = product.catalogSizes ?? []
-    const colors = product.catalogColors ?? []
-    if (!sizes.length && !colors.length) return null
-    const disabledSizes = sizes.filter((size) => {
-      const hasStock = (product.catalogVariants ?? []).some(
-        (v) =>
-          v.stock > 0 &&
-          v.optionValues.some((ov) => ov.value === size) &&
-          (!colors.length ||
-            colors.some((c) =>
-              (product.catalogVariants ?? []).some(
-                (vv) =>
-                  vv.stock > 0 &&
-                  vv.optionValues.some((o) => o.value === c) &&
-                  vv.optionValues.some((o) => o.value === size),
-              ),
-            )),
-      )
-      return !hasStock
-    })
-    return { sizes, colors, disabledSizes }
-  }
-
-  const isAccessory = product.category === 'accessories'
-  const seed = hashString(product.id)
-
-  if (isAccessory) {
-    const colors = PRODUCT_COLORS.filter((_, index) => (seed + index) % 2 === 0)
-    if (colors.length === 0) return null
-    return { sizes: [], colors: [...colors], disabledSizes: [] }
-  }
-
-  const disabledSizes = PRODUCT_SIZES.filter((_, index) => (seed >> index) % 5 === 0)
-  const colors = PRODUCT_COLORS.filter((_, index) => (seed + index) % 3 !== 0)
-
-  if (colors.length === 0) return null
-
-  return {
-    sizes: [...PRODUCT_SIZES],
-    colors: [...colors],
-    disabledSizes: [...disabledSizes],
-  }
+function activeVariants(product: StorefrontProduct): CatalogVariant[] {
+  return product.catalogVariants ?? []
 }
 
-/** Resolve catalog variant from selected size/color (or default single variant). */
-export function resolveCatalogVariant(
+/**
+ * Attributes are derived only from the product's real variant data.
+ * Products without configured options never show selectors.
+ */
+export function getVariantAttributes(product: StorefrontProduct): VariantAttribute[] {
+  const byName = new Map<string, string[]>()
+  for (const variant of activeVariants(product)) {
+    for (const optionValue of variant.optionValues) {
+      const name = optionValue.option?.trim()
+      const value = optionValue.value?.trim()
+      if (!name || !value) continue
+      const values = byName.get(name) ?? []
+      if (!values.includes(value)) values.push(value)
+      byName.set(name, values)
+    }
+  }
+  return [...byName.entries()].map(([name, values]) => ({ name, values }))
+}
+
+/** True when the customer must make at least one choice before adding. */
+export function requiresVariantSelection(product: StorefrontProduct): boolean {
+  return getVariantAttributes(product).some((attribute) => attribute.values.length > 1)
+}
+
+function variantMatchesSelection(
+  variant: CatalogVariant,
+  attributes: VariantAttribute[],
+  selected: SelectedOptions,
+): boolean {
+  return attributes.every((attribute) => {
+    const chosen = selected[attribute.name]
+    if (!chosen) return false
+    return variant.optionValues.some(
+      (optionValue) => optionValue.option === attribute.name && optionValue.value === chosen,
+    )
+  })
+}
+
+/**
+ * Resolve the exact variant for a complete selection.
+ * Returns null when the selection is incomplete or the combination does not exist.
+ */
+export function resolveVariantBySelection(
   product: StorefrontProduct,
-  selectedSize?: string,
-  selectedColor?: string,
-) {
-  const variants = product.catalogVariants ?? []
-  if (!variants.length) return null
+  selected: SelectedOptions,
+): CatalogVariant | null {
+  const variants = activeVariants(product)
+  if (variants.length === 0) return null
 
-  if (!selectedSize && !selectedColor) {
-    return variants.find((v) => v.stock > 0) ?? variants[0]
+  const attributes = getVariantAttributes(product)
+  if (attributes.length === 0) {
+    return variants.find((variant) => variant.stock > 0) ?? variants[0]
   }
 
-  return (
-    variants.find((v) => {
-      const values = v.optionValues.map((o) => o.value)
-      const sizeOk = !selectedSize || values.includes(selectedSize)
-      const colorOk = !selectedColor || values.includes(selectedColor)
-      return sizeOk && colorOk
-    }) ?? null
-  )
+  return variants.find((variant) => variantMatchesSelection(variant, attributes, selected)) ?? null
+}
+
+/**
+ * A variant that can be added without asking the customer anything:
+ * either the product has no selectable attributes, or every attribute
+ * has exactly one value.
+ */
+export function getAutoSelectableVariant(product: StorefrontProduct): CatalogVariant | null {
+  if (requiresVariantSelection(product)) return null
+  const variants = activeVariants(product)
+  if (variants.length === 0) return null
+  return variants.find((variant) => variant.stock > 0) ?? variants[0]
+}
+
+/** Attribute names still missing from the current selection. */
+export function getMissingAttributes(
+  product: StorefrontProduct,
+  selected: SelectedOptions,
+): string[] {
+  return getVariantAttributes(product)
+    .filter((attribute) => !selected[attribute.name])
+    .map((attribute) => attribute.name)
+}
+
+/**
+ * Availability of each value for one attribute, honouring the other current
+ * selections. A value is disabled when no in-stock variant matches it.
+ */
+export function getValueAvailability(
+  product: StorefrontProduct,
+  attributeName: string,
+  selected: SelectedOptions,
+): VariantValueAvailability[] {
+  const attributes = getVariantAttributes(product)
+  const attribute = attributes.find((a) => a.name === attributeName)
+  if (!attribute) return []
+
+  const others = attributes.filter((a) => a.name !== attributeName)
+  return attribute.values.map((value) => {
+    const candidate: SelectedOptions = { ...selected, [attributeName]: value }
+    const exists = activeVariants(product).some(
+      (variant) =>
+        variant.stock > 0 &&
+        variant.optionValues.some(
+          (optionValue) => optionValue.option === attributeName && optionValue.value === value,
+        ) &&
+        others.every((other) => {
+          const chosen = candidate[other.name]
+          if (!chosen) return true
+          return variant.optionValues.some(
+            (optionValue) => optionValue.option === other.name && optionValue.value === chosen,
+          )
+        }),
+    )
+    return { value, disabled: !exists }
+  })
+}
+
+/** "Size: M • Color: Pink" — safe against missing values. */
+export function formatVariantLabel(
+  optionValues: Array<{ option: string; value: string }> | null | undefined,
+): string {
+  if (!optionValues?.length) return ''
+  return optionValues
+    .filter((optionValue) => optionValue.option && optionValue.value)
+    .map((optionValue) => `${optionValue.option}: ${optionValue.value}`)
+    .join(' • ')
+}
+
+/** Selection map reconstructed from a variant (used to preselect the editor). */
+export function buildSelectionFromVariant(
+  variant: Pick<CatalogVariant, 'optionValues'> | null | undefined,
+): SelectedOptions {
+  const selected: SelectedOptions = {}
+  for (const optionValue of variant?.optionValues ?? []) {
+    if (optionValue.option && optionValue.value) selected[optionValue.option] = optionValue.value
+  }
+  return selected
+}
+
+export type CartItemVariantStatus = 'valid' | 'needs_options'
+
+/**
+ * Legacy/localStorage cart items may predate variant enforcement.
+ * Anything without a persisted variant id must be repaired before checkout.
+ */
+export function validateCartItemVariant(item: CartItem): CartItemVariantStatus {
+  return item.variantId ? 'valid' : 'needs_options'
+}
+
+/** True when the cart contains items that must be repaired before checkout. */
+export function hasUnresolvedCartItems(items: CartItem[]): boolean {
+  return items.some((item) => validateCartItemVariant(item) !== 'valid')
 }

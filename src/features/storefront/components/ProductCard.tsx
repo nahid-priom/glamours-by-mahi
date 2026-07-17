@@ -8,7 +8,10 @@ import type { StorefrontProduct, ProductCardVariant } from '../storefront.types'
 import { useCart } from '../cart.context'
 import { useStorefrontUI } from '../storefront-ui.context'
 import { getDisplayStock } from '../utils/product-display'
-import { resolveCatalogVariant } from '../utils/product-variants'
+import {
+  getAutoSelectableVariant,
+  requiresVariantSelection,
+} from '../utils/product-variants'
 import {
   buildBadges,
   getCardCategory,
@@ -57,7 +60,7 @@ export const ProductCard = memo(function ProductCard({
   className,
 }: ProductCardProps) {
   const { addItem, toggleWishlist, isWishlisted } = useCart()
-  const { openQuickView } = useStorefrontUI()
+  const { openQuickView, openVariantSelector } = useStorefrontUI()
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState(false)
   const feedbackTimer = useRef<number | null>(null)
@@ -67,20 +70,17 @@ export const ProductCard = memo(function ProductCard({
   const outOfStock = stock <= 0
   const discount = getProductDiscount(product)
   const badges = buildBadges(product, discount)
-  const needsOptions =
-    Boolean(product.catalogSizes?.length || product.catalogColors?.length) ||
-    product.category === 'accessories' ||
-    product.isLimited
+  const needsOptions = requiresVariantSelection(product)
   const price = getCardPrice(product)
 
   const handleCta = () => {
     if (outOfStock || adding) return
     if (needsOptions) {
-      openQuickView(product)
+      openVariantSelector({ product, mode: 'add' })
       return
     }
     setAdding(true)
-    const matched = resolveCatalogVariant(product)
+    const matched = getAutoSelectableVariant(product)
     addItem(
       product,
       1,
@@ -217,7 +217,7 @@ export const ProductCard = memo(function ProductCard({
           )}
         >
           {added ? <Check className="h-3.5 w-3.5" /> : <ShoppingBag className="h-3.5 w-3.5" />}
-          {outOfStock ? 'Out of Stock' : added ? 'Added' : adding ? 'Adding…' : needsOptions ? 'Choose Options' : 'Add to Cart'}
+          {outOfStock ? 'Out of Stock' : added ? 'Added' : adding ? 'Adding…' : needsOptions ? 'Select Options' : 'Add to Cart'}
         </button>
       </div>
     </article>
