@@ -1,4 +1,5 @@
 export const HERO_CTA_TYPES = [
+  'none',
   'all_products',
   'category',
   'subcategory',
@@ -15,6 +16,7 @@ export const HERO_CTA_TYPES = [
 export type HeroCtaType = (typeof HERO_CTA_TYPES)[number]
 
 export const HERO_CTA_TYPE_LABELS: Record<HeroCtaType, string> = {
+  none: 'No Link',
   all_products: 'All Products',
   category: 'Category',
   subcategory: 'Subcategory',
@@ -91,6 +93,7 @@ export interface HeroSlideRow {
   secondary_cta_url: string | null
   secondary_cta_new_tab: boolean
   desktop_image_path: string
+  tablet_image_path: string | null
   mobile_image_path: string | null
   image_alt: string | null
   image_focal_x: number | null
@@ -139,6 +142,7 @@ export interface PublicHeroSlide {
   secondary_cta_url: string | null
   secondary_cta_new_tab: boolean
   desktop_image_path: string
+  tablet_image_path: string | null
   mobile_image_path: string | null
   image_alt: string | null
   image_focal_x: number | null
@@ -156,6 +160,7 @@ export interface PublicHeroSlide {
   sort_order: number
   created_at: string
   desktop_image_url?: string | null
+  tablet_image_url?: string | null
   mobile_image_url?: string | null
 }
 

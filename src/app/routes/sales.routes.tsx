@@ -4,8 +4,10 @@ import { PermissionRoute } from '@/app/guards/PermissionRoute'
 import {
   DueCollectionPage,
   HeldSalesPage,
+  OnlineOrdersPage,
   PosPage,
   SaleDetailPage,
+  SaleEditPage,
   SalesHistoryPage,
   SalesReturnsPage,
   withSuspense,
@@ -24,10 +26,14 @@ export const salesRoutes: RouteObject[] = [
     element: <PermissionRoute permission="sales.read" />,
     children: [
       { path: '/sales', element: withSuspense(SalesHistoryPage) },
+      { path: '/sales/online-orders', element: withSuspense(OnlineOrdersPage) },
       { path: '/sales/returns', element: withSuspense(SalesReturnsPage) },
       { path: '/sales/collections', element: withSuspense(DueCollectionPage) },
       { path: '/sales/:id', element: withSuspense(SaleDetailPage) },
-      { path: '/sales/:id/edit', element: <Navigate to="/sales" replace /> },
+      {
+        element: <PermissionRoute permission={['sales.update', 'sales.correct']} />,
+        children: [{ path: '/sales/:id/edit', element: withSuspense(SaleEditPage) }],
+      },
       { path: '/sales/:id/return', element: withSuspense(SalesReturnsPage) },
       { path: '/sales/:id/collections', element: withSuspense(DueCollectionPage) },
     ],

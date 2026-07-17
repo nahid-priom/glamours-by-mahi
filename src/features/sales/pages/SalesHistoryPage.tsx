@@ -1,189 +1,258 @@
-import { useCallback, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
-import { EntityCombobox } from '@/components/entity-combobox'
-import { Badge } from '@/components/ui/badge'
+import { Download, Plus, Printer, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useAuth } from '@/features/auth/auth-session'
-import { formatBDT } from '@/lib/format'
-import { queryKeys } from '@/lib/query/keys'
-import { listSales, searchBranches, searchCustomers } from '../repositories/sales.repository'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Skeleton } from '@/components/ui/skeleton'
+import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { useToast } from '@/components/ui/toast'
+import { getStorageItem, setStorageItem, STORAGE_KEYS } from '@/lib/storage'
+import { SalesHistoryFiltersBar } from '../components/SalesHistoryFiltersBar'
+import { SalesHistoryKpis } from '../components/SalesHistoryKpis'
+import { SalesHistoryMobileCards } from '../components/SalesHistoryMobileCards'
+import { SalesHistoryTable } from '../components/SalesHistoryTable'
+import {
+  downloadSalesCsv,
+  useSalesHistoryFilters,
+  useSalesHistoryQuery,
+  useSalesKpisQuery,
+} from '../hooks/use-sales-list'
+import { filtersToSearchParams } from '../schemas/sale-filters.schema'
+import {
+  DEFAULT_VISIBLE_COLUMNS,
+  FIXED_COLUMNS,
+  type SalesColumnKey,
+} from '../types/sale.types'
+
+const COLUMN_LABELS: Partial<Record<SalesColumnKey, string>> = {
+  customer: 'Customer',
+  items: 'Items',
+  paid: 'Paid',
+  due: 'Due',
+}
+
+function loadVisibleColumns(): SalesColumnKey[] {
+  const saved = getStorageItem<SalesColumnKey[] | null>(STORAGE_KEYS.salesColumnVisibility, null)
+  if (!saved?.length) return DEFAULT_VISIBLE_COLUMNS
+  const fixed = new Set(FIXED_COLUMNS)
+  const next = DEFAULT_VISIBLE_COLUMNS.filter((key) => fixed.has(key) || saved.includes(key))
+  return next.length ? next : DEFAULT_VISIBLE_COLUMNS
+}
+
+function buildPageList(current: number, total: number): number[] {
+  const pages: number[] = []
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, start + 4)
+  for (let i = start; i <= end; i += 1) pages.push(i)
+  return pages
+}
 
 export function SalesHistoryPage() {
-  const { activeBranchId } = useAuth()
-  const [search, setSearch] = useState('')
-  const [branchId, setBranchId] = useState<string | null>(activeBranchId)
-  const [customerId, setCustomerId] = useState<string | null>(null)
-  const [paymentStatus, setPaymentStatus] = useState('')
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [page, setPage] = useState(1)
+  const { toast } = useToast()
+  const { filters, setFilters, clearFilters } = useSalesHistoryFilters()
+  const listQuery = useSalesHistoryQuery(filters)
+  const kpisQuery = useSalesKpisQuery(filters)
+  const [visible, setVisible] = useState<SalesColumnKey[]>(loadVisibleColumns)
+  const [exporting, setExporting] = useState(false)
 
-  const onSearchCustomers = useCallback((q: string) => searchCustomers(q), [])
-  const onSearchBranches = useCallback((q: string) => searchBranches(q), [])
+  const total = listQuery.data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
+  const rows = listQuery.data?.items ?? []
 
-  const filters = {
-    search,
-    branchId,
-    customerId,
-    paymentStatus: paymentStatus || null,
-    fromDate: fromDate || null,
-    toDate: toDate || null,
-    page,
-    pageSize: 30,
+  const hasActiveFilters =
+    Boolean(filters.search.trim()) ||
+    filters.preset !== 'this_month' ||
+    Boolean(filters.paymentStatus) ||
+    Boolean(filters.status) ||
+    Boolean(filters.cashierId) ||
+    Boolean(filters.paymentMethod) ||
+    Boolean(filters.categoryId) ||
+    filters.dueOnly ||
+    filters.sort !== 'date_desc'
+
+  const optionalColumns = useMemo(
+    () => (Object.keys(COLUMN_LABELS) as SalesColumnKey[]),
+    [],
+  )
+
+  const toggleColumn = (key: SalesColumnKey) => {
+    if (FIXED_COLUMNS.includes(key)) return
+    setVisible((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+      const ordered = DEFAULT_VISIBLE_COLUMNS.filter((k) => next.includes(k))
+      setStorageItem(STORAGE_KEYS.salesColumnVisibility, ordered)
+      return ordered
+    })
   }
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.sales(filters),
-    queryFn: () => listSales(filters),
-  })
+  const onExport = async () => {
+    setExporting(true)
+    try {
+      await downloadSalesCsv(filters)
+      toast('Export downloaded')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Export failed', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
 
-  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 30))
+  const onPrintReport = () => {
+    const qs = filtersToSearchParams(filters).toString()
+    window.open(`/print/sales/report${qs ? `?${qs}` : ''}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const rangeStart = total === 0 ? 0 : (filters.page - 1) * filters.pageSize + 1
+  const rangeEnd = Math.min(filters.page * filters.pageSize, total)
 
   return (
-    <div className="mx-auto w-full max-w-6xl min-w-0 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-[#111827]">Sales history</h1>
-        <p className="text-sm text-[#6B7280]">Filter completed and open invoices from Supabase.</p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Input
-          placeholder="Invoice #"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setPage(1)
-          }}
-          className="max-w-[9rem]"
-        />
-        <Input
-          type="date"
-          value={fromDate}
-          onChange={(e) => {
-            setFromDate(e.target.value)
-            setPage(1)
-          }}
-          className="max-w-[10rem]"
-        />
-        <Input
-          type="date"
-          value={toDate}
-          onChange={(e) => {
-            setToDate(e.target.value)
-            setPage(1)
-          }}
-          className="max-w-[10rem]"
-        />
-        <div className="w-44">
-          <EntityCombobox
-            value={branchId}
-            onChange={(id) => {
-              setBranchId(id)
-              setPage(1)
-            }}
-            onSearch={onSearchBranches}
-            placeholder="Branch"
-          />
+    <div className="mx-auto w-full max-w-7xl min-w-0 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-text-primary">Sales</h1>
+          <p className="text-sm text-text-muted">
+            View all sales, payments and outstanding balances in one place.
+          </p>
         </div>
-        <div className="w-48">
-          <EntityCombobox
-            value={customerId}
-            onChange={(id) => {
-              setCustomerId(id)
-              setPage(1)
-            }}
-            onSearch={onSearchCustomers}
-            placeholder="Customer"
-          />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={exporting}
+            onClick={() => void onExport()}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={onPrintReport}>
+            <Printer className="h-3.5 w-3.5" />
+            Print Report
+          </Button>
+          <PermissionGate permission="pos.create">
+            <Button size="sm" asChild>
+              <Link to="/sales/pos">
+                <Plus className="h-3.5 w-3.5" />
+                New Sale
+              </Link>
+            </Button>
+          </PermissionGate>
         </div>
-        <select
-          className="flex h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-          value={paymentStatus}
-          onChange={(e) => {
-            setPaymentStatus(e.target.value)
-            setPage(1)
-          }}
-        >
-          <option value="">Payment status</option>
-          <option value="unpaid">Unpaid</option>
-          <option value="partial">Partial</option>
-          <option value="paid">Paid</option>
-          <option value="overpaid">Overpaid</option>
-          <option value="refunded">Refunded</option>
-        </select>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading sales…
+      <SalesHistoryKpis data={kpisQuery.data} loading={kpisQuery.isLoading} />
+
+      <SalesHistoryFiltersBar filters={filters} onChange={setFilters} onClear={clearFilters} />
+
+      {listQuery.isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-full rounded-xl" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-xl" />
+          ))}
         </div>
-      ) : null}
-      {error ? <p className="text-sm text-[#E11D48]">Failed to load sales.</p> : null}
+      ) : listQuery.error ? (
+        <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+          <p className="font-medium text-text-primary">Unable to load sales data.</p>
+          <Button className="mt-3" variant="outline" onClick={() => void listQuery.refetch()}>
+            Try Again
+          </Button>
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+          {hasActiveFilters ? (
+            <>
+              <p className="font-medium text-text-primary">
+                No sales match the selected filters.
+              </p>
+              <Button className="mt-3" variant="outline" onClick={clearFilters}>
+                Clear All Filters
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="font-medium text-text-primary">No sales have been created yet.</p>
+              <PermissionGate permission="pos.create">
+                <Button className="mt-3" asChild>
+                  <Link to="/sales/pos">Create New Sale</Link>
+                </Button>
+              </PermissionGate>
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="hidden justify-end md:flex">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" size="sm" variant="ghost" className="text-text-muted">
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Columns
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel>Visible Columns</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {optionalColumns.map((key) => (
+                  <DropdownMenuCheckboxItem
+                    key={key}
+                    checked={visible.includes(key)}
+                    onCheckedChange={() => toggleColumn(key)}
+                  >
+                    {COLUMN_LABELS[key]}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-      <div className="rounded-xl border border-border bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Invoice</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Branch</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Due</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(data?.items ?? []).map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>
-                  <Link to={`/sales/${row.id}`} className="font-medium text-[#E11D48] hover:underline">
-                    {row.invoice_no}
-                  </Link>
-                  <p className="text-xs text-[#9CA3AF]">
-                    {new Date(row.created_at).toLocaleString()}
-                  </p>
-                </TableCell>
-                <TableCell>{row.customers?.name ?? 'Walk-in'}</TableCell>
-                <TableCell className="text-[#6B7280]">{row.branches?.name ?? '—'}</TableCell>
-                <TableCell>
-                  <Badge variant="info">{row.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={row.payment_status === 'paid' ? 'success' : 'warning'}>
-                    {row.payment_status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">{formatBDT(Number(row.grand_total))}</TableCell>
-                <TableCell className="text-right text-[#E11D48]">
-                  {Number(row.due_total) > 0 ? formatBDT(Number(row.due_total)) : '—'}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {!isLoading && (data?.items.length ?? 0) === 0 ? (
-          <p className="p-6 text-center text-sm text-[#6B7280]">No sales match these filters.</p>
-        ) : null}
-      </div>
+          <SalesHistoryTable rows={rows} visible={visible} />
+          <SalesHistoryMobileCards rows={rows} />
 
-      <div className="flex justify-end gap-2">
-        <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-          Prev
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={page >= totalPages}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next
-        </Button>
-      </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-text-muted">
+              {rangeStart.toLocaleString('en-US')}–{rangeEnd.toLocaleString('en-US')} of{' '}
+              {total.toLocaleString('en-US')} sales
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={filters.page <= 1}
+                onClick={() => setFilters({ ...filters, page: filters.page - 1 })}
+              >
+                Previous
+              </Button>
+              {buildPageList(filters.page, totalPages).map((p) => (
+                <Button
+                  key={p}
+                  size="sm"
+                  variant={p === filters.page ? 'default' : 'outline'}
+                  className="min-w-9"
+                  onClick={() => setFilters({ ...filters, page: p })}
+                >
+                  {p}
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={filters.page >= totalPages}
+                onClick={() => setFilters({ ...filters, page: filters.page + 1 })}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

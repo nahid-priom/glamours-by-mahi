@@ -11,10 +11,9 @@ interface HeroLinkBuilderProps {
 }
 
 export function HeroLinkBuilder({ prefix }: HeroLinkBuilderProps) {
-  const { control, register, setValue } = useFormContext<HeroSlideFormValues>()
+  const { control, setValue } = useFormContext<HeroSlideFormValues>()
   const typeKey = prefix === 'primary' ? 'primary_cta_type' : 'secondary_cta_type'
   const configKey = prefix === 'primary' ? 'primary_cta_config' : 'secondary_cta_config'
-  const labelKey = prefix === 'primary' ? 'primary_cta_label' : 'secondary_cta_label'
 
   const ctaType = useWatch({ control, name: typeKey }) as HeroCtaType | null | undefined
   const config = useWatch({ control, name: configKey }) ?? {}
@@ -23,11 +22,6 @@ export function HeroLinkBuilder({ prefix }: HeroLinkBuilderProps) {
 
   return (
     <div className="space-y-3 rounded-xl border border-[var(--sf-border)] bg-white p-4">
-      <div>
-        <Label>CTA label</Label>
-        <Input className="mt-1" {...register(labelKey)} placeholder="Shop Now" />
-      </div>
-
       <div>
         <Label>Link type</Label>
         <Controller
@@ -157,7 +151,8 @@ export function HeroLinkBuilder({ prefix }: HeroLinkBuilderProps) {
       )}
 
       <p className="rounded-lg bg-[var(--sf-primary-soft)] px-3 py-2 text-xs text-[var(--sf-primary-hover)]">
-        Destination: <span className="font-semibold">{previewUrl}</span>
+        Destination:{' '}
+        <span className="font-semibold">{previewUrl || 'No link (non-clickable slide)'}</span>
       </p>
     </div>
   )

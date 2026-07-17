@@ -1,30 +1,32 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { Loader2, Printer } from 'lucide-react'
+import { Loader2, Pencil, Printer } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ProductImage } from '@/components/common/ProductImage'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { PrintFormatDialog } from '@/features/print/PrintFormatDialog'
+import { formatBDT } from '@/lib/format'
+import { queryKeys } from '@/lib/query/keys'
+import { VoidSaleDialog } from '../components/VoidSaleDialog'
+import { CollectDueDialog, type CollectDueTarget } from '../components/CollectDueDialog'
+import { getSale, getSaleTimeline, requestCorrection } from '../repositories/sales.repository'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
-import { PermissionGate } from '@/components/permission-gate/PermissionGate'
-import { formatBDT } from '@/lib/format'
-import { queryKeys } from '@/lib/query/keys'
-import {
-  getSale,
-  getSaleTimeline,
-  requestCorrection,
-  voidSale,
-} from '../repositories/sales.repository'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 export function SaleDetailPage() {
   const { id = '' } = useParams()
   const { toast } = useToast()
   const qc = useQueryClient()
+  const [printOpen, setPrintOpen] = useState(false)
   const [voidOpen, setVoidOpen] = useState(false)
   const [correctOpen, setCorrectOpen] = useState(false)
+  const [collectOpen, setCollectOpen] = useState(false)
   const [reason, setReason] = useState('')
 
   const { data: sale, isLoading, error } = useQuery({
@@ -39,20 +41,8 @@ export function SaleDetailPage() {
     enabled: Boolean(id),
   })
 
-  const voidMutation = useMutation({
-    mutationFn: () => voidSale(id, reason.trim()),
-    onSuccess: () => {
-      toast('Sale voided')
-      void qc.invalidateQueries({ queryKey: queryKeys.sale(id) })
-      setVoidOpen(false)
-      setReason('')
-    },
-    onError: (e: Error) => toast(e.message, 'error'),
-  })
-
   const correctMutation = useMutation({
-    mutationFn: () =>
-      requestCorrection({ sale_id: id, reason: reason.trim() }),
+    mutationFn: () => requestCorrection({ sale_id: id, reason: reason.trim() }),
     onSuccess: () => {
       toast('Correction requested')
       void qc.invalidateQueries({ queryKey: queryKeys.sale(id) })
@@ -64,59 +54,93 @@ export function SaleDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+      <div className="flex items-center gap-2 text-sm text-text-muted">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading sale…
       </div>
     )
   }
 
   if (error || !sale) {
-    return <p className="text-sm text-[#E11D48]">Sale not found or failed to load.</p>
+    return <p className="text-sm text-danger">Sale not found or failed to load.</p>
   }
 
   const items = (sale.sale_items ?? []).filter((i) => !i.deleted_at)
   const payments = (sale.sale_payments ?? []).filter((p) => !p.deleted_at)
 
+  const collectTarget: CollectDueTarget | null = sale.customer_id
+    ? {
+        saleId: sale.id,
+        customerId: sale.customer_id,
+        invoiceNo: sale.invoice_no,
+        grandTotal: Number(sale.grand_total),
+        paidTotal: Number(sale.paid_total),
+        dueTotal: Number(sale.due_total),
+        branchId: sale.branch_id,
+      }
+    : null
+
   return (
     <div className="mx-auto w-full max-w-5xl min-w-0 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs text-[#9CA3AF]">
-            <Link to="/sales" className="hover:text-[#E11D48]">
+          <p className="text-xs text-text-muted">
+            <Link to="/sales" className="hover:text-primary">
               Sales
             </Link>
             {' / '}
             {sale.invoice_no}
           </p>
-          <h1 className="text-xl font-bold text-[#111827]">{sale.invoice_no}</h1>
+          <h1 className="text-xl font-bold text-text-primary">{sale.invoice_no}</h1>
           <div className="mt-1 flex flex-wrap gap-2">
             <Badge variant="info">{sale.status}</Badge>
             <Badge>{sale.payment_status}</Badge>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" asChild>
-            <Link to={`/print/sales/${sale.id}/a4`} target="_blank">
+          <PermissionGate permission={['sales.print', 'sales.read']}>
+            <Button size="sm" variant="outline" onClick={() => setPrintOpen(true)}>
               <Printer className="mr-1.5 h-3.5 w-3.5" />
               Print
-            </Link>
-          </Button>
+            </Button>
+          </PermissionGate>
+          <PermissionGate permission={['sales.update', 'sales.correct']}>
+            {sale.status === 'completed' ? (
+              <Button size="sm" variant="outline" asChild>
+                <Link to={`/sales/${sale.id}/edit`}>
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                  Edit
+                </Link>
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" disabled>
+                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                Edit
+              </Button>
+            )}
+          </PermissionGate>
           <PermissionGate permission="sales.return.review">
             <Button size="sm" variant="outline" asChild>
               <Link to={`/sales/${sale.id}/return`}>Return</Link>
             </Button>
           </PermissionGate>
+          {Number(sale.due_total) > 0 && sale.customer_id ? (
+            <PermissionGate permission={['customer_due.collect', 'accounts.post']}>
+              <Button size="sm" onClick={() => setCollectOpen(true)}>
+                Collect Due
+              </Button>
+            </PermissionGate>
+          ) : null}
           <PermissionGate permission="sales.correct">
             <Button size="sm" variant="outline" onClick={() => setCorrectOpen(true)}>
-              Correct
+              Request correction
             </Button>
           </PermissionGate>
           <PermissionGate permission="sales.void">
             <Button
               size="sm"
               variant="ghost"
-              className="text-[#E11D48]"
-              disabled={sale.status === 'voided'}
+              className="text-danger"
+              disabled={sale.status !== 'completed'}
               onClick={() => setVoidOpen(true)}
             >
               Void
@@ -127,21 +151,31 @@ export function SaleDetailPage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-white p-3 text-sm">
-          <p className="text-[#9CA3AF]">Customer</p>
+          <p className="text-text-muted">Customer</p>
           <p className="font-medium">{sale.customers?.name ?? 'Walk-in'}</p>
-          <p className="text-[#6B7280]">{sale.customers?.phone}</p>
+          <p className="text-text-muted">{sale.customers?.phone}</p>
         </div>
         <div className="rounded-xl border border-border bg-white p-3 text-sm">
-          <p className="text-[#9CA3AF]">Branch</p>
+          <p className="text-text-muted">Branch</p>
           <p className="font-medium">{sale.branches?.name ?? '—'}</p>
-          <p className="text-[#6B7280]">{new Date(sale.created_at).toLocaleString()}</p>
+          <p className="text-text-muted">{new Date(sale.created_at).toLocaleString()}</p>
         </div>
         <div className="rounded-xl border border-border bg-white p-3 text-sm">
-          <p className="text-[#9CA3AF]">Totals</p>
+          <p className="text-text-muted">Totals</p>
           <p className="font-medium">{formatBDT(Number(sale.grand_total))}</p>
-          <p className="text-[#E11D48]">Due {formatBDT(Number(sale.due_total))}</p>
+          <p className="text-success">Paid {formatBDT(Number(sale.paid_total))}</p>
+          {Number(sale.due_total) > 0 ? (
+            <p className="text-danger">Due {formatBDT(Number(sale.due_total))}</p>
+          ) : null}
         </div>
       </div>
+
+      {sale.note ? (
+        <div className="rounded-xl border border-border bg-white p-3 text-sm">
+          <p className="text-text-muted">Note</p>
+          <p className="mt-0.5 text-text-primary">{sale.note}</p>
+        </div>
+      ) : null}
 
       <div className="rounded-xl border border-border bg-white">
         <div className="border-b border-border px-4 py-2 text-sm font-semibold">Items</div>
@@ -158,13 +192,25 @@ export function SaleDetailPage() {
             {items.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>
-                  <p className="font-medium">
-                    {item.product_variants?.products?.name ?? 'Item'}
-                  </p>
-                  <p className="text-xs text-[#9CA3AF]">
-                    {item.product_variants?.sku}
-                    {item.product_variants?.name ? ` · ${item.product_variants.name}` : ''}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <ProductImage
+                      product={{
+                        id: item.product_variants?.products?.id ?? item.variant_id,
+                        name: item.product_variants?.products?.name ?? 'Item',
+                        image_url: item.product_variants?.products?.image_url,
+                      }}
+                      className="h-11 w-11 shrink-0 rounded-lg"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {item.product_variants?.products?.name ?? 'Item'}
+                      </p>
+                      <p className="text-xs text-text-muted">
+                        {item.product_variants?.sku}
+                        {item.product_variants?.name ? ` · ${item.product_variants.name}` : ''}
+                      </p>
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">{item.qty}</TableCell>
                 <TableCell className="text-right">{formatBDT(Number(item.unit_price))}</TableCell>
@@ -178,7 +224,7 @@ export function SaleDetailPage() {
       <div className="rounded-xl border border-border bg-white">
         <div className="border-b border-border px-4 py-2 text-sm font-semibold">Payments</div>
         {payments.length === 0 ? (
-          <p className="p-4 text-sm text-[#6B7280]">No payments recorded.</p>
+          <p className="p-4 text-sm text-text-muted">No payments recorded.</p>
         ) : (
           <ul className="divide-y divide-border">
             {payments.map((p) => (
@@ -197,14 +243,14 @@ export function SaleDetailPage() {
       <div className="rounded-xl border border-border bg-white">
         <div className="border-b border-border px-4 py-2 text-sm font-semibold">Timeline</div>
         {timeline.length === 0 ? (
-          <p className="p-4 text-sm text-[#6B7280]">No activity or audit entries yet.</p>
+          <p className="p-4 text-sm text-text-muted">No activity or audit entries yet.</p>
         ) : (
           <ul className="divide-y divide-border">
             {timeline.map((e) => (
               <li key={`${e.source}-${e.id}`} className="px-4 py-2 text-sm">
                 <div className="flex flex-wrap justify-between gap-2">
                   <span className="font-medium">{e.message}</span>
-                  <span className="text-xs text-[#9CA3AF]">
+                  <span className="text-xs text-text-muted">
                     {e.source} · {new Date(e.created_at).toLocaleString()}
                   </span>
                 </div>
@@ -214,26 +260,9 @@ export function SaleDetailPage() {
         )}
       </div>
 
-      <Dialog open={voidOpen} onOpenChange={setVoidOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Void sale</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Reason</Label>
-              <Input value={reason} onChange={(e) => setReason(e.target.value)} required />
-            </div>
-            <Button
-              className="w-full"
-              disabled={!reason.trim() || voidMutation.isPending}
-              onClick={() => voidMutation.mutate()}
-            >
-              Confirm void
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PrintFormatDialog saleId={sale.id} open={printOpen} onOpenChange={setPrintOpen} />
+      <VoidSaleDialog saleId={sale.id} open={voidOpen} onOpenChange={setVoidOpen} />
+      <CollectDueDialog target={collectTarget} open={collectOpen} onOpenChange={setCollectOpen} />
 
       <Dialog open={correctOpen} onOpenChange={setCorrectOpen}>
         <DialogContent className="max-w-sm">

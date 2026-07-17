@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { formatBDT } from '@/lib/format'
 import { FREE_DELIVERY_THRESHOLD } from '@/lib/constants'
 import { useCart } from './cart.context'
-import { LazyImage } from './components/LazyImage'
+import { ProductImage } from '@/components/common/ProductImage'
 
 export function CartPage() {
   const { items, subtotal, deliveryCharge, total, updateQuantity, removeItem } = useCart()
@@ -37,8 +37,8 @@ export function CartPage() {
                 to={`/product/${item.slug}`}
                 className="h-28 w-20 shrink-0 overflow-hidden rounded-xl"
               >
-                <LazyImage
-                  src={item.image}
+                <ProductImage
+                  product={item}
                   alt={item.alt}
                   aspectRatio="portrait"
                   className="h-28 w-20"

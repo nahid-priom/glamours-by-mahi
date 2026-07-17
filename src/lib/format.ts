@@ -2,6 +2,29 @@ export function formatBDT(amount: number): string {
   return `৳${amount.toLocaleString('en-BD')}`
 }
 
+const BN_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯']
+
+/** Convert Latin digits in a value to Bengali numerals for user-facing counts. */
+export function toBnDigits(value: number | string): string {
+  return String(value).replace(/[0-9]/g, (d) => BN_DIGITS[Number(d)])
+}
+
+/** Row-friendly invoice date, e.g. "17 Jul 2026 • 11:45 AM". */
+export function formatInvoiceDateTime(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  if (Number.isNaN(d.getTime())) return '—'
+  const day = d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+  const time = d.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  return `${day} • ${time}`
+}
+
 export function formatNumber(value: number): string {
   return value.toLocaleString('en-BD')
 }

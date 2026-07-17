@@ -14,7 +14,7 @@ import { storefrontService } from '../storefront.service'
 import { useAccount } from './account.context'
 import { getOrdersForPhone } from './account.service'
 import { AccountOrderDetailsDialog } from './AccountOrderDetailsDialog'
-import { LazyImage } from '../components/LazyImage'
+import { ProductImage } from '@/components/common/ProductImage'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { AccountOrderFilters } from './account.types'
 
@@ -31,7 +31,7 @@ function OrderRowImage({ order }: { order: Order }) {
 
   return (
     <div className="h-16 w-14 shrink-0 overflow-hidden rounded-xl bg-[#FFF9FB]">
-      <LazyImage src={product.image} alt={product.alt} className="h-16 w-14" aspectRatio="portrait" />
+      <ProductImage product={product} alt={product.alt} className="h-16 w-14" aspectRatio="portrait" />
     </div>
   )
 }

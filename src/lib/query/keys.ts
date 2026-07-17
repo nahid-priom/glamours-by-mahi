@@ -9,8 +9,12 @@ export const queryKeys = {
   subcategories: (filters: Record<string, unknown> = {}) => ['subcategories', filters] as const,
   brands: (filters: Record<string, unknown> = {}) => ['brands', filters] as const,
   variants: (filters: Record<string, unknown> = {}) => ['variants', filters] as const,
-  posProducts: (filters: Record<string, unknown>) => ['pos-products', filters] as const,
-  productVariantByBarcode: (barcode: string) => ['variant-barcode', barcode] as const,
+  posProducts: (branchId: string, cursor?: string | null) =>
+    ['pos-products', branchId, cursor ?? null] as const,
+  productVariantByBarcode: (branchId: string, barcode: string) =>
+    ['variant-barcode', branchId, barcode] as const,
+  posPaymentMethods: ['pos-payment-methods'] as const,
+  posFinancialAccounts: (branchId: string) => ['pos-financial-accounts', branchId] as const,
   customers: (q: string) => ['customers', q] as const,
   customersAdmin: (filters: Record<string, unknown> = {}) => ['customers-admin', filters] as const,
   suppliers: (filters: Record<string, unknown> = {}) => ['suppliers', filters] as const,
@@ -18,6 +22,7 @@ export const queryKeys = {
   dashboard: (filters: Record<string, unknown> = {}) => ['dashboard', filters] as const,
   dashboardBranches: ['dashboard-branches'] as const,
   sales: (filters: Record<string, unknown>) => ['sales', filters] as const,
+  salesKpis: (filters: Record<string, unknown>) => ['sales-kpis', filters] as const,
   sale: (id: string) => ['sale', id] as const,
   saleReturns: (filters: Record<string, unknown> = {}) => ['sale-returns', filters] as const,
   heldSales: ['held-sales'] as const,
@@ -32,6 +37,20 @@ export const queryKeys = {
   couriers: ['couriers'] as const,
   paymentMethods: ['payment-methods'] as const,
   purchases: (filters: Record<string, unknown> = {}) => ['purchases', filters] as const,
+  purchase: (id: string) => ['purchase', id] as const,
+  purchaseReturns: (filters: Record<string, unknown> = {}) =>
+    ['purchase-returns', filters] as const,
+  inventoryBalances: (filters: Record<string, unknown> = {}) =>
+    ['inventory-balances', filters] as const,
+  customersLedger: (customerId: string) => ['customers-ledger', customerId] as const,
+  suppliersLedger: (supplierId: string) => ['suppliers-ledger', supplierId] as const,
+  accountingAccounts: (filters: Record<string, unknown> = {}) =>
+    ['accounting-accounts', filters] as const,
+  accountingTransactions: (filters: Record<string, unknown> = {}) =>
+    ['accounting-transactions', filters] as const,
+  onlineOrders: (filters: Record<string, unknown> = {}) =>
+    ['online-orders', filters] as const,
+  reconciliationReport: () => ['reconciliation-report'] as const,
   reports: (name: string, filters: Record<string, unknown> = {}) =>
     ['reports', name, filters] as const,
 }

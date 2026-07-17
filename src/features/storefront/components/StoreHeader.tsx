@@ -13,9 +13,6 @@ const NAV = [
   { to: '/category/new-arrival', label: 'New Arrivals' },
   { to: '/category/dress', label: 'Dress' },
   { to: '/shop', label: 'Beauty' },
-  { to: '/category/co-ord-set', label: 'Co-ords' },
-  { to: '/category/accessories', label: 'Accessories' },
-  { to: '/category/sale', label: 'Offers' },
 ]
 
 export function StoreHeader() {
@@ -58,7 +55,7 @@ export function StoreHeader() {
 
           <Link
             to="/"
-            className="shrink-0 font-serif text-lg tracking-[0.12em] text-[var(--sf-ink)] sm:text-xl"
+            className="hidden shrink-0 font-serif tracking-[0.12em] text-[var(--sf-ink)] sm:block sm:text-xl"
           >
             {STOREFRONT_BRAND}
           </Link>

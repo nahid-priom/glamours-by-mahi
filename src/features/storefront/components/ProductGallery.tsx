@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { AppImage } from '@/components/common/AppImage'
+import { ProductImage } from '@/components/common/ProductImage'
+import { getStableAdditionalImages } from '@/lib/images/product-image-utils'
 import type { StorefrontProduct } from '../storefront.types'
 import { getDisplayAlt, getDisplayGallery, getDisplayImage } from '../utils/product-display'
 
@@ -45,10 +46,10 @@ function MobileGallery({
       >
         {images.map((src, index) => (
           <div key={`${src}-${index}`} className="w-full shrink-0 snap-center overflow-hidden rounded-3xl bg-white">
-            <AppImage
-              src={src}
+            <ProductImage
+              product={{ id: `${alt}-${index}`, name: alt, imageUrl: src }}
               alt={alt}
-              aspectRatio="portrait"
+              aspectRatio="square"
               className="w-full"
               loading={index === 0 ? 'eager' : 'lazy'}
               objectFit="cover"
@@ -74,11 +75,18 @@ function MobileGallery({
   )
 }
 
+const MIN_GALLERY_IMAGES = 4
+
 export function ProductGallery({ product, className }: ProductGalleryProps) {
   const cover = getDisplayImage(product)
   const gallery = getDisplayGallery(product)
-  // Cover first, then remaining unique images
-  const images = [cover, ...gallery.filter((url) => url !== cover)].slice(0, 5)
+  // Exact cover always first, then the product's own remaining unique images.
+  const ownImages = [cover, ...gallery.filter((url) => url !== cover)].slice(0, 5)
+  // Pad thin galleries with stable per-product extras so thumbnails never look empty.
+  const images = [
+    ...ownImages,
+    ...getStableAdditionalImages(product.id, MIN_GALLERY_IMAGES - ownImages.length, ownImages),
+  ]
   const alt = getDisplayAlt(product)
   const [activeIndex, setActiveIndex] = useState(0)
   const [zoomed, setZoomed] = useState(false)
@@ -91,7 +99,7 @@ export function ProductGallery({ product, className }: ProductGalleryProps) {
         <MobileGallery images={images} alt={alt} activeIndex={activeIndex} onIndexChange={setActiveIndex} />
       </div>
 
-      <div className="hidden gap-4 lg:grid lg:grid-cols-[88px_1fr]">
+      <div className="hidden gap-4 lg:grid lg:max-w-[600px] lg:grid-cols-[88px_1fr]">
         {images.length > 1 && (
           <div className="flex flex-col gap-3">
             {images.map((src, index) => (
@@ -104,7 +112,13 @@ export function ProductGallery({ product, className }: ProductGalleryProps) {
                   activeIndex === index ? 'border-[#22171C]' : 'border-transparent opacity-70 hover:opacity-100',
                 )}
               >
-                <AppImage src={src} alt="" aspectRatio="portrait" className="w-full" objectFit="cover" />
+                <ProductImage
+                  product={{ id: `${product.id}-${index}`, name: alt, imageUrl: src }}
+                  alt=""
+                  aspectRatio="square"
+                  className="w-full"
+                  objectFit="cover"
+                />
               </button>
             ))}
           </div>
@@ -115,10 +129,10 @@ export function ProductGallery({ product, className }: ProductGalleryProps) {
           onMouseEnter={() => setZoomed(true)}
           onMouseLeave={() => setZoomed(false)}
         >
-          <AppImage
-            src={activeImage}
+          <ProductImage
+            product={{ id: product.id, name: alt, imageUrl: activeImage }}
             alt={alt}
-            aspectRatio="portrait"
+            aspectRatio="square"
             className="w-full"
             loading="eager"
             objectFit="cover"

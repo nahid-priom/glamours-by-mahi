@@ -4,6 +4,8 @@ import type { HeroCtaConfig, HeroCtaType } from '../types/hero.types'
 
 export function buildHeroCtaUrl(type: HeroCtaType, config: HeroCtaConfig = {}): string {
   switch (type) {
+    case 'none':
+      return ''
     case 'all_products':
       return '/shop'
     case 'category':
@@ -50,11 +52,13 @@ export function buildHeroCtaUrl(type: HeroCtaType, config: HeroCtaConfig = {}): 
   }
 }
 
+/** Returns '' when the slide should not be clickable. */
 export function resolveCtaHref(
   type: HeroCtaType | null | undefined,
   config: HeroCtaConfig | null | undefined,
   storedUrl?: string | null,
 ): string {
+  if (type === 'none') return ''
   if (storedUrl?.trim()) return storedUrl.trim()
   if (!type) return '/shop'
   return buildHeroCtaUrl(type, config ?? {})

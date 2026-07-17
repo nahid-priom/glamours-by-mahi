@@ -4539,6 +4539,8 @@ export type Database = {
           method: string
           organization_id: string
           reference: string | null
+          reversed_at: string | null
+          reversal_note: string | null
           sale_id: string
           updated_at: string
           updated_by: string | null
@@ -4553,6 +4555,8 @@ export type Database = {
           method: string
           organization_id: string
           reference?: string | null
+          reversed_at?: string | null
+          reversal_note?: string | null
           sale_id: string
           updated_at?: string
           updated_by?: string | null
@@ -4567,6 +4571,8 @@ export type Database = {
           method?: string
           organization_id?: string
           reference?: string | null
+          reversed_at?: string | null
+          reversal_note?: string | null
           sale_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -6173,11 +6179,40 @@ export type Database = {
         Args: { approval_id: string; corrected_payload: Json }
         Returns: Json
       }
+      edit_sale: { Args: { payload: Json }; Returns: Json }
+      sales_history_export: { Args: { p_filters?: Json }; Returns: Json }
+      sales_history_kpis: { Args: { p_filters?: Json }; Returns: Json }
+      sales_history_list: { Args: { p_filters?: Json }; Returns: Json }
       approve_sales_return: { Args: { payload: Json }; Returns: Json }
+      approve_purchase_return: { Args: { payload: Json }; Returns: Json }
+      place_online_order: { Args: { payload: Json }; Returns: Json }
+      fulfil_online_order: { Args: { payload: Json }; Returns: Json }
+      cancel_online_order: { Args: { payload: Json }; Returns: Json }
+      expire_online_reservations: {
+        Args: { p_organization_id?: string }
+        Returns: Json
+      }
+      list_online_orders: { Args: { payload?: Json }; Returns: Json }
+      get_reconciliation_report: { Args: { payload?: Json }; Returns: Json }
+      recon_opening_stock_ledger: { Args: { payload: Json }; Returns: Json }
+      recon_opening_party_balances: { Args: { payload: Json }; Returns: Json }
+      recon_rebuild_financial_running_balances: {
+        Args: { payload: Json }
+        Returns: Json
+      }
+      recon_repair_partial_sale_summaries: {
+        Args: { payload: Json }
+        Returns: Json
+      }
       close_business_day: { Args: { payload: Json }; Returns: string }
       collect_customer_due: { Args: { payload: Json }; Returns: Json }
       complete_accounting_setup: { Args: { payload: Json }; Returns: Json }
       complete_pos_sale: { Args: { payload: Json }; Returns: Json }
+      normalize_barcode: { Args: { p_code: string }; Returns: string | null }
+      pos_lookup_variant_by_barcode: {
+        Args: { p_barcode: string; p_branch_id: string }
+        Returns: Json
+      }
       complete_purchase: { Args: { payload: Json }; Returns: Json }
       create_expense: { Args: { payload: Json }; Returns: string }
       create_income: { Args: { payload: Json }; Returns: string }

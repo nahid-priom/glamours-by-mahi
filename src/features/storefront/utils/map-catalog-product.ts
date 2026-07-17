@@ -1,6 +1,6 @@
 import type { StorefrontCategorySlug } from '@/lib/constants'
 import { ECOMMERCE_STORE_ID, ECOMMERCE_STORE_NAME } from '@/lib/constants'
-import { getProductImageMeta } from '@/lib/product-images'
+import { getStableDemoProductImage } from '@/lib/images/product-image-utils'
 import type { CatalogProductRow } from '../repositories/storefront-catalog.repository'
 import { resolveCatalogImageUrls } from '../repositories/storefront-catalog.repository'
 import type { StorefrontProduct } from '../storefront.types'
@@ -74,16 +74,7 @@ export async function mapCatalogToStorefront(row: CatalogProductRow): Promise<St
   )
 
   if (imageUrls.length === 0) {
-    const imageCategory =
-      category === 'dress' ||
-      category === 'kurti' ||
-      category === 'tops-tunic' ||
-      category === 'co-ord-set' ||
-      category === 'accessories'
-        ? category
-        : 'dress'
-    const fallback = getProductImageMeta(sku, row.name, imageCategory)
-    imageUrls = [fallback.main, ...fallback.gallery.filter((g) => g !== fallback.main)]
+    imageUrls = [getStableDemoProductImage(row.id)]
   }
 
   const variantMeta = buildVariantOptions(row)
@@ -123,6 +114,7 @@ export async function mapCatalogToStorefront(row: CatalogProductRow): Promise<St
     displayPrice: sellingPrice,
     rating: 0,
     reviewCount: 0,
+    unit: row.unit,
     catalogVariants: variantMeta.variants,
     catalogSizes: variantMeta.sizes,
     catalogColors: variantMeta.colors,

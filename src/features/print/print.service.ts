@@ -53,29 +53,43 @@ export async function saleToPrintData(saleId: string): Promise<PrintSaleData | n
       .filter(Boolean)
       .join(' + ') || sale.payment_status
 
+  const payments = (sale.sale_payments ?? [])
+    .filter((p) => !p.deleted_at)
+    .map((p) => ({
+      method: p.method,
+      amount: Number(p.amount),
+      reference: p.reference,
+    }))
+
   return {
     id: sale.id,
     saleNo: sale.invoice_no,
     storeName: org?.name || 'Store',
     branchName: sale.branches?.name ?? '—',
+    branchAddress: sale.branches?.address ?? undefined,
+    branchPhone: sale.branches?.phone ?? undefined,
     customerName: sale.customers?.name ?? 'Walk-in',
     customerPhone: sale.customers?.phone ?? '',
     customerAddress: '',
     salespersonName: profiles?.full_name ?? '—',
     channel: 'pos',
     paymentMethod,
-    items: (sale.sale_items ?? []).map((i) => ({
-      productId: i.variant_id,
-      name:
-        i.product_variants?.products?.name ||
-        i.product_variants?.name ||
-        i.product_variants?.sku ||
-        'Item',
-      quantity: Number(i.qty),
-      unitPrice: Number(i.unit_price),
-      discount: Number(i.line_discount ?? 0),
-      total: Number(i.line_total),
-    })),
+    payments,
+    items: (sale.sale_items ?? [])
+      .filter((i) => !i.deleted_at)
+      .map((i) => ({
+        productId: i.variant_id,
+        name:
+          i.product_variants?.products?.name ||
+          i.product_variants?.name ||
+          i.product_variants?.sku ||
+          'Item',
+        barcode: i.product_variants?.barcode ?? null,
+        quantity: Number(i.qty),
+        unitPrice: Number(i.unit_price),
+        discount: Number(i.line_discount ?? 0),
+        total: Number(i.line_total),
+      })),
     subtotal: Number(sale.subtotal),
     discount: Number(sale.discount),
     total: Number(sale.grand_total),
@@ -84,6 +98,7 @@ export async function saleToPrintData(saleId: string): Promise<PrintSaleData | n
     note: sale.note ?? '',
     status: sale.status,
     createdAt: sale.completed_at ?? sale.created_at,
+    barcodeValue: sale.invoice_no,
   }
 }
 

@@ -22,6 +22,7 @@ export type CatalogProductRow = {
   base_barcode: string | null
   selling_price: number
   purchase_price: number
+  unit: string
   wholesale_price: number | null
   has_variants: boolean
   product_type: string
@@ -62,6 +63,7 @@ type RawProduct = {
   base_barcode: string | null
   selling_price: number
   purchase_price: number
+  unit: string
   wholesale_price: number | null
   has_variants: boolean
   product_type: string
@@ -104,6 +106,7 @@ const PRODUCT_SELECT = `
   base_barcode,
   selling_price,
   purchase_price,
+  unit,
   wholesale_price,
   has_variants,
   product_type,
@@ -170,6 +173,7 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
     base_barcode: row.base_barcode,
     selling_price: Number(row.selling_price),
     purchase_price: Number(row.purchase_price),
+    unit: row.unit,
     wholesale_price: row.wholesale_price != null ? Number(row.wholesale_price) : null,
     has_variants: row.has_variants,
     product_type: row.product_type,

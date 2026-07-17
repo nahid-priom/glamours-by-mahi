@@ -1,6 +1,9 @@
 /** Shared product placeholder — fashion-neutral brand asset */
 export const PRODUCT_PLACEHOLDER = '/images/product-placeholder.svg'
 
+/** Professional common fallback used across POS product cards and previews. */
+export const POS_PRODUCT_FALLBACK = '/images/product-fallback.svg'
+
 export function isValidImageSource(src: unknown): src is string {
   if (typeof src !== 'string') return false
   const value = src.trim()

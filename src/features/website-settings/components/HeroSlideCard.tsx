@@ -64,7 +64,9 @@ export function HeroSlideCard({
         </div>
 
         <p className="mt-2 truncate text-sm text-[var(--sf-muted)]">
-          CTA → {slide.primary_cta_url || '/shop'}
+          {slide.primary_cta_type === 'none'
+            ? 'No link (non-clickable slide)'
+            : `Link → ${slide.primary_cta_url || '/shop'}`}
         </p>
 
         <div className="mt-3 flex flex-wrap gap-1.5">

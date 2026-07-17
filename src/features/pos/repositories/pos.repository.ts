@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
-import type { Json } from '@/types/database'
+import { resolveStorageUrl } from '@/features/products/repositories/catalog.repository'
+import type { Json, TablesInsert } from '@/types/database'
+import { normalizeBdPhone } from '@/lib/phone-utils'
 import { calcCartTotals, calcLineTotal, normalizeBarcode } from '../cart-utils'
 import type {
   CompletePosSalePayload,
@@ -7,14 +9,21 @@ import type {
   PosVariant,
 } from '../types'
 
-type SearchPosVariantsArgs = {
-  query: string
+type UntypedRpc = (
+  fn: string,
+  args?: Record<string, unknown>,
+) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+
+const untypedRpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc
+
+type ListPosCatalogueArgs = {
   branchId: string
   cursor?: string | null
   pageSize?: number
+  signal?: AbortSignal
 }
 
-type SearchPosVariantsResult = {
+type ListPosCatalogueResult = {
   items: PosVariant[]
   nextCursor: string | null
 }
@@ -32,13 +41,27 @@ async function getSaleableLocationIds(branchId: string): Promise<string[]> {
   return (data ?? []).map((r) => r.id)
 }
 
-function mapVariantRow(row: Record<string, unknown>, locationIds: string[]): PosVariant | null {
+async function resolveThumbnail(
+  imagePath: string | null | undefined,
+  coverPath: string | null | undefined,
+): Promise<string | null> {
+  const raw = imagePath || coverPath || null
+  if (!raw) return null
+  return resolveStorageUrl(raw)
+}
+
+function mapVariantRow(
+  row: Record<string, unknown>,
+  locationIds: string[],
+  thumbnailUrl: string | null,
+): PosVariant | null {
   const product = row.products as
     | {
         id: string
         name: string
         is_active: boolean
         deleted_at: string | null
+        status?: string
         product_images?: Array<{
           storage_path: string
           is_cover: boolean
@@ -50,26 +73,19 @@ function mapVariantRow(row: Record<string, unknown>, locationIds: string[]): Pos
     | undefined
 
   if (!product || product.deleted_at || !product.is_active) return null
-  if ((product as { status?: string }).status && (product as { status?: string }).status !== 'active') {
-    return null
-  }
+  if (product.status && product.status !== 'active') return null
   if (row.deleted_at || row.is_active === false) return null
 
-  const balances = (row.inventory_balances as Array<{
-    quantity: number
-    location_id: string
-    deleted_at: string | null
-  }> | null) ?? []
+  const balances =
+    (row.inventory_balances as Array<{
+      quantity: number
+      location_id: string
+      deleted_at: string | null
+    }> | null) ?? []
 
   const availableStock = balances
     .filter((b) => !b.deleted_at && locationIds.includes(b.location_id))
     .reduce((sum, b) => sum + Number(b.quantity ?? 0), 0)
-
-  const images = product.product_images ?? []
-  const cover =
-    images.find((img) => !img.deleted_at && img.is_cover && !img.variant_id) ??
-    images.find((img) => !img.deleted_at && img.variant_id === row.id) ??
-    images.find((img) => !img.deleted_at)
 
   const variantLabel = (row.name as string | null) || 'Default'
 
@@ -80,20 +96,44 @@ function mapVariantRow(row: Record<string, unknown>, locationIds: string[]): Pos
     variantLabel,
     sku: row.sku as string,
     barcode: (row.barcode as string | null) ?? null,
-    thumbnailUrl: (row.image_path as string | null) || cover?.storage_path || null,
+    thumbnailUrl,
     unitPrice: Number(row.selling_price ?? 0),
     availableStock,
   }
 }
 
-export async function searchPosVariants({
-  query,
+function pickCoverPath(row: Record<string, unknown>): string | null {
+  const product = row.products as
+    | {
+        product_images?: Array<{
+          storage_path: string
+          is_cover: boolean
+          deleted_at: string | null
+          variant_id: string | null
+        }>
+      }
+    | null
+    | undefined
+
+  const images = product?.product_images ?? []
+  const cover =
+    images.find((img) => !img.deleted_at && img.is_cover && !img.variant_id) ??
+    images.find((img) => !img.deleted_at && img.variant_id === row.id) ??
+    images.find((img) => !img.deleted_at)
+
+  return (row.image_path as string | null) || cover?.storage_path || null
+}
+
+/** Paginated catalogue browse — no name/SKU search. */
+export async function listPosCatalogue({
   branchId,
   cursor,
   pageSize = 24,
-}: SearchPosVariantsArgs): Promise<SearchPosVariantsResult> {
+  signal,
+}: ListPosCatalogueArgs): Promise<ListPosCatalogueResult> {
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+
   const locationIds = await getSaleableLocationIds(branchId)
-  const q = query.trim()
 
   let builder = supabase
     .from('product_variants')
@@ -108,7 +148,7 @@ export async function searchPosVariants({
       product_id,
       is_active,
       deleted_at,
-          products!inner (
+      products!inner (
         id,
         name,
         is_active,
@@ -134,38 +174,44 @@ export async function searchPosVariants({
     .order('sku', { ascending: true })
     .limit(pageSize)
 
-  if (q) {
-    builder = builder.or(`sku.ilike.%${q}%,barcode.ilike.%${q}%,name.ilike.%${q}%`)
-  }
   if (cursor) {
     builder = builder.gt('sku', cursor)
   }
 
   const { data, error } = await builder
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
   if (error) throw error
 
-  const items = ((data ?? []) as unknown as Record<string, unknown>[])
-    .map((row) => mapVariantRow(row, locationIds))
-    .filter((v): v is PosVariant => v !== null)
+  const rows = (data ?? []) as unknown as Record<string, unknown>[]
+  const mapped = await Promise.all(
+    rows.map(async (row) => {
+      const thumb = await resolveThumbnail(pickCoverPath(row), null)
+      return mapVariantRow(row, locationIds, thumb)
+    }),
+  )
 
-  // Secondary filter by product name when query present
-  const filtered =
-    q.length === 0
-      ? items
-      : items.filter(
-          (v) =>
-            v.sku.toLowerCase().includes(q.toLowerCase()) ||
-            (v.barcode ?? '').toLowerCase().includes(q.toLowerCase()) ||
-            v.variantLabel.toLowerCase().includes(q.toLowerCase()) ||
-            v.productName.toLowerCase().includes(q.toLowerCase()),
-        )
-
+  const items = mapped.filter((v): v is PosVariant => v !== null)
   const nextCursor =
-    (data?.length ?? 0) >= pageSize ? ((data![data!.length - 1] as { sku: string }).sku ?? null) : null
+    rows.length >= pageSize ? ((rows[rows.length - 1] as { sku: string }).sku ?? null) : null
 
-  return { items: filtered, nextCursor }
+  return { items, nextCursor }
 }
 
+/** @deprecated Prefer listPosCatalogue — kept for HeldSales / transitional callers. */
+export async function searchPosVariants({
+  branchId,
+  cursor,
+  pageSize = 24,
+}: {
+  query?: string
+  branchId: string
+  cursor?: string | null
+  pageSize?: number
+}): Promise<ListPosCatalogueResult> {
+  return listPosCatalogue({ branchId, cursor, pageSize })
+}
+
+/** Exact barcode lookup via indexed server RPC. Never loads the full product table. */
 export async function findVariantByBarcodeExact(
   barcode: string,
   branchId: string,
@@ -173,53 +219,29 @@ export async function findVariantByBarcodeExact(
   const code = normalizeBarcode(barcode)
   if (!code) return null
 
-  const locationIds = await getSaleableLocationIds(branchId)
-
-  const { data, error } = await supabase
-    .from('product_variants')
-    .select(
-      `
-      id,
-      sku,
-      barcode,
-      name,
-      selling_price,
-      image_path,
-      product_id,
-      is_active,
-      deleted_at,
-          products!inner (
-        id,
-        name,
-        is_active,
-        status,
-        deleted_at,
-        product_images (
-          storage_path,
-          is_cover,
-          deleted_at,
-          variant_id
-        )
-      ),
-      inventory_balances (
-        quantity,
-        location_id,
-        deleted_at
-      )
-    `,
-    )
-    .eq('is_active', true)
-    .is('deleted_at', null)
-    .eq('products.status', 'active')
-    .ilike('barcode', code)
-    .limit(5)
+  const { data, error } = await untypedRpc('pos_lookup_variant_by_barcode', {
+    p_barcode: code,
+    p_branch_id: branchId,
+  })
 
   if (error) throw error
+  if (!data || typeof data !== 'object') return null
 
-  const rows = (data ?? []) as unknown as Record<string, unknown>[]
-  const exact = rows.find((r) => normalizeBarcode(String(r.barcode ?? '')) === code)
-  if (!exact) return null
-  return mapVariantRow(exact, locationIds)
+  const row = data as Record<string, unknown>
+  const thumbRaw = (row.thumbnailUrl as string | null) ?? null
+  const thumbnailUrl = await resolveThumbnail(thumbRaw, null)
+
+  return {
+    variantId: String(row.variantId),
+    productId: String(row.productId),
+    productName: String(row.productName ?? ''),
+    variantLabel: String(row.variantLabel ?? 'Default'),
+    sku: String(row.sku ?? ''),
+    barcode: (row.barcode as string | null) ?? null,
+    thumbnailUrl,
+    unitPrice: Number(row.unitPrice ?? 0),
+    availableStock: Number(row.availableStock ?? 0),
+  }
 }
 
 export async function completeSale(payload: CompletePosSalePayload) {
@@ -230,9 +252,25 @@ export async function completeSale(payload: CompletePosSalePayload) {
   return data
 }
 
-export async function searchCustomers(query: string): Promise<
-  Array<{ id: string; label: string; description?: string }>
-> {
+export type PosCustomerOption = { id: string; label: string; description?: string }
+
+/** Presentational label — falls back to the mobile number when the name is empty. */
+function toCustomerOption(row: {
+  id: string
+  name: string | null
+  phone: string | null
+}): PosCustomerOption {
+  const name = row.name?.trim() ?? ''
+  const phone = row.phone ?? ''
+  return {
+    id: row.id,
+    label: name || (phone ? `Customer • ${phone}` : 'Customer'),
+    description: name && phone ? phone : undefined,
+  }
+}
+
+/** Server-side, tenant-scoped (RLS) customer search by name or mobile. */
+export async function searchCustomers(query: string): Promise<PosCustomerOption[]> {
   const q = query.trim()
   let builder = supabase
     .from('customers')
@@ -243,17 +281,89 @@ export async function searchCustomers(query: string): Promise<
     .limit(20)
 
   if (q) {
-    builder = builder.or(`name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`)
+    // Match either the raw query or its digit-normalized mobile form.
+    const normalizedMobile = normalizeBdPhone(q)
+    const filters = [`name.ilike.%${q}%`, `phone.ilike.%${q}%`, `email.ilike.%${q}%`]
+    if (normalizedMobile && normalizedMobile !== q) {
+      filters.push(`phone.ilike.%${normalizedMobile}%`)
+    }
+    builder = builder.or(filters.join(','))
   }
 
   const { data, error } = await builder
   if (error) throw error
 
-  return (data ?? []).map((c) => ({
-    id: c.id,
-    label: c.name,
-    description: c.phone,
-  }))
+  return (data ?? []).map(toCustomerOption)
+}
+
+export type QuickCreateCustomerInput = {
+  mobile: string
+  name?: string | null
+  organizationId: string
+  branchId?: string | null
+  createdBy?: string | null
+}
+
+export type QuickCreateCustomerResult = {
+  customer: PosCustomerOption
+  existing: boolean
+}
+
+async function findActiveCustomerByPhone(phone: string): Promise<PosCustomerOption | null> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('id, name, phone')
+    .eq('phone', phone)
+    .is('deleted_at', null)
+    .neq('status', 'archived')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data ? toCustomerOption(data) : null
+}
+
+/**
+ * POS Customer Quick Add. Normalizes the mobile, prevents duplicates
+ * (server-side lookup + unique-violation race handling) and creates a
+ * tenant-scoped customer using the secure customers table (RLS enforced).
+ */
+export async function quickCreateCustomer(
+  input: QuickCreateCustomerInput,
+): Promise<QuickCreateCustomerResult> {
+  const phone = normalizeBdPhone(input.mobile)
+  if (!phone) throw new Error('সঠিক মোবাইল নম্বর দিন')
+
+  const existing = await findActiveCustomerByPhone(phone)
+  if (existing) return { customer: existing, existing: true }
+
+  const name = input.name?.trim() ?? ''
+  const payload: TablesInsert<'customers'> = {
+    organization_id: input.organizationId,
+    branch_id: input.branchId ?? null,
+    name,
+    phone,
+    status: 'active',
+    current_due: 0,
+    created_by: input.createdBy ?? null,
+  }
+
+  const { data, error } = await supabase
+    .from('customers')
+    .insert(payload)
+    .select('id, name, phone')
+    .single()
+
+  if (error) {
+    // 23505 = unique_violation → another session created it first.
+    if ((error as { code?: string }).code === '23505') {
+      const raced = await findActiveCustomerByPhone(phone)
+      if (raced) return { customer: raced, existing: true }
+    }
+    throw error
+  }
+
+  return { customer: toCustomerOption(data), existing: false }
 }
 
 export async function listPaymentMethods() {
@@ -391,10 +501,12 @@ export async function deleteHeldSale(heldSaleId: string) {
 }
 
 export const posRepository = {
+  listPosCatalogue,
   searchPosVariants,
   findVariantByBarcodeExact,
   completeSale,
   searchCustomers,
+  quickCreateCustomer,
   listPaymentMethods,
   listFinancialAccounts,
   listHeldSales,

@@ -62,6 +62,7 @@ function mapRow(row: RawSlide): HeroSlideRow {
     secondary_cta_url: (row.secondary_cta_url as string | null) ?? null,
     secondary_cta_new_tab: Boolean(row.secondary_cta_new_tab),
     desktop_image_path: String(row.desktop_image_path ?? ''),
+    tablet_image_path: (row.tablet_image_path as string | null) ?? null,
     mobile_image_path: (row.mobile_image_path as string | null) ?? null,
     image_alt: (row.image_alt as string | null) ?? null,
     image_focal_x: row.image_focal_x == null ? null : Number(row.image_focal_x),
@@ -112,6 +113,7 @@ function mapPublic(row: RawSlide): PublicHeroSlide {
     secondary_cta_url: mapped.secondary_cta_url,
     secondary_cta_new_tab: mapped.secondary_cta_new_tab,
     desktop_image_path: mapped.desktop_image_path,
+    tablet_image_path: mapped.tablet_image_path,
     mobile_image_path: mapped.mobile_image_path,
     image_alt: mapped.image_alt,
     image_focal_x: mapped.image_focal_x,
@@ -146,24 +148,28 @@ function emptyToNull(value?: string | null) {
 }
 
 function formToPayload(orgId: string, values: HeroSlideFormValues, userId?: string) {
-  const primaryUrl = buildHeroCtaUrl(values.primary_cta_type, values.primary_cta_config ?? {})
+  const primaryUrl = emptyToNull(
+    buildHeroCtaUrl(values.primary_cta_type, values.primary_cta_config ?? {}),
+  )
   const secondaryType = values.secondary_cta_type ?? 'all_products'
   const secondaryUrl = values.secondary_cta_enabled
-    ? buildHeroCtaUrl(secondaryType, values.secondary_cta_config ?? {})
+    ? emptyToNull(buildHeroCtaUrl(secondaryType, values.secondary_cta_config ?? {}))
     : null
+
+  const heading = values.heading?.trim() || values.internal_name.trim()
 
   return {
     organization_id: orgId,
     internal_name: values.internal_name.trim(),
     eyebrow: emptyToNull(values.eyebrow),
-    heading: values.heading.trim(),
+    heading,
     highlight_text: emptyToNull(values.highlight_text),
     description: emptyToNull(values.description),
     offer_title: emptyToNull(values.offer_title),
     offer_subtitle: emptyToNull(values.offer_subtitle),
     discount_text: emptyToNull(values.discount_text),
     coupon_code: emptyToNull(values.coupon_code),
-    primary_cta_label: values.primary_cta_label.trim(),
+    primary_cta_label: values.primary_cta_label?.trim() || 'Shop Now',
     primary_cta_type: values.primary_cta_type,
     primary_cta_config: values.primary_cta_config ?? {},
     primary_cta_url: primaryUrl,
@@ -175,8 +181,9 @@ function formToPayload(orgId: string, values: HeroSlideFormValues, userId?: stri
     secondary_cta_url: secondaryUrl,
     secondary_cta_new_tab: values.secondary_cta_new_tab,
     desktop_image_path: values.desktop_image_path?.trim() ?? '',
+    tablet_image_path: emptyToNull(values.tablet_image_path),
     mobile_image_path: emptyToNull(values.mobile_image_path),
-    image_alt: emptyToNull(values.image_alt) ?? values.heading.trim(),
+    image_alt: emptyToNull(values.image_alt) ?? heading,
     image_focal_x: values.image_focal_x ?? null,
     image_focal_y: values.image_focal_y ?? null,
     image_object_position: values.image_object_position,
@@ -323,6 +330,7 @@ export async function duplicateHeroSlide(id: string): Promise<HeroSlideRow> {
     secondary_cta_config: slide.secondary_cta_config,
     secondary_cta_new_tab: slide.secondary_cta_new_tab,
     desktop_image_path: slide.desktop_image_path,
+    tablet_image_path: slide.tablet_image_path,
     mobile_image_path: slide.mobile_image_path,
     image_alt: slide.image_alt ?? '',
     image_focal_x: slide.image_focal_x,
@@ -362,7 +370,7 @@ export async function reorderHeroSlides(orderedIds: string[]): Promise<void> {
 export async function uploadHeroImage(
   slideId: string,
   file: File,
-  kind: 'desktop' | 'mobile',
+  kind: 'desktop' | 'tablet' | 'mobile',
 ): Promise<string> {
   const orgId = await requireOrgId()
   const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
@@ -418,6 +426,7 @@ export async function fetchActiveHeroSlides(
     return {
       ...slide,
       desktop_image_url: resolveWebsiteMediaUrl(slide.desktop_image_path),
+      tablet_image_url: resolveWebsiteMediaUrl(slide.tablet_image_path),
       mobile_image_url: resolveWebsiteMediaUrl(slide.mobile_image_path),
     }
   })

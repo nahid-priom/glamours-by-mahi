@@ -1,9 +1,8 @@
-import { memo, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, Heart, ShoppingBag, Star } from 'lucide-react'
+import { Check, Eye, Heart, ShoppingBag, Star } from 'lucide-react'
 import { formatBDT } from '@/lib/format'
-import { getProductCoverImage } from '@/lib/images/product-image-utils'
-import { AppImage } from '@/components/common/AppImage'
+import { ProductImage } from '@/components/common/ProductImage'
 import { cn } from '@/lib/utils'
 import type { StorefrontProduct, ProductCardVariant } from '../storefront.types'
 import { useCart } from '../cart.context'
@@ -55,12 +54,13 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
 
 export const ProductCard = memo(function ProductCard({
   product,
-  variant = 'default',
   className,
 }: ProductCardProps) {
   const { addItem, toggleWishlist, isWishlisted } = useCart()
   const { openQuickView } = useStorefrontUI()
-  const [hovered, setHovered] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [added, setAdded] = useState(false)
+  const feedbackTimer = useRef<number | null>(null)
 
   const wishlisted = isWishlisted(product.id)
   const stock = getDisplayStock(product)
@@ -71,19 +71,15 @@ export const ProductCard = memo(function ProductCard({
     Boolean(product.catalogSizes?.length || product.catalogColors?.length) ||
     product.category === 'accessories' ||
     product.isLimited
-  const showRating = variant !== 'compact'
-  const showButton = variant !== 'compact'
   const price = getCardPrice(product)
 
-  const coverImage = getProductCoverImage(product)
-  const imageSrc = hovered && product.hoverImage ? product.hoverImage : coverImage
-
   const handleCta = () => {
-    if (outOfStock) return
+    if (outOfStock || adding) return
     if (needsOptions) {
       openQuickView(product)
       return
     }
+    setAdding(true)
     const matched = resolveCatalogVariant(product)
     addItem(
       product,
@@ -97,33 +93,36 @@ export const ProductCard = memo(function ProductCard({
           }
         : undefined,
     )
+    setAdding(false)
+    setAdded(true)
+    if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current)
+    feedbackTimer.current = window.setTimeout(() => setAdded(false), 900)
   }
 
   return (
     <article
       className={cn(
-        'group flex h-[320px] flex-col overflow-hidden rounded-[22px] border border-[var(--sf-border)] bg-white shadow-sm transition-all duration-300',
-        'md:h-[390px] lg:h-[390px] xl:h-[400px]',
-        'hover:-translate-y-0.5 hover:border-[var(--sf-primary)]/40 hover:shadow-[0_16px_40px_-24px_rgba(255,63,127,0.35)]',
+        'group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-pink-100 bg-white shadow-sm transition-all duration-300',
+        'hover:-translate-y-1 hover:border-pink-200 hover:shadow-lg',
         className,
       )}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
     >
-      <div className="relative h-[155px] shrink-0 overflow-hidden bg-[#FFF9FB] md:h-[210px] lg:h-[230px]">
-        <Link to={`/product/${product.slug}`} className="block h-full">
-          <AppImage
-            src={imageSrc}
+      <div className="relative aspect-square shrink-0 overflow-hidden bg-pink-50">
+        <button
+          type="button"
+          className="block h-full w-full text-left"
+          onClick={() => openQuickView(product)}
+          aria-label={`Quick view ${getCardProductName(product)}`}
+        >
+          <ProductImage
+            product={product}
             alt={getCardProductName(product)}
             className="h-full w-full"
-            imgClassName={cn(
-              'transition-transform duration-500',
-              hovered && 'scale-105',
-            )}
+            imgClassName="object-cover object-center transition-transform duration-500 group-hover:scale-105"
             objectFit="cover"
-            aspectRatio="auto"
+            sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
           />
-        </Link>
+        </button>
 
         {badges.length > 0 && (
           <div className="absolute left-1.5 top-1.5 flex max-w-[calc(100%-2.75rem)] flex-wrap gap-1 sm:left-2 sm:top-2">
@@ -131,7 +130,7 @@ export const ProductCard = memo(function ProductCard({
               <span
                 key={badge.label}
                 className={cn(
-                  'flex h-5 items-center rounded-full px-2 text-[9px] font-bold uppercase tracking-wide',
+                  'flex h-5 items-center rounded-full px-2 text-[9px] font-bold uppercase tracking-wide shadow-sm',
                   badge.className,
                 )}
               >
@@ -145,7 +144,7 @@ export const ProductCard = memo(function ProductCard({
           type="button"
           onClick={() => toggleWishlist(product.id, product.slug)}
           className={cn(
-            'absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition hover:scale-105 sm:right-2 sm:top-2 sm:h-9 sm:w-9',
+            'absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition hover:scale-105 sm:right-2 sm:top-2 sm:h-8 sm:w-8',
             wishlisted && 'text-[#FF3F7F]',
           )}
           aria-label="Wishlist"
@@ -153,71 +152,73 @@ export const ProductCard = memo(function ProductCard({
           <Heart className={cn('h-3.5 w-3.5 sm:h-4 sm:w-4', wishlisted && 'fill-current')} />
         </button>
 
-        <div className="absolute right-1.5 top-11 hidden flex-col gap-1.5 opacity-0 transition duration-300 group-hover:opacity-100 sm:right-2 sm:top-12 md:flex">
+        <div className="absolute bottom-2 right-2 opacity-100 transition duration-300 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100">
           <button
             type="button"
             onClick={() => openQuickView(product)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition hover:scale-105"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition hover:scale-105"
             aria-label="Quick view"
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-2.5 sm:p-3">
-        <p className="truncate text-[10px] uppercase tracking-[0.18em] text-slate-400">
+      <div className="flex min-h-0 flex-1 flex-col p-2 sm:p-2.5">
+        <p className="truncate text-[9px] uppercase tracking-[0.14em] text-slate-400">
           {getCardCategory(product)}
         </p>
 
-        <Link to={`/product/${product.slug}`} className="mt-0.5 block min-h-[20px] sm:min-h-[25px]">
-          <h3 className="line-clamp-2 text-[13px] font-semibold leading-4 text-[#22171C] transition hover:text-[#FF3F7F] sm:text-sm sm:leading-5">
+        <Link to={`/product/${product.slug}`} className="mt-0.5 block">
+          <h3 className="line-clamp-2 text-xs font-semibold leading-4 text-[#22171C] transition hover:text-[#FF3F7F] sm:text-[13px]">
             {getCardProductName(product)}
           </h3>
         </Link>
 
-        <div className="mt-1 flex h-5 items-center gap-x-1.5 overflow-hidden sm:mt-1.5 sm:h-6">
+        <div className="mt-auto pt-1.5">
+          {getCardReviewCount(product) > 0 && getCardRating(product) > 0 ? (
+            <StarRating rating={getCardRating(product)} count={getCardReviewCount(product)} />
+          ) : null}
+        </div>
+
+        <div className="mt-0.5 flex min-h-5 flex-wrap items-baseline gap-x-1.5 overflow-hidden">
           {price > 0 ? (
             <>
-              <span className="text-sm font-bold text-[#22171C] sm:text-base">{formatBDT(price)}</span>
-              {product.onSale && product.salePrice && (
+              <span className="text-sm font-bold text-[#FF3F7F] sm:text-base">{formatBDT(price)}</span>
+              {discount > 0 && product.salePrice ? (
                 <>
-                  <span className="text-xs text-slate-400 line-through">{formatBDT(product.price)}</span>
-                  <span className="text-[10px] font-semibold text-primary">{discount}% OFF</span>
+                  <span className="text-[11px] text-slate-400 line-through">{formatBDT(product.price)}</span>
                 </>
-              )}
+              ) : null}
+              {product.unit ? <span className="text-[10px] text-text-muted">/ {product.unit}</span> : null}
             </>
           ) : (
             <span className="text-xs font-medium text-[#6B7280]">Price unavailable</span>
           )}
         </div>
 
-        <div className="mt-0.5 mb-2.5 flex h-4 items-center sm:mt-1 sm:mb-3">
-          {showRating && getCardReviewCount(product) > 0 && getCardRating(product) > 0 ? (
-            <StarRating rating={getCardRating(product)} count={getCardReviewCount(product)} />
-          ) : (
-            <span className="invisible text-[11px]">—</span>
-          )}
+        <div className="mb-1.5 mt-0.5 h-3.5 text-[9px] font-medium">
+          <span className={outOfStock ? 'text-danger' : stock <= 5 ? 'text-warning' : 'text-success'}>
+            {outOfStock ? 'Out of stock' : stock <= 5 ? `Only ${stock} left` : 'In stock'}
+          </span>
         </div>
 
-        {showButton ? (
-          <button
-            type="button"
-            onClick={handleCta}
-            disabled={outOfStock}
-            className={cn(
-              'mt-auto flex h-8 w-full items-center justify-center gap-1 rounded-full border text-[10px] font-bold uppercase tracking-[0.12em] transition sm:h-9',
-              outOfStock
-                ? 'cursor-not-allowed border-[var(--sf-border)] bg-[var(--sf-bg)] text-[var(--sf-muted)]'
-                : 'border-[var(--sf-border)] text-[var(--sf-ink)] hover:border-[var(--sf-primary)] hover:bg-[var(--sf-primary)] hover:text-white',
-            )}
-          >
-            {!outOfStock && <ShoppingBag className="h-3 w-3 md:hidden" aria-hidden />}
-            {outOfStock ? 'Out of Stock' : needsOptions ? 'Choose Options' : 'Add to Cart'}
-          </button>
-        ) : (
-          <div className="mt-auto h-8 shrink-0 sm:h-9" aria-hidden />
-        )}
+        <button
+          type="button"
+          onClick={handleCta}
+          disabled={outOfStock || adding}
+          className={cn(
+            'flex h-8 w-full items-center justify-center gap-1.5 rounded-lg text-[11px] font-semibold text-white transition sm:h-9 sm:text-xs',
+            outOfStock
+              ? 'cursor-not-allowed bg-slate-200 text-slate-500'
+              : added
+                ? 'bg-success'
+                : 'bg-[#ff3f7f] hover:bg-[#d91e5b]',
+          )}
+        >
+          {added ? <Check className="h-3.5 w-3.5" /> : <ShoppingBag className="h-3.5 w-3.5" />}
+          {outOfStock ? 'Out of Stock' : added ? 'Added' : adding ? 'Adding…' : needsOptions ? 'Choose Options' : 'Add to Cart'}
+        </button>
       </div>
     </article>
   )

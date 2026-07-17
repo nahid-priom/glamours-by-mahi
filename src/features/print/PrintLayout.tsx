@@ -6,7 +6,9 @@ import './print.css'
 
 export function PrintLayout() {
   const location = useLocation()
-  const isReportRoute = location.pathname.startsWith('/print/reports')
+  const isReportRoute =
+    location.pathname.startsWith('/print/reports') ||
+    location.pathname.startsWith('/print/sales/report')
 
   return (
     <div className="print-root">

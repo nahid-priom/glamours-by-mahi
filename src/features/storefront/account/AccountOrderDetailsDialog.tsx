@@ -13,7 +13,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { formatBDT, formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { storefrontService } from '../storefront.service'
-import { LazyImage } from '../components/LazyImage'
+import { ProductImage } from '@/components/common/ProductImage'
 
 interface AccountOrderDetailsDialogProps {
   order: Order | null
@@ -61,7 +61,7 @@ export function AccountOrderDetailsDialog({ order, open, onOpenChange }: Account
           <div className="flex gap-4 rounded-2xl border border-[#22171C]/8 bg-[#FFF9FB]/50 p-4">
             <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-white">
               {product ? (
-                <LazyImage src={product.image} alt={product.alt} className="h-20 w-16" aspectRatio="portrait" />
+                <ProductImage product={product} alt={product.alt} className="h-20 w-16" aspectRatio="portrait" />
               ) : (
                 <div className="flex h-full items-center justify-center text-[10px] text-[#6B7280]">No image</div>
               )}

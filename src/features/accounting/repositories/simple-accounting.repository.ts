@@ -200,6 +200,9 @@ async function upsertAccount(input: {
   is_active?: boolean
   chart_account_id?: string | null
 }) {
+  // Live balance mutations go through authorized RPCs only.
+  // Creating/updating account metadata may set opening_balance; current_balance
+  // is initialized to opening on insert and never patched from the client afterward.
   if (input.id) {
     const { data, error } = await supabase
       .from('financial_accounts')
@@ -207,6 +210,7 @@ async function upsertAccount(input: {
         name: input.name,
         account_kind: input.account_kind,
         branch_id: input.branch_id ?? null,
+        // Do not overwrite current_balance from the UI.
         opening_balance: input.opening_balance ?? 0,
         is_default: input.is_default ?? false,
         is_active: input.is_active ?? true,

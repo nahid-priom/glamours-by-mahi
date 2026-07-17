@@ -1,12 +1,29 @@
 import { supabase } from '@/lib/supabase/client'
+import { resolveStorageUrl } from '@/features/products/repositories/catalog.repository'
 import type { Json, Tables } from '@/types/database'
 import type { EntityOption } from '@/components/entity-combobox'
+import { filtersToRpcPayload } from '../schemas/sale-filters.schema'
+import type {
+  EditSalePayload,
+  SalesHistoryFilters,
+  SalesHistoryKpis,
+  SalesHistoryListResult,
+  SalesHistoryRow,
+} from '../types/sale.types'
+
+type UntypedRpc = (
+  fn: string,
+  args?: Record<string, unknown>,
+) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+
+const untypedRpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc
 
 export type Sale = Tables<'sales'>
 export type SaleItem = Tables<'sale_items'>
 export type SalePayment = Tables<'sale_payments'>
 export type SaleReturn = Tables<'sale_returns'>
 
+/** @deprecated Prefer SalesHistoryFilters */
 export type SaleFilters = {
   branchId?: string | null
   customerId?: string | null
@@ -26,13 +43,24 @@ export type SaleListItem = Sale & {
 
 export type SaleDetail = Sale & {
   customers?: { id: string; name: string; phone: string | null; email: string | null } | null
-  branches?: { id: string; name: string } | null
+  branches?: { id: string; name: string; address?: string | null; phone?: string | null } | null
   sale_items?: Array<
     SaleItem & {
       product_variants?: {
         sku: string
         name: string | null
-        products?: { name: string } | null
+        barcode?: string | null
+        products?: {
+          id: string
+          name: string
+          image_url?: string | null
+          category_id?: string | null
+          product_images?: Array<{
+            storage_path: string
+            is_cover: boolean
+            deleted_at: string | null
+          }>
+        } | null
       } | null
     }
   >
@@ -44,6 +72,73 @@ function range(page: number, pageSize: number) {
   return { from, to: from + pageSize - 1 }
 }
 
+export async function listSalesHistory(
+  filters: SalesHistoryFilters,
+): Promise<SalesHistoryListResult> {
+  const { data, error } = await untypedRpc('sales_history_list', {
+    p_filters: filtersToRpcPayload(filters),
+  })
+  if (error) throw error
+  const raw = (data ?? {}) as Record<string, unknown>
+  const items = ((raw.items as SalesHistoryRow[]) ?? []).map((row) => ({
+    ...row,
+    category_summary: Array.isArray(row.category_summary) ? row.category_summary : [],
+    item_qty: Number(row.item_qty ?? 0),
+    subtotal: Number(row.subtotal ?? 0),
+    discount: Number(row.discount ?? 0),
+    grand_total: Number(row.grand_total ?? 0),
+    paid_total: Number(row.paid_total ?? 0),
+    due_total: Number(row.due_total ?? 0),
+    change_amount: Number(row.change_amount ?? 0),
+  }))
+  return {
+    items,
+    total: Number(raw.total ?? 0),
+    page: Number(raw.page ?? filters.page),
+    page_size: Number(raw.page_size ?? filters.pageSize),
+  }
+}
+
+export async function getSalesHistoryKpis(
+  filters: SalesHistoryFilters,
+): Promise<SalesHistoryKpis> {
+  const { data, error } = await untypedRpc('sales_history_kpis', {
+    p_filters: filtersToRpcPayload(filters),
+  })
+  if (error) throw error
+  const raw = (data ?? {}) as Record<string, unknown>
+  return {
+    total_sales: Number(raw.total_sales ?? 0),
+    total_paid: Number(raw.total_paid ?? 0),
+    total_due: Number(raw.total_due ?? 0),
+    total_discount: Number(raw.total_discount ?? 0),
+    total_invoices: Number(raw.total_invoices ?? 0),
+    returned_voided: Number(raw.returned_voided ?? 0),
+    average_invoice: Number(raw.average_invoice ?? 0),
+    total_items_sold: Number(raw.total_items_sold ?? 0),
+  }
+}
+
+export async function exportSalesHistory(
+  filters: SalesHistoryFilters,
+): Promise<SalesHistoryListResult> {
+  const { data, error } = await untypedRpc('sales_history_export', {
+    p_filters: filtersToRpcPayload(filters),
+  })
+  if (error) throw error
+  const raw = (data ?? {}) as Record<string, unknown>
+  return {
+    items: ((raw.items as SalesHistoryRow[]) ?? []).map((row) => ({
+      ...row,
+      category_summary: Array.isArray(row.category_summary) ? row.category_summary : [],
+    })),
+    total: Number(raw.total ?? 0),
+    page: 1,
+    page_size: Number(raw.page_size ?? 5000),
+  }
+}
+
+/** Legacy list kept for transitional callers */
 export async function listSales(
   filters: SaleFilters = {},
 ): Promise<{ items: SaleListItem[]; total: number }> {
@@ -95,10 +190,20 @@ export async function getSale(id: string): Promise<SaleDetail | null> {
       `
       *,
       customers(id, name, phone, email),
-      branches(id, name),
+      branches(id, name, address, phone),
       sale_items(
         *,
-        product_variants(sku, name, products(name))
+        product_variants(
+          sku,
+          name,
+          barcode,
+          products(
+            id,
+            name,
+            category_id,
+            product_images(storage_path, is_cover, deleted_at)
+          )
+        )
       ),
       sale_payments(*)
     `,
@@ -107,7 +212,18 @@ export async function getSale(id: string): Promise<SaleDetail | null> {
     .is('deleted_at', null)
     .maybeSingle()
   if (error) throw error
-  return data as unknown as SaleDetail | null
+  const sale = data as unknown as SaleDetail | null
+  if (!sale) return null
+  await Promise.all(
+    (sale.sale_items ?? []).map(async (item) => {
+      const product = item.product_variants?.products
+      if (!product) return
+      const activeImages = (product.product_images ?? []).filter((image) => !image.deleted_at)
+      const cover = activeImages.find((image) => image.is_cover) ?? activeImages[0]
+      product.image_url = await resolveStorageUrl(cover?.storage_path)
+    }),
+  )
+  return sale
 }
 
 export async function getSaleTimeline(saleId: string) {
@@ -187,13 +303,27 @@ export async function collectDue(payload: {
   return data
 }
 
-export async function voidSale(saleId: string, reason: string) {
+export async function voidSale(saleId: string, reason: string, note?: string | null) {
+  const fullReason = note?.trim() ? `${reason.trim()} — ${note.trim()}` : reason.trim()
   const { data, error } = await supabase.rpc('void_sale', {
     sale_id: saleId,
-    reason,
+    reason: fullReason,
   })
   if (error) throw error
   return data
+}
+
+export async function editSale(payload: EditSalePayload) {
+  const { data, error } = await untypedRpc('edit_sale', {
+    payload: payload as unknown as Record<string, unknown>,
+  })
+  if (error) throw error
+  return data as {
+    original_sale_id: string
+    new_sale_id: string
+    new_invoice_no?: string
+    idempotent?: boolean
+  }
 }
 
 export async function requestCorrection(payload: {
@@ -305,16 +435,60 @@ export async function searchBranches(query: string): Promise<EntityOption[]> {
   return (data ?? []).map((b) => ({ id: b.id, label: b.name, description: b.code }))
 }
 
+export async function searchCashiers(query: string): Promise<EntityOption[]> {
+  const q = query.trim()
+  let builder = supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('full_name')
+    .limit(20)
+  if (q) builder = builder.or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
+  const { data, error } = await builder
+  if (error) throw error
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    label: p.full_name,
+    description: p.email,
+  }))
+}
+
+export async function searchCategories(query: string): Promise<EntityOption[]> {
+  const q = query.trim()
+  let builder = supabase
+    .from('categories')
+    .select('id, name, code')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('name')
+    .limit(20)
+  if (q) builder = builder.or(`name.ilike.%${q}%,code.ilike.%${q}%`)
+  const { data, error } = await builder
+  if (error) throw error
+  return (data ?? []).map((c) => ({
+    id: c.id,
+    label: c.name,
+    description: c.code ?? undefined,
+  }))
+}
+
 export const salesRepository = {
+  listSalesHistory,
+  getSalesHistoryKpis,
+  exportSalesHistory,
   listSales,
   getSale,
   getSaleTimeline,
   collectDue,
   voidSale,
+  editSale,
   requestCorrection,
   approveSalesReturn,
   listSaleReturns,
   searchCustomers,
   listPaymentMethods,
   searchBranches,
+  searchCashiers,
+  searchCategories,
 }

@@ -8,6 +8,7 @@ import {
   PrintSaleA4Page,
   PrintSaleGiftLabelPage,
   PrintSalePosPage,
+  PrintSalesReportPage,
   PublicInvoicePage,
   withSuspense,
 } from './lazy'
@@ -24,6 +25,7 @@ export const printRoutes: RouteObject = {
         {
           element: <PermissionRoute permission="sales.read" />,
           children: [
+            { path: 'sales/report', element: withSuspense(PrintSalesReportPage) },
             { path: 'sales/:id/a4', element: withSuspense(PrintSaleA4Page) },
             { path: 'sales/:id/pos', element: withSuspense(PrintSalePosPage) },
             { path: 'sales/:id/gift-label', element: withSuspense(PrintSaleGiftLabelPage) },

@@ -135,11 +135,17 @@ export const SalesHistoryPage = lazy(() =>
 export const SaleDetailPage = lazy(() =>
   import('@/features/sales').then((m) => ({ default: m.SaleDetailPage })),
 )
+export const SaleEditPage = lazy(() =>
+  import('@/features/sales').then((m) => ({ default: m.SaleEditPage })),
+)
 export const DueCollectionPage = lazy(() =>
   import('@/features/sales').then((m) => ({ default: m.DueCollectionPage })),
 )
 export const SalesReturnsPage = lazy(() =>
   import('@/features/sales').then((m) => ({ default: m.SalesReturnsPage })),
+)
+export const OnlineOrdersPage = lazy(() =>
+  import('@/features/sales').then((m) => ({ default: m.OnlineOrdersPage })),
 )
 
 export const CategoriesPage = lazy(() =>
@@ -209,6 +215,9 @@ export const ProfitLossPage = lazy(() =>
 )
 export const AccountSettingsPage = lazy(() =>
   import('@/features/accounting').then((m) => ({ default: m.AccountSettingsPage })),
+)
+export const ReconciliationCenterPage = lazy(() =>
+  import('@/features/accounting').then((m) => ({ default: m.ReconciliationCenterPage })),
 )
 
 export const PurchaseNewPage = lazy(() =>
@@ -302,6 +311,9 @@ export const PrintSalePosPage = lazy(() =>
 )
 export const PrintSaleGiftLabelPage = lazy(() =>
   import('@/features/print/PrintPages').then((m) => ({ default: m.PrintSaleGiftLabelPage })),
+)
+export const PrintSalesReportPage = lazy(() =>
+  import('@/features/print/PrintPages').then((m) => ({ default: m.PrintSalesReportPage })),
 )
 export const PrintReportPage = lazy(() =>
   import('@/features/print/PrintPages').then((m) => ({ default: m.PrintReportPage })),

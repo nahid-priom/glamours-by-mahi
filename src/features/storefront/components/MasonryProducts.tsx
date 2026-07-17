@@ -10,7 +10,7 @@ export function MasonryProducts({ products }: MasonryProductsProps) {
   if (products.length === 0) return null
 
   return (
-    <div className="columns-2 gap-4 sm:columns-3 lg:columns-4 lg:gap-5">
+    <div className="columns-2 gap-4 sm:columns-3 lg:columns-5 lg:gap-5">
       {products.map((product, i) => (
         <div
           key={product.id}

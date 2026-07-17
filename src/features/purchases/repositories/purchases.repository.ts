@@ -139,37 +139,27 @@ async function createPurchaseReturn(input: {
   supplier_id: string
   reason?: string
   items: Array<{ variant_id: string; qty: number; unit_cost: number; purchase_item_id?: string }>
+  refund_account_id?: string
 }) {
-  const returnNo = `PR-${Date.now()}`
-  const total = input.items.reduce((s, i) => s + i.qty * i.unit_cost, 0)
-  const { data: ret, error } = await supabase
-    .from('purchase_returns')
-    .insert({
-      organization_id: input.organization_id,
-      branch_id: input.branch_id,
+  const clientTxnKey =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `pr-${Date.now()}`
+  const { data, error } = await supabase.rpc('approve_purchase_return', {
+    payload: {
       purchase_id: input.purchase_id,
-      supplier_id: input.supplier_id,
-      return_no: returnNo,
-      status: 'completed',
+      client_txn_key: clientTxnKey,
       reason: input.reason ?? null,
-      total,
-    })
-    .select('id')
-    .single()
+      refund_account_id: input.refund_account_id ?? null,
+      items: input.items.map((i) => ({
+        purchase_item_id: i.purchase_item_id,
+        variant_id: i.variant_id,
+        qty: i.qty,
+      })),
+    } as unknown as Json,
+  })
   if (error) throw error
-
-  const rows = input.items.map((i) => ({
-    organization_id: input.organization_id,
-    purchase_return_id: ret.id,
-    purchase_item_id: i.purchase_item_id ?? null,
-    variant_id: i.variant_id,
-    qty: i.qty,
-    unit_cost: i.unit_cost,
-    line_total: i.qty * i.unit_cost,
-  }))
-  const { error: itemsError } = await supabase.from('purchase_return_items').insert(rows)
-  if (itemsError) throw itemsError
-  return ret
+  return data
 }
 
 async function paySupplier(payload: PaySupplierPayload) {

@@ -1,27 +1,29 @@
-import { CreditCard, Package, RotateCcw, Shield, Sparkles, Truck } from 'lucide-react'
+import { BadgeCheck, RefreshCcw, ShieldCheck, Sparkles, Tags, Truck } from 'lucide-react'
 
 const BENEFITS = [
   { icon: Truck, title: 'Free Delivery', desc: 'Orders over ৳3,000' },
-  { icon: Shield, title: 'Authentic Products', desc: 'Verified brands' },
-  { icon: RotateCcw, title: 'Easy Return', desc: '3-day exchange' },
-  { icon: CreditCard, title: 'Secure Payment', desc: 'COD available' },
+  { icon: BadgeCheck, title: 'Authentic Products', desc: 'Verified brands' },
+  { icon: RefreshCcw, title: 'Easy Return', desc: '3-day exchange' },
+  { icon: ShieldCheck, title: 'Secure Payment', desc: 'COD available' },
   { icon: Sparkles, title: 'New Arrivals', desc: 'Weekly drops' },
-  { icon: Package, title: 'Special Offers', desc: 'Beauty & fashion' },
+  { icon: Tags, title: 'Special Offers', desc: 'Exclusive deals' },
 ] as const
 
 export function BenefitStrip() {
   return (
-    <section className="border-y border-[var(--sf-border)] bg-white">
-      <div className="sf-container grid max-w-[1440px] grid-cols-2 gap-px bg-[var(--sf-border)] sm:grid-cols-3 lg:grid-cols-6">
+    <section className="sf-container max-w-[1440px] py-5 sm:py-6" aria-label="Shopping benefits">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
         {BENEFITS.map(({ icon: Icon, title, desc }) => (
           <div
             key={title}
-            className="flex flex-col items-start gap-2 bg-white px-4 py-5 sm:px-5 sm:py-6"
+            className="flex items-center gap-3 rounded-xl border border-[var(--sf-border)] bg-white p-3"
           >
-            <Icon className="h-5 w-5 text-[var(--sf-primary)]" aria-hidden />
-            <div>
-              <p className="text-sm font-semibold text-[var(--sf-ink)]">{title}</p>
-              <p className="mt-0.5 text-xs text-[var(--sf-muted)]">{desc}</p>
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--sf-primary-soft)] text-[var(--sf-primary)]">
+              <Icon className="h-4 w-4" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-semibold text-[var(--sf-ink)]">{title}</h3>
+              <p className="truncate text-xs text-[var(--sf-muted)]">{desc}</p>
             </div>
           </div>
         ))}

@@ -1,15 +1,25 @@
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react'
 import { formatBDT } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { useCart } from '../cart.context'
 import { useStorefrontUI } from '../storefront-ui.context'
-import { LazyImage } from './LazyImage'
+import { ProductImage } from '@/components/common/ProductImage'
 
 export function QuickViewModal() {
   const { quickViewProduct, closeQuickView } = useStorefrontUI()
   const { addItem } = useCart()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!quickViewProduct) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeQuickView()
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [quickViewProduct, closeQuickView])
 
   if (!quickViewProduct) return null
 
@@ -17,23 +27,30 @@ export function QuickViewModal() {
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
-      <button type="button" className="absolute inset-0 bg-black/50" onClick={closeQuickView} aria-label="Close" />
-      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-t-2xl bg-white sm:rounded-2xl">
+      <button type="button" className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={closeQuickView} aria-label="Close" />
+      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
         <button type="button" onClick={closeQuickView} className="absolute right-4 top-4 z-10 rounded-full bg-white p-2 shadow-md">
           <X className="h-5 w-5" />
         </button>
         <div className="grid sm:grid-cols-2">
           <div className="aspect-[4/5] sm:aspect-auto">
-            <LazyImage src={p.image} alt={p.alt} aspectRatio="portrait" className="h-full min-h-[280px]" />
+            <ProductImage product={p} alt={p.alt} aspectRatio="portrait" className="h-full min-h-[280px]" loading="eager" />
           </div>
           <div className="p-6 sm:p-8">
             <p className="text-[11px] uppercase tracking-widest text-[#6B7280]">{p.category.replace('-', ' ')}</p>
             <h2 className="mt-2 font-serif text-2xl text-[#22171C]">{p.name}</h2>
             <p className="mt-3 text-xl font-semibold">{formatBDT(p.displayPrice)}</p>
+            <p className={`mt-2 text-xs font-medium ${p.stock > 0 ? 'text-success' : 'text-danger'}`}>
+              {p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}
+            </p>
+            {p.catalogVariants?.[0] ? (
+              <p className="mt-1 text-xs text-text-muted">Variant: {p.catalogVariants[0].label}</p>
+            ) : null}
             <p className="mt-4 text-sm leading-relaxed text-[#6B7280] line-clamp-4">{p.description}</p>
             <div className="mt-6 flex flex-col gap-3">
               <Button
                 className="w-full rounded-full"
+                disabled={p.stock <= 0}
                 onClick={() => {
                   addItem(p, 1)
                   closeQuickView()
@@ -93,7 +110,7 @@ export function CartDrawer() {
               {items.map((item) => (
                 <li key={item.productId} className="flex gap-3">
                   <div className="h-24 w-20 shrink-0 overflow-hidden rounded-xl">
-                    <LazyImage src={item.image} alt={item.alt} aspectRatio="portrait" className="h-24 w-20" />
+                    <ProductImage product={item} alt={item.alt} aspectRatio="portrait" className="h-24 w-20" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.name}</p>

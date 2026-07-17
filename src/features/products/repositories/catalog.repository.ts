@@ -52,6 +52,8 @@ const BUCKET = 'product-images'
 
 export async function resolveStorageUrl(path: string | null | undefined): Promise<string | null> {
   if (!path) return null
+  // Root-relative paths point to Vite/public assets, not Supabase Storage.
+  if (path.startsWith('/')) return path
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) {
     return path
   }

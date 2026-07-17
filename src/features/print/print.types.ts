@@ -1,5 +1,7 @@
 export type PrintType = 'invoice' | 'shipping-label' | 'gift-label' | 'pos'
 
+export type ThermalWidth = '58mm' | '80mm'
+
 export interface PrintOrderData {
   id: string
   order_id: string
@@ -27,15 +29,19 @@ export interface PrintSaleData {
   saleNo: string
   storeName: string
   branchName: string
+  branchAddress?: string
+  branchPhone?: string
   customerName: string
   customerPhone: string
   customerAddress: string
   salespersonName: string
   channel: string
   paymentMethod: string
+  payments?: Array<{ method: string; amount: number; reference?: string | null }>
   items: {
     productId: string
     name: string
+    barcode?: string | null
     quantity: number
     unitPrice: number
     discount: number
@@ -49,4 +55,5 @@ export interface PrintSaleData {
   note: string
   status: string
   createdAt: string
+  barcodeValue?: string
 }

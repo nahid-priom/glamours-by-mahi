@@ -16,7 +16,7 @@ interface ProductGridProps {
 }
 
 const gridClasses: Record<GridViewMode, string> = {
-  grid: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
+  grid: 'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
   large: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
 }
 
@@ -66,7 +66,7 @@ export function ProductGrid({
   const resolvedVariant = cardVariant ?? (viewMode === 'large' ? 'large' : 'default')
 
   return (
-    <div className={cn('grid items-stretch gap-3 sm:gap-4 xl:gap-5', gridClasses[viewMode])}>
+    <div className={cn('grid items-stretch gap-3', gridClasses[viewMode])}>
       {products.map((product) => (
         <ProductCard key={product.id} product={product} variant={resolvedVariant} className="h-full" />
       ))}

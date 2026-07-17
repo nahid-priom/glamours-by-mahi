@@ -3,6 +3,7 @@ import {
   FREE_DELIVERY_THRESHOLD,
 } from '@/lib/constants'
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '@/lib/storage'
+import { resolveProductImage } from '@/lib/images/product-image-utils'
 import type { CartItem, CartState, WishlistItem } from './storefront.types'
 import type { StorefrontProduct } from './storefront.types'
 
@@ -59,7 +60,7 @@ function toCartItem(
     sku: options?.sku ?? variant?.sku ?? product.sku,
     price: options?.price ?? variant?.sellingPrice ?? product.displayPrice,
     quantity,
-    image: product.image,
+    image: resolveProductImage(product),
     alt: product.alt,
     maxStock: options?.maxStock ?? variant?.stock ?? product.stock,
     size: options?.size,

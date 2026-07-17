@@ -28,14 +28,14 @@ export function buildBadges(product: StorefrontProduct, discount: number): Badge
 
   if (product.onSale && discount > 0) {
     candidates.push({
-      label: 'Sale',
+      label: `-${discount}%`,
       className: 'bg-[#FF3F7F] text-white',
       priority: 1,
     })
   }
-  if (product.isNew) {
+  if (product.isFeatured || product.isTrending) {
     candidates.push({
-      label: 'New',
+      label: 'HOT',
       className: 'bg-[#22171C] text-white',
       priority: 2,
     })
@@ -66,10 +66,12 @@ export function buildBadges(product: StorefrontProduct, discount: number): Badge
 }
 
 export function getProductDiscount(product: StorefrontProduct): number {
-  if (product.onSale && product.salePrice && product.price > 0) {
-    return Math.round(((product.price - product.salePrice) / product.price) * 100)
-  }
-  return 0
+  const regular = Number(product.price)
+  const sale = Number(product.salePrice)
+  if (!product.onSale || !Number.isFinite(regular) || !Number.isFinite(sale)) return 0
+  if (regular <= 0 || sale <= 0 || regular <= sale) return 0
+  const discount = Math.round(((regular - sale) / regular) * 100)
+  return discount > 0 && discount < 100 ? discount : 0
 }
 
 export function showStockPill(product: StorefrontProduct): boolean {

@@ -8,15 +8,37 @@ import {
 } from './repositories/storefront-orders.repository'
 import { invalidateStorefrontCache } from './storefront.service'
 
-function newClientTxnKey(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `web-${crypto.randomUUID()}`
+const CHECKOUT_TXN_KEY = 'storefront:checkout:client_txn_key'
+
+function getOrCreateClientTxnKey(): string {
+  try {
+    const existing = sessionStorage.getItem(CHECKOUT_TXN_KEY)
+    if (existing) return existing
+  } catch {
+    /* ignore */
   }
-  return `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  const key =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? `web-${crypto.randomUUID()}`
+      : `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  try {
+    sessionStorage.setItem(CHECKOUT_TXN_KEY, key)
+  } catch {
+    /* ignore */
+  }
+  return key
+}
+
+function clearClientTxnKey() {
+  try {
+    sessionStorage.removeItem(CHECKOUT_TXN_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
- * Storefront checkout — writes to Supabase via create_ecommerce_order RPC.
+ * Storefront checkout — draft WEB sale + stock reservation via place_online_order.
  * Cart UI state may remain in localStorage; business records do not.
  */
 export const checkoutService = {
@@ -49,7 +71,7 @@ export const checkoutService = {
     try {
       result = await placeEcommerceOrder({
         org_slug: STOREFRONT_ORG_SLUG,
-        client_txn_key: newClientTxnKey(),
+        client_txn_key: getOrCreateClientTxnKey(),
         customer_name: input.customer_name.trim(),
         customer_phone: input.phone.trim(),
         customer_email: input.email?.trim() || null,
@@ -70,12 +92,13 @@ export const checkoutService = {
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Checkout failed'
-      if (msg.includes('Insufficient stock')) {
+      if (msg.includes('Insufficient') || msg.includes('available stock')) {
         throw new Error('এই শাখায় পর্যাপ্ত স্টক নেই।')
       }
       throw new Error(msg)
     }
 
+    clearClientTxnKey()
     cartService.clearCart()
     invalidateStorefrontCache()
 

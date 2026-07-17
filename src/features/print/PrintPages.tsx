@@ -141,6 +141,8 @@ export function PrintSalePosPage() {
   )
 }
 
+export { PrintSalesReportPage } from './PrintSalesReportPage'
+
 export function PrintSaleGiftLabelPage() {
   const { id } = useParams<{ id: string }>()
   const { data: sale, isLoading } = useQuery({

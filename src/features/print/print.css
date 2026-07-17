@@ -23,6 +23,16 @@
   margin: 3mm;
 }
 
+@page pos-receipt-58 {
+  size: 58mm auto;
+  margin: 2mm;
+}
+
+@page pos-receipt-80 {
+  size: 80mm auto;
+  margin: 3mm;
+}
+
 .print-root {
   min-height: 100vh;
   background: #f1f5f9;
@@ -557,6 +567,37 @@
   margin-left: auto;
 }
 
+.pos-receipt {
+  box-sizing: border-box;
+  background: white;
+  color: #000;
+  padding: 3mm;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.pos-receipt-58 {
+  width: 58mm;
+  max-width: 58mm;
+  page: pos-receipt-58;
+}
+
+.pos-receipt-80 {
+  width: 80mm;
+  max-width: 80mm;
+  page: pos-receipt-80;
+}
+
+.pos-receipt-divider {
+  border-top: 1px dashed #000;
+  margin: 6px 0;
+}
+
+.pos-receipt-powered {
+  font-size: 8px;
+  color: #525252;
+  letter-spacing: 0.02em;
+}
+
 @media print {
   body {
     background: white !important;
@@ -645,5 +686,22 @@
   .thermal-cod-amount {
     color: #000 !important;
     font-size: 20px;
+  }
+
+  .pos-receipt {
+    box-shadow: none !important;
+    margin: 0 auto !important;
+  }
+
+  .pos-receipt-58 {
+    width: 58mm;
+    max-width: 58mm;
+    page: pos-receipt-58;
+  }
+
+  .pos-receipt-80 {
+    width: 80mm;
+    max-width: 80mm;
+    page: pos-receipt-80;
   }
 }

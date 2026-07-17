@@ -24,7 +24,7 @@ export const heroFloatingBadgeSchema = z.object({
 export const heroSlideFormSchema = z.object({
   internal_name: z.string().min(2, 'Internal name is required').max(120),
   eyebrow: z.string().max(80).optional(),
-  heading: z.string().min(2, 'Heading is required').max(120),
+  heading: z.string().max(120).optional(),
   highlight_text: z.string().max(80).optional(),
   description: z.string().max(500).optional(),
   offer_title: z.string().max(80).optional(),
@@ -32,7 +32,7 @@ export const heroSlideFormSchema = z.object({
   discount_text: z.string().max(80).optional(),
   coupon_code: z.string().max(40).optional(),
 
-  primary_cta_label: z.string().min(1, 'Primary CTA label required').max(40),
+  primary_cta_label: z.string().max(40).optional(),
   primary_cta_type: z.enum(HERO_CTA_TYPES),
   primary_cta_config: heroCtaConfigSchema,
   primary_cta_new_tab: z.boolean(),
@@ -44,6 +44,7 @@ export const heroSlideFormSchema = z.object({
   secondary_cta_new_tab: z.boolean(),
 
   desktop_image_path: z.string().optional(),
+  tablet_image_path: z.string().nullable().optional(),
   mobile_image_path: z.string().nullable().optional(),
   image_alt: z.string().max(160).optional(),
   image_focal_x: z.coerce.number().min(0).max(100).nullable().optional(),
@@ -65,6 +66,14 @@ export const heroSlideFormSchema = z.object({
   sort_order: z.coerce.number().int().min(0),
   starts_at: z.string().nullable().optional(),
   ends_at: z.string().nullable().optional(),
+}).superRefine((values, ctx) => {
+  if (values.status === 'active' && !values.desktop_image_path?.trim()) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['desktop_image_path'],
+      message: 'Upload a desktop cover image before activating the slide.',
+    })
+  }
 })
 
 export type HeroSlideFormValues = z.infer<typeof heroSlideFormSchema>

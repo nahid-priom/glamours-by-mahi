@@ -8,7 +8,7 @@ interface HeroImageUploaderProps {
   hint: string
   path: string | null | undefined
   slideId?: string
-  kind: 'desktop' | 'mobile'
+  kind: 'desktop' | 'tablet' | 'mobile'
   onUploaded: (path: string) => void
   onCleared?: () => void
 }
@@ -66,8 +66,10 @@ export function HeroImageUploader({
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
         className={cn(
-          'relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-[var(--sf-border)] bg-[var(--sf-primary-soft)]/40 transition hover:border-[var(--sf-primary)]',
-          kind === 'mobile' && 'aspect-[3/4] max-w-[220px]',
+          'relative flex w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-[var(--sf-border)] bg-[var(--sf-primary-soft)]/40 transition hover:border-[var(--sf-primary)]',
+          kind === 'desktop' && 'aspect-[16/7]',
+          kind === 'tablet' && 'aspect-video max-w-[320px]',
+          kind === 'mobile' && 'aspect-[4/5] max-w-[220px]',
         )}
       >
         {preview ? (

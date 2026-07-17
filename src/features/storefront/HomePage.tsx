@@ -17,8 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 function SectionSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      {Array.from({ length: 5 }).map((_, i) => (
         <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />
       ))}
     </div>
@@ -86,8 +86,8 @@ export function HomePage() {
   return (
     <div className="overflow-x-hidden">
       <DynamicHeroCarousel />
-      <BenefitStrip />
       <CategorySlider />
+      <BenefitStrip />
 
       <section className="sf-container max-w-[1440px] py-10 lg:py-16">
         <SectionHeader
@@ -108,7 +108,7 @@ export function HomePage() {
           {l1 ? (
             <SectionSkeleton />
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5 xl:gap-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
               {newArrivals?.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
@@ -140,7 +140,7 @@ export function HomePage() {
               title="Beauty Essentials"
               to="/shop"
             />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:gap-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
               {beautyEssentials.map((p) => (
                 <ProductCard key={`beauty-${p.id}`} product={p} />
               ))}
@@ -152,7 +152,7 @@ export function HomePage() {
       {fashionPicks.length > 0 ? (
         <section className="sf-container max-w-[1440px] py-10 lg:py-16">
           <SectionHeader eyebrow="Wardrobe" title="Fashion Picks" to="/category/dress" />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 xl:gap-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             {fashionPicks.map((p) => (
               <ProductCard key={`fashion-${p.id}`} product={p} />
             ))}

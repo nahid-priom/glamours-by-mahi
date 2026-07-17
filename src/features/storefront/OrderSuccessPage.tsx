@@ -51,7 +51,8 @@ export function OrderSuccessPage() {
       <CheckCircle className="mx-auto h-16 w-16 text-success" />
       <h1 className="mt-4 font-serif text-3xl text-stone-900">Order Placed!</h1>
       <p className="mt-2 text-stone-500">
-        Thank you, {snapshot.customerName}. Your COD order is saved in our retail system.
+        Thank you, {snapshot.customerName}. Your COD order is reserved. Stock will be
+        deducted when the shop fulfils it — not at checkout.
       </p>
 
       <div className="mt-8 rounded-xl border border-stone-200 bg-white p-5 text-left">
@@ -72,7 +73,7 @@ export function OrderSuccessPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-stone-500">Status</span>
-            <span>Confirmed</span>
+            <span>Reserved (awaiting fulfilment)</span>
           </div>
         </div>
       </div>

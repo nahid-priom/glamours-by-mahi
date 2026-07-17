@@ -49,6 +49,7 @@ const groups: NavGroup[] = [
     children: [
       { to: '/sales/pos', label: 'POS', permission: 'pos.create' },
       { to: '/sales', label: 'Sales History', end: true, permission: 'sales.read' },
+      { to: '/sales/online-orders', label: 'Online Orders', permission: ['orders.read', 'sales.read'] },
       { to: '/sales/returns', label: 'Sales Returns', permission: ['sales.read', 'sales.return.review'] },
       { to: '/sales/collections', label: 'Due Collection', permission: 'sales.read' },
       { to: '/sales/held', label: 'Held Sales', permission: 'pos.create' },
@@ -128,6 +129,11 @@ const groups: NavGroup[] = [
       { to: '/accounts/daily-closing', label: 'Daily Closing', permission: ['accounts.read', 'daily_closing.create'] },
       { to: '/accounts/transactions', label: 'Transactions', permission: 'accounts.read' },
       { to: '/accounts/profit-loss', label: 'Profit & Loss', permission: ['accounts.read', 'profit_loss.read'] },
+      {
+        to: '/accounts/reconciliation',
+        label: 'Reconciliation',
+        permission: ['reconciliation.read', 'accounts.manage'],
+      },
       { to: '/accounts/settings', label: 'Account Settings', permission: ['accounts.manage', 'account_settings.manage'] },
     ],
   },

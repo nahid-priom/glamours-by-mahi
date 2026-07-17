@@ -1,5 +1,8 @@
 export { SalesHistoryPage } from './pages/SalesHistoryPage'
 export { SaleDetailPage } from './pages/SaleDetailPage'
+export { SaleEditPage } from './pages/SaleEditPage'
 export { DueCollectionPage } from './pages/DueCollectionPage'
 export { SalesReturnsPage } from './pages/SalesReturnsPage'
+export { OnlineOrdersPage } from './pages/OnlineOrdersPage'
 export { salesRepository } from './repositories/sales.repository'
+export { onlineOrdersRepository } from './repositories/online-orders.repository'

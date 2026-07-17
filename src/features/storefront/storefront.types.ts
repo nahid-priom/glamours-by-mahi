@@ -24,6 +24,7 @@ export interface StorefrontProduct extends Product {
   displayPrice: number
   rating: number
   reviewCount: number
+  unit?: string
   /** Real Supabase variant data (when loaded from catalog) */
   hasVariants?: boolean
   catalogSizes?: string[]

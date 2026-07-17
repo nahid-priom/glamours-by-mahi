@@ -1,55 +1,22 @@
-import { useCallback, useEffect, useRef, useState, memo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type {
+  FocusEvent as ReactFocusEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { brandConfig } from '@/config/brand'
-import { storefrontService } from '../storefront.service'
 import { useActiveHeroSlides } from '@/features/website-settings/hooks/useHeroSlides'
 import { resolveCtaHref } from '@/features/website-settings/services/hero-link-builder.service'
 import type { PublicHeroSlide } from '@/features/website-settings/types/hero.types'
-import { formatBDT } from '@/lib/format'
 
-const FALLBACK_SLIDE: PublicHeroSlide = {
-  id: 'fallback',
-  eyebrow: 'Beauty · Fashion · Lifestyle',
-  heading: 'Everyday',
-  highlight_text: 'Glamour',
-  description: brandConfig.tagline,
-  offer_title: null,
-  offer_subtitle: null,
-  discount_text: null,
-  coupon_code: null,
-  primary_cta_label: 'Shop Now',
-  primary_cta_type: 'all_products',
-  primary_cta_config: {},
-  primary_cta_url: '/shop',
-  primary_cta_new_tab: false,
-  secondary_cta_enabled: true,
-  secondary_cta_label: 'Explore New Arrivals',
-  secondary_cta_type: 'new_arrivals',
-  secondary_cta_config: {},
-  secondary_cta_url: '/shop?sort=newest&category=new-arrival',
-  secondary_cta_new_tab: false,
-  desktop_image_path: '',
-  mobile_image_path: null,
-  desktop_image_url: null,
-  mobile_image_url: null,
-  image_alt: brandConfig.name,
-  image_focal_x: 50,
-  image_focal_y: 50,
-  image_object_position: 'center',
-  overlay_opacity: 0,
-  layout_direction: 'content_left',
-  text_alignment: 'left',
-  theme_variant: 'soft_pink',
-  show_trust_points: true,
-  show_floating_badges: false,
-  show_trending_products: true,
-  trust_points: ['Authentic products', 'Cash on delivery', 'Nationwide shipping'],
-  floating_badges: [],
-  sort_order: 0,
-  created_at: new Date().toISOString(),
+const AUTOPLAY_INTERVAL_MS = 6000
+const DRAG_THRESHOLD_PX = 48
+const CLICK_SUPPRESS_PX = 8
+
+function isExternalUrl(url: string): boolean {
+  return url.startsWith('http://') || url.startsWith('https://')
 }
 
 function objectPosition(slide: PublicHeroSlide): string {
@@ -63,311 +30,276 @@ function objectPosition(slide: PublicHeroSlide): string {
   return slide.image_object_position || 'center'
 }
 
-const HeroSlidePanel = memo(function HeroSlidePanel({
+function SlideMedia({ slide, index }: { slide: PublicHeroSlide; index: number }) {
+  return (
+    <picture className="block h-full w-full">
+      {slide.mobile_image_url ? (
+        <source media="(max-width: 639px)" srcSet={slide.mobile_image_url} />
+      ) : null}
+      {slide.tablet_image_url ? (
+        <source media="(max-width: 1023px)" srcSet={slide.tablet_image_url} />
+      ) : null}
+      <img
+        src={slide.desktop_image_url ?? undefined}
+        alt={slide.image_alt || 'Promotional banner'}
+        className="h-full w-full object-cover"
+        style={{ objectPosition: objectPosition(slide) }}
+        loading={index === 0 ? 'eager' : 'lazy'}
+        fetchPriority={index === 0 ? 'high' : 'auto'}
+        decoding="async"
+        draggable={false}
+      />
+    </picture>
+  )
+}
+
+function CoverSlide({
   slide,
-  isPrimaryHeading,
-  showTrending,
+  index,
+  count,
 }: {
   slide: PublicHeroSlide
-  isPrimaryHeading: boolean
-  showTrending: boolean
+  index: number
+  count: number
 }) {
-  const { data: trending = [] } = useQuery({
-    queryKey: ['storefront', 'hero-preview'],
-    queryFn: () => storefrontService.getNewArrivals(3),
-    staleTime: 120_000,
-    enabled: showTrending && slide.show_trending_products,
-  })
-
-  const primaryHref = resolveCtaHref(
+  const href = resolveCtaHref(
     slide.primary_cta_type,
     slide.primary_cta_config,
     slide.primary_cta_url,
   )
-  const secondaryHref = resolveCtaHref(
-    slide.secondary_cta_type,
-    slide.secondary_cta_config,
-    slide.secondary_cta_url,
-  )
-  const contentLeft = slide.layout_direction !== 'content_right'
-  const HeadingTag = isPrimaryHeading ? 'h1' : 'h2'
-  const desktopSrc = slide.desktop_image_url
-  const mobileSrc = slide.mobile_image_url || slide.desktop_image_url
+  const media = <SlideMedia slide={slide} index={index} />
 
   return (
     <div
-      className={cn(
-        'sf-container grid max-w-[1440px] min-h-[min(680px,calc(100vh-120px))] items-center gap-6 py-6 lg:min-h-[580px] lg:grid-cols-[0.45fr_0.55fr] lg:gap-10 lg:py-10',
-        !contentLeft && 'lg:[direction:rtl] lg:[&>*]:[direction:ltr]',
-      )}
+      role="group"
+      aria-roledescription="slide"
+      aria-label={`Slide ${index + 1} of ${count}`}
+      className="relative h-full w-full shrink-0"
     >
-      <div
-        className={cn(
-          'order-2 flex flex-col justify-center lg:order-1',
-          slide.text_alignment === 'center' && 'text-center items-center',
-          slide.text_alignment === 'right' && 'text-right items-end',
-        )}
-      >
-        {slide.eyebrow ? (
-          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-[var(--sf-primary)]">
-            {slide.eyebrow}
-          </p>
-        ) : null}
-
-        <HeadingTag className="mt-4 font-serif text-[2rem] leading-[1.05] text-[var(--sf-ink)] sm:text-5xl lg:text-[3.25rem]">
-          <span className="block">{slide.heading}</span>
-          {slide.highlight_text ? (
-            <span className="mt-1 block text-[var(--sf-primary)]">{slide.highlight_text}</span>
-          ) : null}
-        </HeadingTag>
-
-        {slide.description ? (
-          <p className="mt-4 max-w-[460px] text-sm leading-relaxed text-[var(--sf-muted)] sm:text-base">
-            {slide.description}
-          </p>
-        ) : null}
-
-        {(slide.offer_title || slide.discount_text || slide.coupon_code) && (
-          <div className="mt-5 rounded-2xl border border-[var(--sf-border)] bg-white/80 px-4 py-3">
-            {slide.offer_title ? (
-              <p className="text-sm font-semibold text-[var(--sf-ink)]">{slide.offer_title}</p>
-            ) : null}
-            {slide.offer_subtitle ? (
-              <p className="text-xs text-[var(--sf-muted)]">{slide.offer_subtitle}</p>
-            ) : null}
-            <p className="mt-1 text-sm font-semibold text-[var(--sf-primary)]">
-              {[slide.discount_text, slide.coupon_code ? `Use code: ${slide.coupon_code}` : null]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
-          </div>
-        )}
-
-        <div className="mt-6 flex w-full max-w-md flex-col gap-3 sm:flex-row">
+      {href ? (
+        isExternalUrl(href) ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block h-full w-full focus-visible:outline-2 focus-visible:outline-[var(--sf-primary)]"
+            aria-label={slide.image_alt || `Open promotion ${index + 1}`}
+            draggable={false}
+          >
+            {media}
+          </a>
+        ) : (
           <Link
-            to={primaryHref}
+            to={href}
             target={slide.primary_cta_new_tab ? '_blank' : undefined}
             rel={slide.primary_cta_new_tab ? 'noreferrer' : undefined}
-            className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--sf-primary)] px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-12px_rgba(255,63,127,0.65)] transition hover:bg-[var(--sf-primary-hover)]"
+            className="block h-full w-full focus-visible:outline-2 focus-visible:outline-[var(--sf-primary)]"
+            aria-label={slide.image_alt || `Open promotion ${index + 1}`}
+            draggable={false}
           >
-            {slide.primary_cta_label || 'Shop Now'}
-            <ArrowRight className="h-4 w-4" aria-hidden />
+            {media}
           </Link>
-          {slide.secondary_cta_enabled && slide.secondary_cta_label ? (
-            <Link
-              to={secondaryHref}
-              target={slide.secondary_cta_new_tab ? '_blank' : undefined}
-              rel={slide.secondary_cta_new_tab ? 'noreferrer' : undefined}
-              className="inline-flex h-12 flex-1 items-center justify-center rounded-full border border-[var(--sf-border)] bg-white/80 px-6 text-sm font-semibold text-[var(--sf-ink)] transition hover:border-[var(--sf-primary)] hover:bg-[var(--sf-primary-soft)]"
-            >
-              {slide.secondary_cta_label}
-            </Link>
-          ) : null}
-        </div>
-
-        {slide.show_trust_points && slide.trust_points.length > 0 ? (
-          <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
-            {slide.trust_points.slice(0, 3).map((point) => (
-              <li key={point} className="flex items-center gap-1.5 text-xs text-[var(--sf-muted)] sm:text-sm">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--sf-primary-soft)] text-[var(--sf-primary)]">
-                  <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
-                </span>
-                {point}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-
-      <div className="relative order-1 min-h-[260px] overflow-hidden rounded-3xl bg-[var(--sf-primary-soft)] lg:order-2 lg:min-h-[520px]">
-        {desktopSrc || mobileSrc ? (
-          <picture>
-            {mobileSrc ? <source media="(max-width: 767px)" srcSet={mobileSrc} /> : null}
-            <img
-              src={desktopSrc || mobileSrc || undefined}
-              alt={slide.image_alt || slide.heading}
-              className="h-full w-full object-cover"
-              style={{ objectPosition: objectPosition(slide) }}
-              fetchPriority={isPrimaryHeading ? 'high' : 'auto'}
-              loading={isPrimaryHeading ? 'eager' : 'lazy'}
-            />
-          </picture>
-        ) : (
-          <div className="flex h-full min-h-[260px] items-center justify-center bg-gradient-to-br from-[var(--sf-primary-soft)] via-white to-[var(--sf-primary-light)] lg:min-h-[520px]">
-            <p className="font-serif text-2xl text-[var(--sf-primary)]">{brandConfig.shortName}</p>
-          </div>
-        )}
-
-        {slide.overlay_opacity > 0 ? (
-          <div
-            className="pointer-events-none absolute inset-0 bg-[var(--sf-ink)]"
-            style={{ opacity: slide.overlay_opacity }}
-            aria-hidden
-          />
-        ) : null}
-
-        {slide.show_floating_badges &&
-          slide.floating_badges.slice(0, 2).map((badge, i) => (
-            <span
-              key={`${badge.label}-${i}`}
-              className={cn(
-                'absolute rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide shadow-md',
-                i === 0 ? 'left-4 top-4' : 'bottom-4 right-4',
-                badge.tone === 'ink' && 'bg-[var(--sf-ink)] text-white',
-                badge.tone === 'soft' && 'bg-white text-[var(--sf-primary)]',
-                (!badge.tone || badge.tone === 'primary') && 'bg-[var(--sf-primary)] text-white',
-              )}
-            >
-              {badge.label}
-            </span>
-          ))}
-
-        {showTrending && slide.show_trending_products && trending.length > 0 ? (
-          <div className="absolute bottom-4 left-4 right-4 hidden gap-2 lg:flex">
-            {trending.map((p) => (
-              <Link
-                key={p.id}
-                to={`/product/${p.slug}`}
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-white/95 p-2 shadow-md backdrop-blur"
-              >
-                <img src={p.image} alt="" className="h-12 w-10 rounded-lg object-cover" />
-                <div className="min-w-0">
-                  <p className="truncate text-[11px] font-semibold text-[var(--sf-ink)]">{p.name}</p>
-                  <p className="text-[11px] text-[var(--sf-primary)]">{formatBDT(p.displayPrice)}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : null}
-      </div>
+        )
+      ) : (
+        media
+      )}
     </div>
   )
-})
+}
 
 export function DynamicHeroCarousel() {
-  const { data, isLoading, isError } = useActiveHeroSlides()
-  const slides = data && data.length > 0 ? data : [FALLBACK_SLIDE]
+  const { data, isLoading } = useActiveHeroSlides()
+  const slides = useMemo(
+    () => (data ?? []).filter((slide) => Boolean(slide.desktop_image_url)),
+    [data],
+  )
+  const count = slides.length
+
   const [active, setActive] = useState(0)
-  const [paused, setPaused] = useState(false)
-  const activeRef = useRef(0)
-  activeRef.current = active
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
+  const dragStateRef = useRef<{ pointerId: number; startX: number } | null>(null)
+  const suppressClickRef = useRef(false)
+
+  const paused = hovered || focused || dragging
 
   useEffect(() => {
-    if (isError) {
-      console.warn('[hero] No active slides from Supabase; using fallback hero.')
-    }
-  }, [isError])
+    if (active >= count && count > 0) setActive(0)
+  }, [active, count])
+
+  const goTo = useCallback(
+    (index: number) => {
+      if (count === 0) return
+      setActive(((index % count) + count) % count)
+    },
+    [count],
+  )
 
   useEffect(() => {
-    setActive(0)
-  }, [slides.length])
-
-  const goTo = useCallback((index: number) => {
-    setActive(((index % slides.length) + slides.length) % slides.length)
-    setPaused(true)
-  }, [slides.length])
-
-  useEffect(() => {
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduceMotion || slides.length <= 1 || paused) return
-
-    const onVisibility = () => {
-      if (document.hidden) setPaused(true)
-    }
-    document.addEventListener('visibilitychange', onVisibility)
+    if (count <= 1 || paused) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     const id = window.setInterval(() => {
       if (document.hidden) return
-      setActive((prev) => (prev + 1) % slides.length)
-    }, 7500)
+      setActive((prev) => (prev + 1) % count)
+    }, AUTOPLAY_INTERVAL_MS)
 
-    return () => {
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
-  }, [slides.length, paused])
+    return () => window.clearInterval(id)
+  }, [count, paused])
+
+  const endDrag = useCallback(
+    (clientX: number) => {
+      const state = dragStateRef.current
+      if (!state) return
+      dragStateRef.current = null
+
+      const delta = clientX - state.startX
+      suppressClickRef.current = Math.abs(delta) > CLICK_SUPPRESS_PX
+      setDragOffset(0)
+      setDragging(false)
+      if (Math.abs(delta) > DRAG_THRESHOLD_PX) {
+        goTo(active + (delta < 0 ? 1 : -1))
+      }
+    },
+    [active, goTo],
+  )
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (count <= 1) return
+    dragStateRef.current = { pointerId: e.pointerId, startX: e.clientX }
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setDragging(true)
+  }
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const state = dragStateRef.current
+    if (!state || state.pointerId !== e.pointerId) return
+    setDragOffset(e.clientX - state.startX)
+  }
+
+  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragStateRef.current?.pointerId !== e.pointerId) return
+    endDrag(e.clientX)
+  }
+
+  const onPointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragStateRef.current?.pointerId !== e.pointerId) return
+    dragStateRef.current = null
+    setDragOffset(0)
+    setDragging(false)
+  }
+
+  const onClickCapture = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (!suppressClickRef.current) return
+    suppressClickRef.current = false
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const onBlur = (e: ReactFocusEvent<HTMLElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false)
+  }
 
   if (isLoading) {
     return (
-      <section className="hero-luxury border-b border-[var(--sf-border)]" aria-busy="true">
-        <div className="sf-container grid max-w-[1440px] min-h-[520px] gap-6 py-8 lg:grid-cols-2">
-          <div className="space-y-4 self-center">
-            <div className="h-3 w-40 animate-pulse rounded bg-[var(--sf-primary-light)]" />
-            <div className="h-12 w-3/4 animate-pulse rounded bg-[var(--sf-primary-light)]" />
-            <div className="h-20 w-full animate-pulse rounded bg-[var(--sf-primary-soft)]" />
-            <div className="h-12 w-48 animate-pulse rounded-full bg-[var(--sf-primary-light)]" />
-          </div>
-          <div className="min-h-[280px] animate-pulse rounded-3xl bg-[var(--sf-primary-soft)]" />
+      <section className="w-full bg-white" aria-busy="true" aria-label="Loading promotions">
+        <div className="sf-container max-w-[1440px] pt-2 sm:pt-4">
+          <div className="aspect-[16/9] w-full animate-pulse rounded-xl bg-[var(--sf-primary-soft)] sm:rounded-2xl lg:aspect-auto lg:h-[455px] xl:h-[505px]" />
         </div>
       </section>
     )
   }
 
-  const slide = slides[active] ?? FALLBACK_SLIDE
+  if (count === 0) return null
+
+  // Only switch to the tall 4:5 mobile ratio when every slide has a mobile cover,
+  // otherwise the container would jump between ratios while sliding.
+  const hasMobileCover = slides.every((slide) => Boolean(slide.mobile_image_url))
 
   return (
     <section
-      className="hero-luxury relative overflow-x-hidden border-b border-[var(--sf-border)]"
+      className="w-full bg-white"
       aria-roledescription="carousel"
-      aria-label="Homepage campaigns"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      aria-label="Homepage promotions"
     >
-      <div className="hero-grain pointer-events-none absolute inset-0" aria-hidden />
-
-      <div
-        key={slide.id}
-        role="group"
-        aria-roledescription="slide"
-        aria-label={`${active + 1} of ${slides.length}`}
-      >
-        <HeroSlidePanel
-          slide={slide}
-          isPrimaryHeading={active === 0}
-          showTrending={slide.show_trending_products}
-        />
-      </div>
-
-      {slides.length > 1 ? (
-        <div className="sf-container flex max-w-[1440px] items-center justify-between gap-4 pb-6">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Previous slide"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--sf-border)] bg-white text-[var(--sf-ink)] transition hover:border-[var(--sf-primary)] hover:text-[var(--sf-primary)]"
-              onClick={() => goTo(active - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              aria-label="Next slide"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--sf-border)] bg-white text-[var(--sf-ink)] transition hover:border-[var(--sf-primary)] hover:text-[var(--sf-primary)]"
-              onClick={() => goTo(active + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {slides.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                aria-label={`Go to slide ${i + 1}`}
-                aria-current={i === active ? 'true' : undefined}
-                onClick={() => goTo(i)}
-                className={cn(
-                  'h-2.5 rounded-full transition-all',
-                  i === active
-                    ? 'w-10 bg-[var(--sf-primary)]'
-                    : 'w-3 bg-[var(--sf-rose)] hover:bg-[var(--sf-primary)]/50',
-                )}
-              />
+      <div className="sf-container max-w-[1440px] pt-2 sm:pt-4">
+        <div
+          className={cn(
+            'relative w-full overflow-hidden rounded-xl bg-[var(--sf-primary-soft)] shadow-sm ring-1 ring-black/5 sm:rounded-2xl',
+            hasMobileCover ? 'aspect-square' : 'aspect-[16/9]',
+            'sm:aspect-[16/9] lg:aspect-auto lg:h-[455px] xl:h-[505px]',
+          )}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          onFocus={() => setFocused(true)}
+          onBlur={onBlur}
+        >
+          <div
+            className={cn(
+              'flex h-full w-full',
+              !dragging && 'transition-transform duration-500 ease-out',
+            )}
+            style={{
+              transform: `translateX(calc(${-active * 100}% + ${dragOffset}px))`,
+              touchAction: 'pan-y',
+            }}
+            aria-live={paused ? 'polite' : 'off'}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerCancel}
+            onClickCapture={onClickCapture}
+          >
+            {slides.map((slide, index) => (
+              <CoverSlide key={slide.id} slide={slide} index={index} count={count} />
             ))}
           </div>
+
+          {count > 1 ? (
+            <>
+              <button
+                type="button"
+                aria-label="Previous slide"
+                onClick={() => goTo(active - 1)}
+                className="absolute left-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/70 text-[var(--sf-ink)] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:bg-white sm:flex lg:left-3"
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                aria-label="Next slide"
+                onClick={() => goTo(active + 1)}
+                className="absolute right-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/70 text-[var(--sf-ink)] shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:bg-white sm:flex lg:right-3"
+              >
+                <ChevronRight className="h-4 w-4" aria-hidden />
+              </button>
+
+              <div
+                className="absolute bottom-2.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 sm:bottom-3"
+                role="tablist"
+                aria-label="Slides"
+              >
+                {slides.map((slide, index) => (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    role="tab"
+                    aria-label={`Go to slide ${index + 1}`}
+                    aria-selected={index === active}
+                    onClick={() => goTo(index)}
+                    className={cn(
+                      'h-2 rounded-full ring-1 ring-black/10 transition-all',
+                      index === active ? 'w-6 bg-white' : 'w-2 bg-white/60 hover:bg-white/90',
+                    )}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
-      ) : null}
+      </div>
     </section>
   )
 }

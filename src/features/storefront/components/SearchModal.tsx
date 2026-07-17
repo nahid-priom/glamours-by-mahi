@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useStorefrontUI } from '../storefront-ui.context'
 import { storefrontService } from '../storefront.service'
 import { formatBDT } from '@/lib/format'
-import { LazyImage } from './LazyImage'
+import { ProductImage } from '@/components/common/ProductImage'
 
 export function SearchModal() {
   const { searchOpen, closeSearch } = useStorefrontUI()
@@ -73,7 +73,7 @@ export function SearchModal() {
                       className="flex items-center gap-4 rounded-2xl bg-white p-3 transition hover:shadow-md"
                     >
                       <div className="h-16 w-14 shrink-0 overflow-hidden rounded-xl">
-                        <LazyImage src={p.image} alt={p.alt} aspectRatio="portrait" className="h-16 w-14" />
+                        <ProductImage product={p} alt={p.alt} aspectRatio="portrait" className="h-16 w-14" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{p.name}</p>

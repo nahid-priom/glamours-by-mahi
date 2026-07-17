@@ -1,9 +1,12 @@
-import { PRODUCT_PLACEHOLDER } from '@/lib/images/image-utils'
+import {
+  DEFAULT_PRODUCT_IMAGE,
+  getStableDemoProductImage,
+} from '@/lib/images/product-image-utils'
 
-export const FALLBACK_PRODUCT_IMAGE = PRODUCT_PLACEHOLDER
+export const FALLBACK_PRODUCT_IMAGE = DEFAULT_PRODUCT_IMAGE
 
-const img = (id: string, w = 800) =>
-  `https://images.unsplash.com/photo-${id}?w=${w}&q=80&auto=format&fit=crop`
+// Legacy catalog metadata now resolves to the verified local demo set.
+const img = (id: string, _width = 800) => getStableDemoProductImage(id)
 
 export const CATEGORY_IMAGE_POOLS = {
   dress: [

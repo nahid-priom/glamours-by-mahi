@@ -25,11 +25,13 @@ function StorefrontShell() {
         style={layoutStyle}
       >
         <StoreHeader />
+        {/* Header is fixed: 60px row on mobile; utility bar (37px) only shows from sm up. */}
         <main
-          className="flex-1 overflow-x-hidden pb-24 lg:pb-0"
-          style={{
-            paddingTop: `calc(108px + var(--pwa-install-bar-height, 0px) + env(safe-area-inset-top, 0px))`,
-          }}
+          className={
+            'flex-1 overflow-x-hidden pb-24 lg:pb-0 ' +
+            'pt-[calc(60px+var(--pwa-install-bar-height,0px)+env(safe-area-inset-top,0px))] ' +
+            'sm:pt-[calc(108px+var(--pwa-install-bar-height,0px)+env(safe-area-inset-top,0px))]'
+          }
         >
           <Outlet />
         </main>

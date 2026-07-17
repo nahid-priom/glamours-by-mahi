@@ -12,7 +12,7 @@ export const heroService = {
   restore: (id: string) => heroRepo.restoreHeroSlide(id),
   duplicate: (id: string) => heroRepo.duplicateHeroSlide(id),
   reorder: (orderedIds: string[]) => heroRepo.reorderHeroSlides(orderedIds),
-  uploadImage: (slideId: string, file: File, kind: 'desktop' | 'mobile') =>
+  uploadImage: (slideId: string, file: File, kind: 'desktop' | 'tablet' | 'mobile') =>
     heroRepo.uploadHeroImage(slideId, file, kind),
   removeImage: (path: string) => heroRepo.removeHeroImage(path),
   kpis: heroRepo.computeHeroKpis,

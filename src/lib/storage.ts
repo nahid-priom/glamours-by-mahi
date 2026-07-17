@@ -43,4 +43,6 @@ export const STORAGE_KEYS = {
   wishlist: 'wishlist',
   accountSession: 'account_session',
   customerAddresses: 'customer_addresses',
+  posReceiptWidth: 'pos_receipt_width',
+  salesColumnVisibility: 'sales_column_visibility',
 } as const
