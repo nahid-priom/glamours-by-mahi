@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { MenuCategory } from '../repositories/menu-categories.repository'
 import { getCategoryFallback } from '../lib/category-images'
+import { categoryShopUrl } from '../lib/category-links'
 import { CategoryImage } from './CategoryImage'
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -32,10 +33,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
   gem: Gem,
   glasses: Glasses,
   watch: Watch,
-}
-
-export function categoryShopUrl(slug: string): string {
-  return `/shop?category=${encodeURIComponent(slug)}`
 }
 
 function CategoryIcon({ category }: { category: MenuCategory }) {
@@ -61,14 +58,17 @@ type CategoryMegaMenuProps = {
   id: string
   open: boolean
   categories: MenuCategory[]
+  /** Dismissal (Escape / overlay click) — caller restores focus to the trigger. */
   onClose: () => void
+  /** Closing because a category link navigated — no focus restore. */
+  onNavigate: () => void
 }
 
 /**
  * Desktop mega menu: left parent-category rail, right subcategory columns.
  * Anchored below the sticky header, aligned to the shared container.
  */
-export function CategoryMegaMenu({ id, open, categories, onClose }: CategoryMegaMenuProps) {
+export function CategoryMegaMenu({ id, open, categories, onClose, onNavigate }: CategoryMegaMenuProps) {
   const [activeId, setActiveId] = useState<string | null>(categories[0]?.id ?? null)
   const listRef = useRef<HTMLUListElement>(null)
 
@@ -132,7 +132,7 @@ export function CategoryMegaMenu({ id, open, categories, onClose }: CategoryMega
                       <Link
                         to={categoryShopUrl(category.slug)}
                         data-parent
-                        onClick={onClose}
+                        onClick={onNavigate}
                         onMouseEnter={() => setActiveId(category.id)}
                         onFocus={() => setActiveId(category.id)}
                         onKeyDown={(e) => {
@@ -173,7 +173,7 @@ export function CategoryMegaMenu({ id, open, categories, onClose }: CategoryMega
                       <h3 className="font-serif text-lg text-[var(--sf-ink)]">{active.name}</h3>
                       <Link
                         to={categoryShopUrl(active.slug)}
-                        onClick={onClose}
+                        onClick={onNavigate}
                         className="flex items-center gap-1 text-sm font-semibold text-[var(--sf-primary)]"
                       >
                         View All <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -186,7 +186,7 @@ export function CategoryMegaMenu({ id, open, categories, onClose }: CategoryMega
                           <li key={child.id}>
                             <Link
                               to={categoryShopUrl(child.slug)}
-                              onClick={onClose}
+                              onClick={onNavigate}
                               className="block rounded-lg px-2 py-2 text-sm text-[var(--sf-muted)] transition-colors hover:bg-[var(--sf-primary-soft)] hover:text-[var(--sf-primary)]"
                             >
                               {child.name}
@@ -208,7 +208,7 @@ export function CategoryMegaMenu({ id, open, categories, onClose }: CategoryMega
                         </p>
                         <Link
                           to={categoryShopUrl(active.slug)}
-                          onClick={onClose}
+                          onClick={onNavigate}
                           className="inline-flex items-center gap-1.5 rounded-full bg-[var(--sf-primary)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#d91e5b]"
                         >
                           Shop All {active.name}

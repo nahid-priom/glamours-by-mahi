@@ -1,26 +1,49 @@
-import { useEffect, useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
-import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
-import { STOREFRONT_BRAND, STOREFRONT_CATEGORIES } from '@/lib/constants'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import {
+  ChevronDown,
+  Heart,
+  LayoutGrid,
+  Menu,
+  Search,
+  ShoppingBag,
+  User,
+  X,
+} from 'lucide-react'
 import { formatBDT } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useCart } from '../cart.context'
 import { useStorefrontUI } from '../storefront-ui.context'
+import { useMenuCategories } from '../hooks/useMenuCategories'
 import { PWAInstallButton } from '@/features/pwa'
 import { UtilityBar } from './UtilityBar'
+import { categoryShopUrl } from '../lib/category-links'
+import { CategoryMegaMenu } from './CategoryMegaMenu'
 
-const NAV = [
-  { to: '/category/new-arrival', label: 'New Arrivals' },
-  { to: '/category/dress', label: 'Dress' },
-  { to: '/shop', label: 'Beauty' },
-]
+const MEGA_MENU_ID = 'storefront-category-menu'
+
+function BrandLogo({ className }: { className?: string }) {
+  return (
+    <Link to="/" className={cn('block shrink-0 leading-none text-[var(--sf-ink)]', className)}>
+      <span className="block text-[9px] font-semibold uppercase tracking-[0.3em] text-[var(--sf-muted)] sm:text-[10px]">
+        Glamours Gallery by
+      </span>
+      <span className="block font-serif text-xl tracking-[0.22em] sm:text-2xl">MAHI</span>
+    </Link>
+  )
+}
 
 export function StoreHeader() {
   const { itemCount, total, wishlistIds } = useCart()
   const { openSearch, openCart } = useStorefrontUI()
+  const location = useLocation()
   const [scrolled, setScrolled] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [megaOpen, setMegaOpen] = useState(false)
+  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
+  const categoriesTriggerRef = useRef<HTMLButtonElement>(null)
+
+  const { data: menuCategories = [] } = useMenuCategories()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16)
@@ -28,13 +51,26 @@ export function StoreHeader() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  // Close menu + drawer after any route navigation.
+  useEffect(() => {
+    setMegaOpen(false)
+    setDrawerOpen(false)
+  }, [location.pathname, location.search])
+
+  const closeMega = useCallback(() => setMegaOpen(false), [])
+
+  const dismissMega = useCallback(() => {
+    setMegaOpen(false)
+    categoriesTriggerRef.current?.focus()
+  }, [])
+
   return (
     <>
       <header
         className={cn(
           'fixed left-0 right-0 z-50 transition-all duration-300',
-          scrolled
-            ? 'border-b border-[var(--sf-border)] bg-[var(--sf-bg)]/95 shadow-[0_8px_30px_-12px_rgba(255,63,127,0.18)] backdrop-blur-md'
+          scrolled || megaOpen
+            ? 'border-b border-[var(--sf-border)] bg-white/95 shadow-[0_8px_30px_-12px_rgba(255,63,127,0.18)] backdrop-blur-md'
             : 'bg-[var(--sf-bg)]/90 backdrop-blur-sm',
         )}
         style={{
@@ -43,184 +79,221 @@ export function StoreHeader() {
       >
         <UtilityBar />
 
-        <div className="sf-container flex max-w-[1440px] items-center gap-3 py-2.5 sm:gap-4 sm:py-3">
-          <button
-            type="button"
-            className="-ml-1 rounded-lg p-2 text-[var(--sf-ink)] lg:hidden"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
-          <Link
-            to="/"
-            className="hidden shrink-0 font-serif tracking-[0.12em] text-[var(--sf-ink)] sm:block sm:text-xl"
-          >
-            {STOREFRONT_BRAND}
-          </Link>
-
-          <button
-            type="button"
-            onClick={openSearch}
-            className="hidden min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--sf-border)] bg-white px-4 py-2.5 text-left text-sm text-[var(--sf-muted)] transition hover:border-[var(--sf-primary)] md:flex"
-            aria-label="Search products"
-          >
-            <Search className="h-4 w-4 shrink-0 text-[var(--sf-primary)]" />
-            <span className="truncate">Search products, brands, categories...</span>
-          </button>
-
-          <nav className="ml-auto hidden items-center gap-5 xl:flex">
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'text-[13px] font-semibold transition',
-                    isActive
-                      ? 'text-[var(--sf-primary)]'
-                      : 'text-[var(--sf-muted)] hover:text-[var(--sf-primary)]',
-                  )
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-            <div
-              className="relative"
-              onMouseEnter={() => setMegaOpen(true)}
-              onMouseLeave={() => setMegaOpen(false)}
+        <div className="relative">
+          <div className="sf-container flex h-[60px] max-w-[1440px] items-center gap-3 sm:h-[72px] sm:gap-4">
+            <button
+              type="button"
+              className="-ml-1 rounded-lg p-2 text-[var(--sf-ink)] lg:hidden"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open menu"
             >
-              <button
-                type="button"
-                className="text-[13px] font-semibold text-[var(--sf-muted)] hover:text-[var(--sf-primary)]"
-              >
-                Categories
-              </button>
-              {megaOpen ? (
-                <div className="absolute left-1/2 top-full z-50 mt-3 w-[440px] -translate-x-1/2 rounded-2xl border border-[var(--sf-border)] bg-white p-5 shadow-[0_20px_60px_-20px_rgba(255,63,127,0.25)]">
-                  <div className="grid grid-cols-2 gap-1">
-                    {STOREFRONT_CATEGORIES.map((c) => (
-                      <Link
-                        key={c.slug}
-                        to={`/category/${c.slug}`}
-                        className="rounded-xl px-3 py-2.5 text-sm text-[var(--sf-muted)] transition hover:bg-[var(--sf-primary-soft)] hover:text-[var(--sf-primary)]"
-                      >
-                        {c.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </nav>
+              <Menu className="h-5 w-5" />
+            </button>
 
-          <div className="ml-auto flex items-center gap-0.5 sm:gap-1 xl:ml-2">
+            <BrandLogo />
+
+            {menuCategories.length > 0 ? (
+              <button
+                ref={categoriesTriggerRef}
+                type="button"
+                onClick={() => setMegaOpen((prev) => !prev)}
+                aria-expanded={megaOpen}
+                aria-controls={MEGA_MENU_ID}
+                aria-haspopup="true"
+                className={cn(
+                  'hidden h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold text-white transition-colors lg:flex',
+                  megaOpen
+                    ? 'bg-[var(--sf-primary)]'
+                    : 'bg-[var(--sf-ink)] hover:bg-[var(--sf-primary)]',
+                )}
+              >
+                <LayoutGrid className="h-4 w-4" aria-hidden />
+                Categories
+                <ChevronDown
+                  className={cn('h-4 w-4 transition-transform', megaOpen && 'rotate-180')}
+                  aria-hidden
+                />
+              </button>
+            ) : null}
+
             <button
               type="button"
               onClick={openSearch}
-              className="rounded-full p-2.5 text-[var(--sf-ink)] hover:bg-[var(--sf-primary-soft)] md:hidden"
-              aria-label="Search"
+              className="hidden min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--sf-border)] bg-white px-4 py-2.5 text-left text-sm text-[var(--sf-muted)] transition hover:border-[var(--sf-primary)] md:flex"
+              aria-label="Search products"
             >
-              <Search className="h-5 w-5" />
+              <Search className="h-4 w-4 shrink-0 text-[var(--sf-primary)]" />
+              <span className="truncate">Search products, categories or brands…</span>
             </button>
-            <PWAInstallButton />
-            <Link
-              to="/account"
-              className="hidden rounded-full p-2.5 text-[var(--sf-ink)] hover:bg-[var(--sf-primary-soft)] sm:block"
-              aria-label="Account"
-            >
-              <User className="h-5 w-5" />
-            </Link>
-            <Link
-              to="/account/wishlist"
-              className="relative rounded-full p-2.5 text-[var(--sf-ink)] hover:bg-[var(--sf-primary-soft)]"
-              aria-label="Wishlist"
-            >
-              <Heart className="h-5 w-5" />
-              {wishlistIds.size > 0 ? (
-                <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--sf-primary)] text-[9px] font-bold text-white">
-                  {wishlistIds.size}
-                </span>
-              ) : null}
-            </Link>
-            <button
-              type="button"
-              onClick={openCart}
-              className="relative flex items-center gap-2 rounded-full p-2.5 text-[var(--sf-ink)] hover:bg-[var(--sf-primary-soft)]"
-              aria-label="Cart"
-            >
-              <ShoppingBag className="h-5 w-5" />
-              <span className="hidden text-sm font-semibold lg:inline">{formatBDT(total)}</span>
-              {itemCount > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--sf-primary)] text-[9px] font-bold text-white lg:static lg:ml-0 lg:h-5 lg:w-5 lg:text-[10px]">
-                  {itemCount}
-                </span>
-              ) : null}
-            </button>
+
+            <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+              <button
+                type="button"
+                onClick={openSearch}
+                className="rounded-full p-2.5 text-[var(--sf-ink)] hover:bg-[var(--sf-primary-soft)] md:hidden"
+                aria-label="Search"
+                title="Search"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+              <PWAInstallButton />
+              <Link
+                to="/account"
+                className="hidden rounded-full p-2.5 text-[var(--sf-ink)] hover:bg-[var(--sf-primary-soft)] sm:block"
+                aria-label="Account"
+                title="My account"
+              >
+                <User className="h-5 w-5" />
+              </Link>
+              <Link
+                to="/account/wishlist"
+                className="relative hidden rounded-full p-2.5 text-[var(--sf-ink)] hover:bg-[var(--sf-primary-soft)] sm:block"
+                aria-label="Wishlist"
+                title="Wishlist"
+              >
+                <Heart className="h-5 w-5" />
+                {wishlistIds.size > 0 ? (
+                  <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--sf-primary)] text-[9px] font-bold text-white">
+                    {wishlistIds.size}
+                  </span>
+                ) : null}
+              </Link>
+              <button
+                type="button"
+                onClick={openCart}
+                className="relative flex items-center gap-2 rounded-full p-2.5 text-[var(--sf-ink)] hover:bg-[var(--sf-primary-soft)]"
+                aria-label="Cart"
+                title="Cart"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                <span className="hidden text-sm font-semibold xl:inline">{formatBDT(total)}</span>
+                {itemCount > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--sf-primary)] text-[9px] font-bold text-white xl:static xl:ml-0 xl:h-5 xl:w-5 xl:text-[10px]">
+                    {itemCount}
+                  </span>
+                ) : null}
+              </button>
+            </div>
+          </div>
+
+          <div className="hidden lg:block">
+            <CategoryMegaMenu
+              id={MEGA_MENU_ID}
+              open={megaOpen}
+              categories={menuCategories}
+              onClose={dismissMega}
+              onNavigate={closeMega}
+            />
           </div>
         </div>
       </header>
 
-      {menuOpen ? (
+      {drawerOpen ? (
         <div className="fixed inset-0 z-[60] lg:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-[var(--sf-ink)]/40"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => setDrawerOpen(false)}
             aria-label="Close menu"
           />
-          <div className="absolute left-0 top-0 flex h-full w-[min(320px,88vw)] flex-col bg-[var(--sf-bg)] shadow-xl">
+          <div className="absolute left-0 top-0 flex h-full w-[min(340px,90vw)] flex-col bg-[var(--sf-bg)] shadow-xl">
             <div className="flex items-center justify-between border-b border-[var(--sf-border)] px-5 py-4">
-              <span className="font-serif tracking-widest text-[var(--sf-ink)]">{STOREFRONT_BRAND}</span>
-              <button type="button" onClick={() => setMenuOpen(false)} aria-label="Close">
+              <BrandLogo />
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close"
+                className="rounded-lg p-2"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex-1 overflow-y-auto p-4">
+            <nav className="flex-1 overflow-y-auto p-4" aria-label="Categories">
               <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--sf-muted)]">
-                Shop
-              </p>
-              {NAV.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className="block rounded-xl px-3 py-3 text-sm font-semibold text-[var(--sf-ink)]"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <p className="mt-4 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--sf-muted)]">
                 Categories
               </p>
-              {STOREFRONT_CATEGORIES.map((c) => (
-                <Link
-                  key={c.slug}
-                  to={`/category/${c.slug}`}
-                  className="block rounded-xl px-3 py-2.5 text-sm text-[var(--sf-muted)]"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {c.label}
-                </Link>
-              ))}
+              <ul className="mt-1">
+                {menuCategories.map((category) => {
+                  const expanded = expandedCategoryId === category.id
+                  const hasChildren = category.children.length > 0
+                  return (
+                    <li key={category.id} className="border-b border-[var(--sf-border)]/60 last:border-0">
+                      <div className="flex items-center">
+                        <Link
+                          to={categoryShopUrl(category.slug)}
+                          className="min-h-[44px] flex-1 px-3 py-3 text-sm font-semibold text-[var(--sf-ink)]"
+                          onClick={() => setDrawerOpen(false)}
+                        >
+                          {category.name}
+                        </Link>
+                        {hasChildren ? (
+                          <button
+                            type="button"
+                            className="grid h-11 w-11 shrink-0 place-items-center text-[var(--sf-muted)]"
+                            aria-expanded={expanded}
+                            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${category.name}`}
+                            onClick={() =>
+                              setExpandedCategoryId(expanded ? null : category.id)
+                            }
+                          >
+                            <ChevronDown
+                              className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')}
+                            />
+                          </button>
+                        ) : null}
+                      </div>
+                      {expanded && hasChildren ? (
+                        <ul className="mb-2 space-y-0.5 pl-4">
+                          {category.children.map((child) => (
+                            <li key={child.id}>
+                              <Link
+                                to={categoryShopUrl(child.slug)}
+                                className="block min-h-[44px] rounded-lg px-3 py-2.5 text-sm text-[var(--sf-muted)]"
+                                onClick={() => setDrawerOpen(false)}
+                              >
+                                {child.name}
+                              </Link>
+                            </li>
+                          ))}
+                          <li>
+                            <Link
+                              to={categoryShopUrl(category.slug)}
+                              className="block min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-semibold text-[var(--sf-primary)]"
+                              onClick={() => setDrawerOpen(false)}
+                            >
+                              View All {category.name}
+                            </Link>
+                          </li>
+                        </ul>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+
               <div className="mt-4 space-y-1 border-t border-[var(--sf-border)] pt-3">
                 <Link
-                  to="/track-order"
-                  className="block rounded-xl px-3 py-2.5 text-sm font-medium"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Track order
-                </Link>
-                <Link
                   to="/account"
-                  className="block rounded-xl px-3 py-2.5 text-sm font-medium"
-                  onClick={() => setMenuOpen(false)}
+                  className="block min-h-[44px] rounded-xl px-3 py-2.5 text-sm font-medium"
+                  onClick={() => setDrawerOpen(false)}
                 >
                   My account
                 </Link>
-                <PWAInstallButton variant="menu" onAfterClick={() => setMenuOpen(false)} />
+                <Link
+                  to="/account/wishlist"
+                  className="block min-h-[44px] rounded-xl px-3 py-2.5 text-sm font-medium"
+                  onClick={() => setDrawerOpen(false)}
+                >
+                  Wishlist
+                </Link>
+                <Link
+                  to="/track-order"
+                  className="block min-h-[44px] rounded-xl px-3 py-2.5 text-sm font-medium"
+                  onClick={() => setDrawerOpen(false)}
+                >
+                  Track order
+                </Link>
+                <PWAInstallButton variant="menu" onAfterClick={() => setDrawerOpen(false)} />
               </div>
             </nav>
           </div>

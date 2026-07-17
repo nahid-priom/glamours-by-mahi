@@ -60,6 +60,15 @@ function buildVariantOptions(row: CatalogProductRow) {
   }
 }
 
+function toFilterSlug(value: string | null | undefined): string | null {
+  if (!value) return null
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return slug || null
+}
+
 export async function mapCatalogToStorefront(row: CatalogProductRow): Promise<StorefrontProduct> {
   const sku = row.base_sku ?? row.variants[0]?.sku ?? row.id.slice(0, 8)
   const slug = createProductSlug(row.name, sku)
@@ -96,7 +105,19 @@ export async function mapCatalogToStorefront(row: CatalogProductRow): Promise<St
     slug,
     category,
     catalogCategory: row.category?.name?.toLowerCase() ?? category,
-    tags: [category, row.brand?.name ?? ''].filter(Boolean),
+    // Include DB category/subcategory slugs so mega-menu links
+    // (/shop?category=<slug>) match products via the tag filter.
+    tags: [
+      ...new Set(
+        [
+          category,
+          row.brand?.name ?? '',
+          toFilterSlug(row.category?.name),
+          toFilterSlug(row.category?.code),
+          toFilterSlug(row.subcategory?.name),
+        ].filter((tag): tag is string => Boolean(tag)),
+      ),
+    ],
     style: 'casual' as const,
     description:
       row.description ??
