@@ -33,9 +33,19 @@ function applyStorefrontFilters(products: StorefrontProduct[], filters?: Storefr
     )
   }
 
-  const categoryFilter = filters?.category
-  if (categoryFilter && categoryFilter !== 'all') {
-    result = result.filter((p) => p.tags.includes(categoryFilter) || p.category === categoryFilter)
+  const categorySlugs = filters?.categorySlugs
+  if (categorySlugs && categorySlugs.length > 0) {
+    const slugSet = new Set(categorySlugs.map((s) => s.toLowerCase()))
+    result = result.filter(
+      (p) =>
+        slugSet.has(p.category.toLowerCase()) ||
+        p.tags.some((t) => slugSet.has(t.toLowerCase())),
+    )
+  } else {
+    const categoryFilter = filters?.category
+    if (categoryFilter && categoryFilter !== 'all') {
+      result = result.filter((p) => p.tags.includes(categoryFilter) || p.category === categoryFilter)
+    }
   }
 
   if (filters?.style && filters.style !== 'all') {
@@ -82,6 +92,9 @@ function isShopVisible(product: StorefrontProduct): boolean {
 }
 
 const STATUS_TIMELINE: OrderStatus[] = ['New', 'Confirmed', 'Packed', 'Courier Booked', 'Shipped', 'Delivered']
+
+// Products manually excluded from the storefront "Best Sellers" section.
+const BEST_SELLER_EXCLUDED_NAMES = new Set(['breeze boys twin set', 'heritage wool wrap'])
 
 let cachedCatalog: StorefrontProduct[] | null = null
 
@@ -150,7 +163,9 @@ export const storefrontService = {
 
   async getBestSellers(limit = 16): Promise<StorefrontProduct[]> {
     const all = (await loadCatalog()).filter(isShopVisible)
-    return all.filter((p) => p.isBestSeller).slice(0, limit)
+    return all
+      .filter((p) => p.isBestSeller && !BEST_SELLER_EXCLUDED_NAMES.has(p.name.trim().toLowerCase()))
+      .slice(0, limit)
   },
 
   async getLimited(limit = 6): Promise<StorefrontProduct[]> {

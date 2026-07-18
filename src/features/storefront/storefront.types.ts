@@ -98,6 +98,12 @@ export interface AccountSession {
 export interface StorefrontFilters {
   search?: string
   category?: StorefrontCategorySlug | 'all'
+  /**
+   * Explicit set of category/subcategory slugs to match (self + active
+   * descendants). Used by the DB-driven category route so a parent category
+   * includes its children. Takes precedence over `category` when present.
+   */
+  categorySlugs?: string[]
   brand?: string
   style?: StyleTag | 'all'
   sort?: 'newest' | 'price-asc' | 'price-desc' | 'popular'

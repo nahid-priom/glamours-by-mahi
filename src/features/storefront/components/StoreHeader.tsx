@@ -15,20 +15,32 @@ import { cn } from '@/lib/utils'
 import { useCart } from '../cart.context'
 import { useStorefrontUI } from '../storefront-ui.context'
 import { useMenuCategories } from '../hooks/useMenuCategories'
+import { useOnClickOutside } from '../hooks/useOnClickOutside'
 import { PWAInstallButton } from '@/features/pwa'
 import { UtilityBar } from './UtilityBar'
 import { categoryShopUrl } from '../lib/category-links'
 import { CategoryMegaMenu } from './CategoryMegaMenu'
+import { HeaderSearch } from './HeaderSearch'
 
 const MEGA_MENU_ID = 'storefront-category-menu'
 
 function BrandLogo({ className }: { className?: string }) {
   return (
-    <Link to="/" className={cn('block shrink-0 leading-none text-[var(--sf-ink)]', className)}>
-      <span className="block text-[9px] font-semibold uppercase tracking-[0.3em] text-[var(--sf-muted)] sm:text-[10px]">
-        Glamours Gallery by
+    <Link
+      to="/"
+      aria-label="Glamours Gallery by Mahi — home"
+      className={cn(
+        'block w-[150px] shrink-0 whitespace-nowrap text-[var(--sf-ink)] sm:w-[190px]',
+        'rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--sf-primary)]/50',
+        className,
+      )}
+    >
+      <span className="block text-[8px] font-semibold uppercase leading-none tracking-[0.32em] text-[var(--sf-muted)] sm:text-[10px]">
+        Glamours Gallery
       </span>
-      <span className="block font-serif text-xl tracking-[0.22em] sm:text-2xl">MAHI</span>
+      <span className="mt-0.5 block font-serif text-xl font-semibold leading-none tracking-[0.24em] sm:text-2xl">
+        BY MAHI
+      </span>
     </Link>
   )
 }
@@ -42,6 +54,7 @@ export function StoreHeader() {
   const [megaOpen, setMegaOpen] = useState(false)
   const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null)
   const categoriesTriggerRef = useRef<HTMLButtonElement>(null)
+  const megaWrapperRef = useRef<HTMLDivElement>(null)
 
   const { data: menuCategories = [] } = useMenuCategories()
 
@@ -57,12 +70,25 @@ export function StoreHeader() {
     setDrawerOpen(false)
   }, [location.pathname, location.search])
 
+  // Escape closes the mobile navigation drawer.
+  useEffect(() => {
+    if (!drawerOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawerOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
+
   const closeMega = useCallback(() => setMegaOpen(false), [])
 
   const dismissMega = useCallback(() => {
     setMegaOpen(false)
     categoriesTriggerRef.current?.focus()
   }, [])
+
+  // Close the desktop mega menu on any pointer press outside the trigger+menu.
+  useOnClickOutside(megaWrapperRef, closeMega, megaOpen)
 
   return (
     <>
@@ -80,10 +106,10 @@ export function StoreHeader() {
         <UtilityBar />
 
         <div className="relative">
-          <div className="sf-container flex h-[60px] max-w-[1440px] items-center gap-3 sm:h-[72px] sm:gap-4">
+          <div className="sf-container flex h-[60px] max-w-[1440px] items-center gap-3 sm:h-[72px] lg:gap-5">
             <button
               type="button"
-              className="-ml-1 rounded-lg p-2 text-[var(--sf-ink)] lg:hidden"
+              className="-ml-1 grid h-11 w-11 place-items-center rounded-lg text-[var(--sf-ink)] transition-colors hover:bg-[var(--sf-primary-soft)] lg:hidden"
               onClick={() => setDrawerOpen(true)}
               aria-label="Open menu"
             >
@@ -92,41 +118,50 @@ export function StoreHeader() {
 
             <BrandLogo />
 
-            {menuCategories.length > 0 ? (
-              <button
-                ref={categoriesTriggerRef}
-                type="button"
-                onClick={() => setMegaOpen((prev) => !prev)}
-                aria-expanded={megaOpen}
-                aria-controls={MEGA_MENU_ID}
-                aria-haspopup="true"
-                className={cn(
-                  'hidden h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold text-white transition-colors lg:flex',
-                  megaOpen
-                    ? 'bg-[var(--sf-primary)]'
-                    : 'bg-[var(--sf-ink)] hover:bg-[var(--sf-primary)]',
-                )}
-              >
-                <LayoutGrid className="h-4 w-4" aria-hidden />
-                Categories
-                <ChevronDown
-                  className={cn('h-4 w-4 transition-transform', megaOpen && 'rotate-180')}
-                  aria-hidden
+            {/* display:contents wrapper keeps the trigger in the flex row while
+                grouping it with the absolutely-positioned menu for outside-click
+                detection. */}
+            <div ref={megaWrapperRef} className="contents">
+              {menuCategories.length > 0 ? (
+                <button
+                  ref={categoriesTriggerRef}
+                  type="button"
+                  onClick={() => setMegaOpen((prev) => !prev)}
+                  aria-expanded={megaOpen}
+                  aria-controls={MEGA_MENU_ID}
+                  aria-haspopup="true"
+                  className={cn(
+                    'hidden h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold text-white outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--sf-primary)]/50 lg:flex',
+                    megaOpen
+                      ? 'bg-[var(--sf-primary)]'
+                      : 'bg-[var(--sf-ink)] hover:bg-[var(--sf-primary)]',
+                  )}
+                >
+                  <LayoutGrid className="h-4 w-4" aria-hidden />
+                  Categories
+                  <ChevronDown
+                    className={cn('h-4 w-4 transition-transform', megaOpen && 'rotate-180')}
+                    aria-hidden
+                  />
+                </button>
+              ) : null}
+
+              <div className="hidden lg:contents">
+                <CategoryMegaMenu
+                  id={MEGA_MENU_ID}
+                  open={megaOpen}
+                  categories={menuCategories}
+                  onClose={dismissMega}
+                  onNavigate={closeMega}
                 />
-              </button>
-            ) : null}
+              </div>
+            </div>
 
-            <button
-              type="button"
-              onClick={openSearch}
-              className="hidden min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--sf-border)] bg-white px-4 py-2.5 text-left text-sm text-[var(--sf-muted)] transition hover:border-[var(--sf-primary)] md:flex"
-              aria-label="Search products"
-            >
-              <Search className="h-4 w-4 shrink-0 text-[var(--sf-primary)]" />
-              <span className="truncate">Search products, categories or brands…</span>
-            </button>
+            <div className="hidden min-w-0 flex-1 justify-center md:flex">
+              <HeaderSearch className="w-full max-w-[600px]" />
+            </div>
 
-            <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+            <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
               <button
                 type="button"
                 onClick={openSearch}
@@ -174,16 +209,6 @@ export function StoreHeader() {
                 ) : null}
               </button>
             </div>
-          </div>
-
-          <div className="hidden lg:block">
-            <CategoryMegaMenu
-              id={MEGA_MENU_ID}
-              open={megaOpen}
-              categories={menuCategories}
-              onClose={dismissMega}
-              onNavigate={closeMega}
-            />
           </div>
         </div>
       </header>
