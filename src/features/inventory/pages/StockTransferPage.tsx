@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
+import { invalidateInventoryQueries } from '../lib/invalidate-inventory-queries'
 import { dispatch, getTransfer, listTransfers, receive } from '../repositories/inventory.repository'
 
 type ReceiveLine = {
@@ -37,12 +38,15 @@ export function StockTransferPage() {
     queryFn: () => listTransfers(filters),
   })
 
-  const invalidate = () => void qc.invalidateQueries({ queryKey: ['stock-transfers'] })
+  const invalidate = () => {
+    invalidateInventoryQueries(qc)
+    void qc.invalidateQueries({ queryKey: ['stock-transfers'] })
+  }
 
   const dispatchMutation = useMutation({
     mutationFn: dispatch,
     onSuccess: () => {
-      toast('Transfer dispatched')
+      toast('Stock transfer created')
       invalidate()
     },
     onError: (e: Error) => toast(e.message, 'error'),
@@ -72,7 +76,8 @@ export function StockTransferPage() {
       return receive(id, items, finalizeReceive)
     },
     onSuccess: (res) => {
-      toast(`Transfer ${(res as { status?: string })?.status ?? 'updated'}`)
+      const status = (res as { status?: string })?.status
+      toast(status === 'received' ? 'Transfer received successfully' : 'Transfer updated')
       setReceiveId(null)
       setReceiveLines([])
       invalidate()

@@ -29,16 +29,20 @@ export function InventoryKpiCard({
   label: ReactNode
   value: string
   hint?: string
-  accent?: 'primary' | 'cost' | 'value' | 'profit'
+  accent?: 'primary' | 'cost' | 'value' | 'profit' | 'warning' | 'danger'
 }) {
   const accentClass =
     accent === 'cost'
       ? 'border-l-[#6366F1]'
       : accent === 'value'
-        ? 'border-l-[#FF3F7F]'
+        ? 'border-l-[#059669]'
         : accent === 'profit'
           ? 'border-l-[#168F5C]'
-          : 'border-l-[#111827]'
+          : accent === 'warning'
+            ? 'border-l-[#D97706]'
+            : accent === 'danger'
+              ? 'border-l-[#DC2626]'
+              : 'border-l-[#111827]'
 
   return (
     <div

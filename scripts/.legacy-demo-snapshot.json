@@ -1,0 +1,24 @@
+{
+  "namespace": "legacy_multibranch_demo_v1",
+  "branches": 5,
+  "violations": [],
+  "counts": {
+    "sales": 50,
+    "purchases": 12,
+    "expense_entries": 24,
+    "stock_transfers": 5,
+    "suppliers": 8,
+    "customers": 35
+  },
+  "totals": {
+    "salesByBranch": {
+      "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2": 49170,
+      "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1": 32120,
+      "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb4": 48780,
+      "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb3": 51760,
+      "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb5": 36850
+    },
+    "demoSales": 218680
+  },
+  "ok": true
+}

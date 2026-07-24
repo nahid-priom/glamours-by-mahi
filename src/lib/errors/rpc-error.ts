@@ -1,6 +1,11 @@
 const FRIENDLY_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
   { pattern: /due payment requires a customer/i, message: 'Customer is required for a due sale.' },
   { pattern: /due requires a customer/i, message: 'Customer is required for a due sale.' },
+  {
+    pattern: /due payment not allowed when fully paid/i,
+    message: 'Remove the due payment or reduce cash/bank payments so they do not exceed the sale total.',
+  },
+  { pattern: /due requires a customer/i, message: 'Customer is required for a due sale.' },
   { pattern: /payments do not cover grand_total/i, message: 'Walk-in sales must be fully paid.' },
   { pattern: /collection amount .* exceeds customer due/i, message: 'Collection amount cannot exceed customer due.' },
   { pattern: /payment .* exceeds supplier due/i, message: 'Payment amount cannot exceed supplier due.' },

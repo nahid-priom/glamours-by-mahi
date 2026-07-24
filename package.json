@@ -19,6 +19,9 @@
     "preview": "vite preview",
     "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
     "seed:sales-demo": "node scripts/seed-sales-demo.mjs",
+    "seed:legacy-demo": "node scripts/seed-legacy-multibranch-demo.mjs",
+    "verify:legacy-demo": "node scripts/verify-legacy-multibranch-demo.mjs",
+    "cleanup:legacy-demo": "node scripts/cleanup-legacy-multibranch-demo.mjs",
     "verify:unified-core": "powershell -ExecutionPolicy Bypass -File scripts/verify-unified-core.ps1",
     "db:reset": "npx supabase db reset --yes",
     "db:types": "npx supabase gen types typescript --local -o src/types/database.ts"

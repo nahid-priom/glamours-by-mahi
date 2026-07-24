@@ -6,7 +6,7 @@ export { ProductImportPage } from './pages/ProductImportPage'
 export { VariantsPage } from './pages/VariantsPage'
 export { ProductImageUploader } from './components/ProductImageUploader'
 export { ProductStatusBadge } from './components/ProductStatusBadge'
-export { ProductMobileCard } from './components/ProductMobileCard'
+export { ProductInventoryCard, ProductMobileCard } from './components/ProductInventoryCard'
 export { ProductFilterBar } from './components/ProductFilterBar'
 export { QuickAddProductDialog } from './components/QuickAddProductDialog'
 export { ProductDuplicateDialog } from './components/ProductDuplicateDialog'
@@ -17,6 +17,7 @@ export { ExpiryAlertCard } from './components/ExpiryAlertCard'
 export { catalogRepository } from './repositories/catalog.repository'
 export type {
   ProductCatalogFilters,
+  ProductCatalogSort,
   ProductLifecycleStatus,
   ProductStockChip,
 } from './lib/product-filters'

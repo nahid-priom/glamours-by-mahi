@@ -1,3 +1,4 @@
+/** @deprecated Legacy IndexedDB sales/commission — not used by production routes. Use Supabase salesman_commissions. */
 import type {
   Sale,
   SaleItem,

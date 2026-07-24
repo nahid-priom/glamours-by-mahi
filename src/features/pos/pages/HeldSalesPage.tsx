@@ -65,7 +65,7 @@ export function HeldSalesPage() {
             </div>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" asChild>
-                <Link to="/sales/pos">Resume in POS</Link>
+                <Link to={`/sales/pos?resume=${row.id}`}>Resume in POS</Link>
               </Button>
               <Button
                 size="sm"

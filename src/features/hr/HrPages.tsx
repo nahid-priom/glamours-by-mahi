@@ -1,16 +1,8 @@
 import { ModulePlaceholder } from '@/features/common/ModulePlaceholder'
 
-/** HR module — tables/permissions ready; connect UI to repositories next. */
-export function HrEmployeesPage() {
-  return (
-    <ModulePlaceholder
-      title="Employees"
-      description="Employee records, device user IDs and branch assignment load from Supabase HR tables (migration 017)."
-      permissionHint="hr.read / hr.employee.create"
-    />
-  )
-}
+export { EmployeesPage as HrEmployeesPage } from './pages/EmployeesPage'
 
+/** HR module — attendance, leave and payroll UIs connect next. */
 export function HrAttendancePage() {
   return (
     <ModulePlaceholder

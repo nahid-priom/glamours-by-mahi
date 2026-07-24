@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -31,12 +31,15 @@ function LoginForm() {
     defaultValues: { email: 'mahi@codebondhu.com', password: '' },
   })
 
+  useEffect(() => {
+    if (!loading && session) {
+      navigate(from, { replace: true })
+    }
+  }, [loading, session, navigate, from])
+
   if (loading) return <FullPageLoader label="Checking session…" />
 
-  if (session) {
-    navigate(from, { replace: true })
-    return <FullPageLoader label="Redirecting…" />
-  }
+  if (session) return <FullPageLoader label="Redirecting…" />
 
   const onSubmit = form.handleSubmit(async (values) => {
     setError(null)

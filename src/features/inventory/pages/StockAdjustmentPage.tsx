@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
+import { invalidateInventoryQueries } from '../lib/invalidate-inventory-queries'
 import {
   createAdjustment,
   listStockLocations,
@@ -24,6 +25,7 @@ type Line = {
 export function StockAdjustmentPage() {
   const { activeBranchId } = useAuth()
   const { toast } = useToast()
+  const qc = useQueryClient()
   const [locationId, setLocationId] = useState<string>('')
   const [reason, setReason] = useState('')
   const [notes, setNotes] = useState('')
@@ -59,7 +61,8 @@ export function StockAdjustmentPage() {
       })
     },
     onSuccess: () => {
-      toast('Stock adjustment posted')
+      invalidateInventoryQueries(qc)
+      toast('Stock adjusted successfully')
       setLines([{ key: crypto.randomUUID(), variant_id: null, label: '', quantity_counted: '' }])
       setReason('')
       setNotes('')

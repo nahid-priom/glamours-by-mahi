@@ -29,6 +29,14 @@ export type ProductStockStatus =
   | 'out_of_stock'
   | 'expiring_soon'
 
+export type ProductListSort =
+  | 'recently_added'
+  | 'name_asc'
+  | 'stock_desc'
+  | 'stock_asc'
+  | 'value_desc'
+  | 'value_asc'
+
 export type PageParams = {
   search?: string
   page?: number
@@ -39,6 +47,7 @@ export type PageParams = {
   productId?: string | null
   status?: ProductLifecycleStatus | null
   stockStatus?: ProductStockStatus | null
+  sort?: ProductListSort
 }
 
 export type PagedResult<T> = {
@@ -360,8 +369,14 @@ export async function listProducts(params: PageParams = {}): Promise<PagedResult
       { count: useMemoryPaging ? undefined : 'exact' },
     )
     .is('deleted_at', null)
-    .order('name', { ascending: true })
-    .range(from, to)
+
+  if (params.sort === 'recently_added') {
+    q = q.order('created_at', { ascending: false })
+  } else {
+    q = q.order('name', { ascending: true })
+  }
+
+  q = q.range(from, to)
 
   if (params.search?.trim()) {
     const s = params.search.trim()

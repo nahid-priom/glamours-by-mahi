@@ -1,3 +1,4 @@
+/** @deprecated Legacy IndexedDB payroll — not used by production routes. Use Supabase HR/payroll tables. */
 import type { Payroll } from '@/database/schema'
 import { runAtomic, TransactionError, peekDatabase } from '@/database/transaction'
 import { postFinance, logActivity } from '@/database/repositories/finance.repository'

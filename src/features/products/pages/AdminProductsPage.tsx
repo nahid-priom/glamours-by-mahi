@@ -1,36 +1,36 @@
 import { useCallback, useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Copy, Loader2, Plus, Printer, Upload } from 'lucide-react'
-import { AppImage } from '@/components/common/AppImage'
-import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useToast } from '@/components/ui/toast'
-import { PermissionGate } from '@/components/permission-gate/PermissionGate'
-import { useAuth } from '@/features/auth/auth-session'
-import { MoneyValue } from '@/features/inventory/components/InventoryValuationUi'
-import { StockStatusBadge } from '@/features/inventory/components/StockStatusBadge'
-import { getInventoryStockBreakdown, type InventoryProductStockRow } from '@/features/inventory/repositories/inventory-valuation.repository'
-import { formatBDT } from '@/lib/format'
-import { queryKeys } from '@/lib/query/keys'
+import { CategoryProductGroup } from '../components/CategoryProductGroup'
 import { BarcodePrintDialog, type BarcodePrintItem } from '../components/BarcodePrintDialog'
 import { ProductDuplicateDialog } from '../components/ProductDuplicateDialog'
+import { ProductEmptyState } from '../components/ProductEmptyState'
 import { ProductFilterBar } from '../components/ProductFilterBar'
 import { ProductFormDialog } from '../components/ProductFormDialog'
-import { ProductMobileCard } from '../components/ProductMobileCard'
-import { ProductStatusBadge } from '../components/ProductStatusBadge'
+import { ProductInventoryCard } from '../components/ProductInventoryCard'
+import { ProductListSkeleton } from '../components/ProductListSkeleton'
+import { ProductsPageHeader } from '../components/ProductsPageHeader'
+import { CategoryCollapseButton } from '../components/AvailableStockDetails'
 import {
   catalogFiltersToListParams,
+  clearProductCatalogFilters,
   searchParamsToFilters,
   filtersToSearchParams,
   type ProductCatalogFilters,
 } from '../lib/product-filters'
+import { buildProductInventoryViewModels } from '../lib/product-list-model'
 import {
   listProducts,
   softDeleteProduct,
   type ProductListItem,
 } from '../repositories/catalog.repository'
 import { invalidateStorefrontCache } from '@/features/storefront/storefront.service'
+import { getInventoryStockBreakdown, type InventoryProductStockRow } from '@/features/inventory/repositories/inventory-valuation.repository'
+import { useToast } from '@/components/ui/toast'
+import { Button } from '@/components/ui/button'
+import { useAuth } from '@/features/auth/auth-session'
+import { queryKeys } from '@/lib/query/keys'
+import { formatNumber } from '@/lib/format'
 
 function productToBarcodeItems(product: ProductListItem): BarcodePrintItem[] {
   const variants = (product.product_variants ?? []).filter((v) => !v.deleted_at)
@@ -54,7 +54,7 @@ function productToBarcodeItems(product: ProductListItem): BarcodePrintItem[] {
 }
 
 export function AdminProductsPage() {
-  const { profile, can } = useAuth()
+  const { profile } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -76,9 +76,16 @@ export function AdminProductsPage() {
     [filters],
   )
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.products(listParams),
     queryFn: () => listProducts(listParams),
+    placeholderData: keepPreviousData,
   })
 
   const valuationFilters = useMemo(
@@ -92,6 +99,14 @@ export function AdminProductsPage() {
           : null,
       page: listParams.page ?? 1,
       pageSize: 24,
+      sortBy:
+        listParams.sort === 'value_desc' || listParams.sort === 'value_asc'
+          ? ('stock_value' as const)
+          : listParams.sort === 'stock_desc' || listParams.sort === 'stock_asc'
+            ? ('quantity' as const)
+            : undefined,
+      sortDirection:
+        listParams.sort === 'value_asc' || listParams.sort === 'stock_asc' ? ('asc' as const) : ('desc' as const),
     }),
     [listParams],
   )
@@ -111,10 +126,13 @@ export function AdminProductsPage() {
     return map
   }, [valuation])
 
-  const canViewCost =
-    valuation?.can_view_cost ??
-    (can('inventory.valuation') || can('accounting.view') || can('products.manage_prices'))
+  const { items: viewItems, groups } = useMemo(
+    () =>
+      buildProductInventoryViewModels(data?.items ?? [], valuationByProduct, filters.sort),
+    [data?.items, valuationByProduct, filters.sort],
+  )
 
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<ProductListItem | null>(null)
   const [duplicateTarget, setDuplicateTarget] = useState<ProductListItem | null>(null)
@@ -150,164 +168,125 @@ export function AdminProductsPage() {
     setBarcodeOpen(true)
   }
 
+  const handleDelete = (row: ProductListItem) => {
+    if (confirm(`Delete “${row.name}”?`)) deleteMutation.mutate(row.id)
+  }
+
+  const toggleCategory = (categoryId: string) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [categoryId]: !(prev[categoryId] ?? true),
+    }))
+  }
+
+  const isCategoryExpanded = (categoryId: string) => collapsedCategories[categoryId] ?? true
+  const showInitialLoading = isLoading && !data
+  const isEmpty = !showInitialLoading && !error && viewItems.length === 0
+
   return (
-    <div className="mx-auto w-full max-w-6xl min-w-0 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-[#111111]">Products</h1>
-          <p className="text-sm text-[#6B7280]">Admin catalog backed by Supabase.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <PermissionGate permission="products.import">
-            <Button size="sm" variant="outline" asChild>
-              <Link to="/products/import">
-                <Upload className="mr-1.5 h-4 w-4" />
-                Import
-              </Link>
-            </Button>
-          </PermissionGate>
-          <PermissionGate permission="products.create">
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditing(null)
-                setOpen(true)
-              }}
-            >
-              <Plus className="mr-1.5 h-4 w-4" />
-              Add product
-            </Button>
-          </PermissionGate>
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-6xl min-w-0 space-y-4 px-3 sm:px-4 lg:px-0">
+      <ProductsPageHeader
+        totalCount={data?.total ?? 0}
+        pageCount={viewItems.length}
+        isFetching={isFetching && !isLoading}
+        onAddProduct={() => {
+          setEditing(null)
+          setOpen(true)
+        }}
+      />
 
       <ProductFilterBar value={filters} onChange={setFilters} />
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading products…
-        </div>
+      {showInitialLoading ? <ProductListSkeleton /> : null}
+
+      {error ? (
+        <ProductEmptyState
+          filters={filters}
+          variant="error"
+          onRetry={() => void refetch()}
+        />
       ) : null}
-      {error ? <p className="text-sm text-[#E11D48]">Failed to load products.</p> : null}
 
-      <div className="space-y-3 md:hidden">
-        {(data?.items ?? []).map((row) => (
-          <ProductMobileCard
-            key={row.id}
-            product={row}
-            onEdit={openEdit}
-            onDuplicate={openDuplicate}
-            onPrintBarcode={openBarcode}
-          />
-        ))}
-        {!isLoading && (data?.items.length ?? 0) === 0 ? (
-          <p className="py-8 text-center text-sm text-[#6B7280]">No products found.</p>
-        ) : null}
-      </div>
-
-      <div className="hidden rounded-xl border border-border bg-white md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-14" />
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Brand</TableHead>
-              <TableHead>Variants</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead className="text-right">On hand</TableHead>
-              <TableHead className="text-right">Avail.</TableHead>
-              {canViewCost ? <TableHead className="text-right">Stock cost</TableHead> : null}
-              <TableHead className="text-right">Stock value</TableHead>
-              <TableHead>Stock status</TableHead>
-              <TableHead>Lifecycle</TableHead>
-              <TableHead className="w-36" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(data?.items ?? []).map((row) => {
-              const stock = valuationByProduct.get(row.id)
-              return (
-              <TableRow key={row.id}>
-                <TableCell>
-                  <AppImage
-                    src={row.coverUrl}
-                    alt={row.name}
-                    className="h-10 w-10 rounded-md"
-                    aspectRatio="square"
-                  />
-                </TableCell>
-                <TableCell>
-                  <p className="font-medium">{row.name}</p>
-                  <p className="text-xs text-[#9CA3AF]">{row.base_sku ?? '—'}</p>
-                </TableCell>
-                <TableCell className="text-[#6B7280]">{row.categories?.name ?? '—'}</TableCell>
-                <TableCell className="text-[#6B7280]">{row.brands?.name ?? '—'}</TableCell>
-                <TableCell className="text-[#6B7280]">{row.variantCount ?? 0}</TableCell>
-                <TableCell>{formatBDT(Number(row.selling_price))}</TableCell>
-                <TableCell className="text-right font-medium">
-                  {stock?.total_quantity ?? row.totalStock ?? 0}
-                </TableCell>
-                <TableCell className="text-right text-[#6B7280]">
-                  {stock?.available_quantity ?? row.totalStock ?? 0}
-                </TableCell>
-                {canViewCost ? (
-                  <TableCell className="text-right">
-                    <MoneyValue amount={stock?.total_purchase_cost} />
-                  </TableCell>
-                ) : null}
-                <TableCell className="text-right">
-                  <MoneyValue amount={stock?.total_stock_value ?? 0} />
-                </TableCell>
-                <TableCell>
-                  <StockStatusBadge
-                    status={stock?.stock_status ?? ((row.totalStock ?? 0) > 0 ? 'in_stock' : 'out_of_stock')}
-                  />
-                </TableCell>
-                <TableCell>
-                  <ProductStatusBadge status={row.status ?? (row.is_active ? 'active' : 'inactive')} />
-                </TableCell>
-                <TableCell>
-                  <div className="flex justify-end gap-1">
-                    <PermissionGate permission="products.update">
-                      <Button size="sm" variant="outline" onClick={() => openEdit(row)}>
-                        Edit
-                      </Button>
-                    </PermissionGate>
-                    <PermissionGate permission="products.create">
-                      <Button size="sm" variant="ghost" title="Duplicate" onClick={() => openDuplicate(row)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </PermissionGate>
-                    <Button size="sm" variant="ghost" title="Print barcode" onClick={() => openBarcode(row)}>
-                      <Printer className="h-4 w-4" />
-                    </Button>
-                    <PermissionGate permission="products.update">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-[#E11D48]"
-                        onClick={() => {
-                          if (confirm(`Delete “${row.name}”?`)) deleteMutation.mutate(row.id)
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </PermissionGate>
+      {!showInitialLoading && !error ? (
+        <>
+          <div className="space-y-4 lg:hidden">
+            {isFetching && data ? (
+              <p className="text-xs text-[#9CA3AF]">Refreshing products…</p>
+            ) : null}
+            {groups.map((group) => (
+              <section key={group.categoryId} className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CategoryCollapseButton
+                      expanded={isCategoryExpanded(group.categoryId)}
+                      onToggle={() => toggleCategory(group.categoryId)}
+                    />
+                    <div className="min-w-0">
+                      <h2 className="truncate text-sm font-semibold text-[#111111]">
+                        {group.categoryName}
+                      </h2>
+                      <p className="text-xs text-[#6B7280]">
+                        {formatNumber(group.productCount)} products
+                      </p>
+                    </div>
                   </div>
-                </TableCell>
-              </TableRow>
-            )})}
-          </TableBody>
-        </Table>
-        {!isLoading && (data?.items.length ?? 0) === 0 ? (
-          <p className="p-6 text-center text-sm text-[#6B7280]">No products found.</p>
-        ) : null}
-      </div>
+                </div>
+                {isCategoryExpanded(group.categoryId) ? (
+                  <div className="space-y-3">
+                    {group.products.map((item) => (
+                      <ProductInventoryCard
+                        key={item.id}
+                        item={item}
+                        onEdit={openEdit}
+                        onDuplicate={openDuplicate}
+                        onPrintBarcode={openBarcode}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            ))}
+            {isEmpty ? (
+              <ProductEmptyState
+                filters={filters}
+                variant={filters.category ? 'category' : 'filtered'}
+                onClearFilters={() => setFilters(clearProductCatalogFilters())}
+              />
+            ) : null}
+          </div>
 
-      <div className="flex items-center justify-between gap-2 text-sm">
+          <div className="hidden space-y-4 lg:block">
+            {isFetching && data ? (
+              <p className="text-xs text-[#9CA3AF]">Refreshing products…</p>
+            ) : null}
+            {groups.map((group) => (
+              <CategoryProductGroup
+                key={group.categoryId}
+                group={group}
+                expanded={isCategoryExpanded(group.categoryId)}
+                onToggle={() => toggleCategory(group.categoryId)}
+                onEdit={openEdit}
+                onDuplicate={openDuplicate}
+                onPrintBarcode={openBarcode}
+                onDelete={handleDelete}
+              />
+            ))}
+            {isEmpty ? (
+              <ProductEmptyState
+                filters={filters}
+                variant={filters.category ? 'category' : 'filtered'}
+                onClearFilters={() => setFilters(clearProductCatalogFilters())}
+              />
+            ) : null}
+          </div>
+        </>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <p className="text-[#6B7280]">
-          {data?.total ?? 0} products · page {page}/{totalPages}
+          Page {page}/{totalPages} · showing {formatNumber(viewItems.length)} of{' '}
+          {formatNumber(data?.total ?? 0)} products
         </p>
         <div className="flex gap-2">
           <Button

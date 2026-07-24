@@ -5,6 +5,7 @@ const LABELS: Record<string, string> = {
   low_stock: 'Low stock',
   out_of_stock: 'Out of stock',
   overstock: 'Overstock',
+  negative_stock: 'Negative stock',
 }
 
 const STYLES: Record<string, string> = {
@@ -12,6 +13,7 @@ const STYLES: Record<string, string> = {
   low_stock: 'bg-[#FFF7ED] text-[#C2410C]',
   out_of_stock: 'bg-[#FEF2F2] text-[#DC2626]',
   overstock: 'bg-[#EFF6FF] text-[#2563EB]',
+  negative_stock: 'bg-[#FEF2F2] text-[#991B1B]',
 }
 
 export function StockStatusBadge({ status, className }: { status: string; className?: string }) {

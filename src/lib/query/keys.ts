@@ -58,6 +58,13 @@ export const queryKeys = {
   onlineOrders: (filters: Record<string, unknown> = {}) =>
     ['online-orders', filters] as const,
   reconciliationReport: () => ['reconciliation-report'] as const,
+  employees: (filters: Record<string, unknown> = {}) => ['employees', filters] as const,
+  employeeStats: ['employees', 'stats'] as const,
+  commissionRules: (branchId?: string | null) => ['commission-rules', branchId ?? null] as const,
+  salesCommissions: (filters: Record<string, unknown> = {}) => ['sales-commissions', filters] as const,
+  commissionAccounts: ['commission-accounts'] as const,
+  commissionEmployees: (branchId?: string | null, query?: string) =>
+    ['commission-employees', branchId ?? null, query ?? ''] as const,
   reports: (name: string, filters: Record<string, unknown> = {}) =>
     ['reports', name, filters] as const,
 }

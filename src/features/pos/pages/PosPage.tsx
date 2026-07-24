@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { Pause, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +10,8 @@ import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
+import { queryKeys } from '@/lib/query/keys'
+import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { assertSaleReady, canAddQty } from '../cart-utils'
 import {
@@ -27,13 +30,19 @@ import {
 } from '../components/PosPostSalePreviewDialog'
 import { PosProductCard } from '../components/PosProductCard'
 import { PosProductPreviewDialog } from '../components/PosProductPreviewDialog'
+import { PosSalespersonSelect } from '../components/PosSalespersonSelect'
 import { usePosBarcodeLookup } from '../hooks/use-pos-barcode-lookup'
 import {
   usePosCatalogue,
   usePosFinancialAccounts,
   usePosPaymentMethods,
 } from '../hooks/use-pos-catalogue'
-import { completeSale, saveHeldSale } from '../repositories/pos.repository'
+import {
+  completeSale,
+  deleteHeldSale,
+  getHeldSaleForResume,
+  saveHeldSale,
+} from '../repositories/pos.repository'
 import type { PosVariant } from '../types'
 import { usePosCart } from '../use-pos-cart'
 
@@ -65,6 +74,11 @@ export function PosPage() {
   const cart = usePosCart()
   const barcodeRef = useRef<PosBarcodeInputHandle>(null)
   const clientTxnKeyRef = useRef(crypto.randomUUID())
+  const resumedHeldSaleIdRef = useRef<string | null>(null)
+  const restoreCartRef = useRef(cart.restore)
+  restoreCartRef.current = cart.restore
+  const [searchParams, setSearchParams] = useSearchParams()
+  const resumeId = searchParams.get('resume')
 
   const branchId = activeBranchId
   const canDiscount = can('pos.discount')
@@ -78,6 +92,7 @@ export function PosPage() {
   const [completedPreview, setCompletedPreview] = useState<CompletedSalePreview | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [productPreview, setProductPreview] = useState<PosVariant | null>(null)
+  const [salespersonEmployeeId, setSalespersonEmployeeId] = useState<string | null>(null)
   const previewTriggerRef = useRef<HTMLElement | null>(null)
 
   const catalogue = usePosCatalogue(branchId)
@@ -96,6 +111,7 @@ export function PosPage() {
         code: r.code,
         name: r.name,
         financialAccountId: r.financial_account_id,
+        isDue: r.is_due === true,
       })),
     [methodsQuery.data],
   )
@@ -113,6 +129,53 @@ export function PosPage() {
       undefined,
     [methods, defaultAccountId],
   )
+
+  useEffect(() => {
+    if (!profile?.id || !branchId) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .eq('status', 'active')
+        .is('deleted_at', null)
+        .maybeSingle()
+      if (!cancelled && data?.id) setSalespersonEmployeeId(data.id)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [profile?.id, branchId])
+
+  useEffect(() => {
+    if (!branchId || !resumeId) return
+
+    let cancelled = false
+    void (async () => {
+      setBusy(true)
+      try {
+        const restored = await getHeldSaleForResume(resumeId, branchId)
+        if (cancelled) return
+        restoreCartRef.current(restored)
+        resumedHeldSaleIdRef.current = restored.heldSaleId
+        toast('Held cart restored')
+        setSearchParams({}, { replace: true })
+        setMobileCartOpen(true)
+      } catch (e) {
+        if (!cancelled) {
+          toast(friendlyRpcError(e, 'Could not restore held sale'), 'error')
+          setSearchParams({}, { replace: true })
+        }
+      } finally {
+        if (!cancelled) setBusy(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [branchId, resumeId, toast, setSearchParams])
 
   useEffect(() => {
     if (methods[0] && !methods.some((m) => m.code === payMethod)) {
@@ -262,6 +325,15 @@ export function PosPage() {
     try {
       const payload = cart.serializeHold(branchId)
       await saveHeldSale(payload, profile.organization_id, profile.id)
+      if (resumedHeldSaleIdRef.current) {
+        try {
+          await deleteHeldSale(resumedHeldSaleIdRef.current)
+          void qc.invalidateQueries({ queryKey: queryKeys.heldSales })
+        } catch {
+          /* non-blocking */
+        }
+        resumedHeldSaleIdRef.current = null
+      }
       toast('Sale held')
       cart.reset()
       clientTxnKeyRef.current = crypto.randomUUID()
@@ -282,11 +354,16 @@ export function PosPage() {
       const { state, totals } = cart
       let payments = state.payments
       if (payments.length === 0 && totals.grandTotal > 0) {
+        const selected = methods.find((m) => m.code === payMethod)
+        const isDueMethod =
+          selected?.isDue === true || /due|credit|receivable/i.test(payMethod || '')
         payments = [
           {
             method: payMethod || 'cash',
             amount: totals.grandTotal,
-            financialAccountId: resolveAccountId(payMethod || 'cash'),
+            financialAccountId: isDueMethod
+              ? undefined
+              : resolveAccountId(payMethod || 'cash'),
           },
         ]
       }
@@ -295,6 +372,7 @@ export function PosPage() {
       const result = (await completeSale({
         branch_id: branchId,
         customer_id: state.customerId,
+        salesperson_employee_id: salespersonEmployeeId,
         client_txn_key: clientTxnKeyRef.current,
         note: state.note || null,
         discount: state.invoiceDiscount,
@@ -321,6 +399,17 @@ export function PosPage() {
         customerId: state.customerId,
         branchId,
       })
+
+      if (resumedHeldSaleIdRef.current) {
+        const heldId = resumedHeldSaleIdRef.current
+        resumedHeldSaleIdRef.current = null
+        try {
+          await deleteHeldSale(heldId)
+          void qc.invalidateQueries({ queryKey: queryKeys.heldSales })
+        } catch {
+          /* non-blocking */
+        }
+      }
 
       const invoiceLabel = result?.invoice_no ? ` — Invoice ${result.invoice_no}` : ''
       toast(`Sale completed successfully${invoiceLabel}`)
@@ -363,6 +452,13 @@ export function PosPage() {
 
   const paymentSection = (
     <>
+      <PosSalespersonSelect
+        branchId={branchId}
+        value={salespersonEmployeeId}
+        onChange={(id) => setSalespersonEmployeeId(id)}
+        disabled={busy}
+      />
+
       <div className="space-y-2 rounded-xl border border-border bg-white p-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium text-text-muted">Payment</p>

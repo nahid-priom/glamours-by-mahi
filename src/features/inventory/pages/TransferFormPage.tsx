@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { EntityCombobox } from '@/components/entity-combobox'
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
+import { invalidateInventoryQueries } from '../lib/invalidate-inventory-queries'
 import {
   createTransfer,
   listStockLocations,
@@ -22,6 +23,7 @@ export function TransferFormPage() {
   const { profile, activeBranchId } = useAuth()
   const { toast } = useToast()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [toBranchId, setToBranchId] = useState<string | null>(null)
   const [fromLocationId, setFromLocationId] = useState('')
   const [toLocationId, setToLocationId] = useState('')
@@ -69,7 +71,8 @@ export function TransferFormPage() {
       })
     },
     onSuccess: () => {
-      toast('Transfer created as draft')
+      invalidateInventoryQueries(qc)
+      toast('Stock transfer created')
       navigate('/inventory/transfers')
     },
     onError: (e: Error) => toast(e.message, 'error'),

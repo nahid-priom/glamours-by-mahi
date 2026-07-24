@@ -6,6 +6,8 @@ import {
   HrEmployeesPage,
   HrLeavesPage,
   HrPayrollPage,
+  SalesCommissionsPage,
+  CommissionSettingsPage,
   withSuspense,
 } from './lazy'
 
@@ -20,5 +22,13 @@ export const hrRoutes: RouteObject = {
     { path: '/hr/leaves', element: withSuspense(HrLeavesPage) },
     { path: '/hr/payroll', element: withSuspense(HrPayrollPage) },
     { path: '/hr/payroll/:id', element: withSuspense(HrPayrollPage) },
+    {
+      element: <PermissionRoute permission="sales.commission.read" />,
+      children: [{ path: '/hr/commissions', element: withSuspense(SalesCommissionsPage) }],
+    },
+    {
+      element: <PermissionRoute permission="sales.commission.manage" />,
+      children: [{ path: '/hr/commission-settings', element: withSuspense(CommissionSettingsPage) }],
+    },
   ],
 }

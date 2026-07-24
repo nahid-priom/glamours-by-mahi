@@ -8,10 +8,12 @@ import { EntityCombobox } from '@/components/entity-combobox'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
+import { queryKeys } from '@/lib/query/keys'
 
 const ruleSchema = z.object({
-  profile_id: z.string().min(1, 'Select a salesperson'),
+  employee_id: z.string().min(1, 'Select an employee'),
   rule_type: z.enum(['fixed', 'percent_sale', 'percent_profit', 'none']),
   rate: z.number().min(0),
   effective_from: z.string().min(1),
@@ -22,18 +24,26 @@ type RuleForm = z.infer<typeof ruleSchema>
 
 export function CommissionSettingsPage() {
   const { activeBranchId } = useAuth()
+  const { toast } = useToast()
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(false)
 
   const { data: rules = [], isLoading } = useQuery({
-    queryKey: ['commission-rules', activeBranchId],
+    queryKey: queryKeys.commissionRules(activeBranchId),
     queryFn: () => commissionsRepository.listCommissionRules(activeBranchId),
   })
+
+  const { data: employees = [] } = useQuery({
+    queryKey: queryKeys.commissionEmployees(activeBranchId, ''),
+    queryFn: () => commissionsRepository.searchCommissionEmployees('', activeBranchId, false),
+  })
+
+  const employeeMap = new Map(employees.map((e) => [e.id, e]))
 
   const form = useForm<RuleForm>({
     resolver: zodResolver(ruleSchema),
     defaultValues: {
-      profile_id: '',
+      employee_id: '',
       rule_type: 'percent_sale',
       rate: 2.5,
       effective_from: new Date().toISOString().slice(0, 10),
@@ -44,7 +54,7 @@ export function CommissionSettingsPage() {
   const save = useMutation({
     mutationFn: (values: RuleForm) =>
       commissionsRepository.upsertCommissionRule({
-        profile_id: values.profile_id,
+        employee_id: values.employee_id,
         branch_id: activeBranchId,
         rule_type: values.rule_type,
         rate: values.rate,
@@ -52,20 +62,36 @@ export function CommissionSettingsPage() {
         notes: values.notes,
       }),
     onSuccess: async () => {
+      toast('Commission rule saved')
       setShowForm(false)
       form.reset()
       await qc.invalidateQueries({ queryKey: ['commission-rules'] })
     },
+    onError: (e) => toast(e instanceof Error ? e.message : 'Could not save rule', 'error'),
   })
 
   const deactivate = useMutation({
     mutationFn: commissionsRepository.deactivateCommissionRule,
     onSuccess: async () => {
+      toast('Rule deactivated')
       await qc.invalidateQueries({ queryKey: ['commission-rules'] })
     },
+    onError: (e) => toast(e instanceof Error ? e.message : 'Could not deactivate rule', 'error'),
   })
 
   const activeRules = rules.filter((r) => r.is_active)
+  const employeesWithoutRules = employees.filter(
+    (e) => !activeRules.some((r) => r.employee_id === e.id),
+  )
+
+  const ruleLabel = (employeeId: string | null, profileId: string | null) => {
+    if (employeeId) {
+      const emp = employeeMap.get(employeeId)
+      return emp?.label ?? 'Employee'
+    }
+    if (profileId) return 'Profile (needs employee link)'
+    return '—'
+  }
 
   return (
     <div className="mx-auto w-full max-w-5xl min-w-0 space-y-4">
@@ -73,7 +99,7 @@ export function CommissionSettingsPage() {
         <div>
           <h1 className="text-xl font-bold text-[#111827]">Commission Settings</h1>
           <p className="text-sm text-[#6B7280]">
-            Configure salesperson commission rules. No rule means no commission accrues.
+            Configure employee commission rules. Sales without a matching rule accrue no commission.
           </p>
         </div>
         <PermissionGate permission="sales.commission.manage">
@@ -83,10 +109,25 @@ export function CommissionSettingsPage() {
         </PermissionGate>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-border bg-white p-4">
+          <p className="text-xs text-[#6B7280]">Active rules</p>
+          <p className="text-2xl font-bold">{activeRules.length}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-white p-4">
+          <p className="text-xs text-[#6B7280]">Employees without rules</p>
+          <p className="text-2xl font-bold">{employeesWithoutRules.length}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-white p-4">
+          <p className="text-xs text-[#6B7280]">Branch scope</p>
+          <p className="text-sm font-semibold">{activeBranchId ? 'Current branch' : 'All branches'}</p>
+        </div>
+      </div>
+
       {activeRules.length === 0 && !isLoading ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          No active commission rules. POS sales will not accrue commission until an Owner creates
-          and activates a rule here.
+          No active commission rules. POS sales will not accrue commission until a rule is created for
+          the salesperson employee.
         </div>
       ) : null}
 
@@ -96,13 +137,15 @@ export function CommissionSettingsPage() {
           onSubmit={form.handleSubmit((v) => save.mutate(v))}
         >
           <label className="block text-sm font-medium">
-            Salesperson
+            Employee
             <div className="mt-1">
               <EntityCombobox
-                value={form.watch('profile_id') || null}
-                onChange={(id) => form.setValue('profile_id', id ?? '', { shouldValidate: true })}
-                onSearch={commissionsRepository.searchSalespeople}
-                placeholder="Search staff…"
+                value={form.watch('employee_id') || null}
+                onChange={(id) => form.setValue('employee_id', id ?? '', { shouldValidate: true })}
+                onSearch={(q) =>
+                  commissionsRepository.searchCommissionEmployees(q, activeBranchId, false)
+                }
+                placeholder="Search by name or employee code…"
               />
             </div>
           </label>
@@ -121,71 +164,66 @@ export function CommissionSettingsPage() {
             </label>
             <label className="text-sm font-medium">
               Rate
-              <Input
-                type="number"
-                step="0.01"
-                className="mt-1"
-                {...form.register('rate', { valueAsNumber: true })}
-              />
+              <Input type="number" step="0.01" className="mt-1" {...form.register('rate', { valueAsNumber: true })} />
             </label>
             <label className="text-sm font-medium">
               Effective from
               <Input type="date" className="mt-1" {...form.register('effective_from')} />
             </label>
           </div>
-          <Input placeholder="Notes (optional)" {...form.register('notes')} />
-          <Button type="submit" size="sm" disabled={save.isPending}>
+          <label className="block text-sm font-medium">
+            Notes
+            <Input className="mt-1" {...form.register('notes')} />
+          </label>
+          <Button type="submit" disabled={save.isPending}>
             Save rule
           </Button>
-          {save.error ? (
-            <p className="text-sm text-[#E11D48]">{(save.error as Error).message}</p>
-          ) : null}
         </form>
       ) : null}
-
-      {isLoading ? <p className="text-sm text-[#6B7280]">Loading rules…</p> : null}
 
       <div className="overflow-x-auto rounded-xl border border-border bg-white">
         <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
             <tr>
-              <th className="px-3 py-2 text-left">Profile</th>
+              <th className="px-3 py-2 text-left">Employee</th>
               <th className="px-3 py-2 text-left">Type</th>
               <th className="px-3 py-2 text-left">Rate</th>
               <th className="px-3 py-2 text-left">Effective</th>
-              <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-left" />
             </tr>
           </thead>
           <tbody>
-            {rules.map((r) => (
-              <tr key={r.id} className="border-b last:border-0">
-                <td className="px-3 py-2 font-mono text-xs">{r.profile_id.slice(0, 8)}…</td>
-                <td className="px-3 py-2">{r.rule_type}</td>
-                <td className="px-3 py-2">{Number(r.rate)}</td>
+            {rules.map((rule) => (
+              <tr key={rule.id} className="border-b last:border-0">
+                <td className="px-3 py-2">{ruleLabel(rule.employee_id, rule.profile_id)}</td>
+                <td className="px-3 py-2">{rule.rule_type}</td>
+                <td className="px-3 py-2">{rule.rate}</td>
                 <td className="px-3 py-2">
-                  {r.effective_from}
-                  {r.effective_to ? ` → ${r.effective_to}` : ''}
+                  {rule.effective_from}
+                  {rule.effective_to ? ` → ${rule.effective_to}` : ''}
                 </td>
-                <td className="px-3 py-2">{r.is_active ? 'active' : 'inactive'}</td>
                 <td className="px-3 py-2">
-                  {r.is_active ? (
+                  {rule.is_active ? (
                     <PermissionGate permission="sales.commission.manage">
                       <Button
                         size="sm"
-                        variant="outline"
-                        disabled={deactivate.isPending}
-                        onClick={() => deactivate.mutate(r.id)}
+                        variant="ghost"
+                        onClick={() => deactivate.mutate(rule.id)}
                       >
                         Deactivate
                       </Button>
                     </PermissionGate>
-                  ) : null}
+                  ) : (
+                    <span className="text-xs text-[#9CA3AF]">Inactive</span>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {!isLoading && rules.length === 0 ? (
+          <p className="p-6 text-center text-sm text-[#6B7280]">No rules configured.</p>
+        ) : null}
       </div>
     </div>
   )

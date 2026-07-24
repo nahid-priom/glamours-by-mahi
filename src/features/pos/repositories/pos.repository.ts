@@ -4,6 +4,8 @@ import type { Json, TablesInsert } from '@/types/database'
 import { normalizeBdPhone } from '@/lib/phone-utils'
 import { calcCartTotals, calcLineTotal, normalizeBarcode } from '../cart-utils'
 import type {
+  CartLine,
+  CartState,
   CompletePosSalePayload,
   HeldSalePayload,
   PosVariant,
@@ -95,6 +97,57 @@ function mapVariantRow(
     productName: product.name,
     variantLabel,
     sku: row.sku as string,
+    barcode: (row.barcode as string | null) ?? null,
+    thumbnailUrl,
+    unitPrice: Number(row.selling_price ?? 0),
+    availableStock,
+  }
+}
+
+function mapVariantRowForResume(
+  row: Record<string, unknown>,
+  locationIds: string[],
+  thumbnailUrl: string | null,
+): PosVariant | null {
+  if (row.deleted_at) return null
+
+  const product = row.products as
+    | {
+        id: string
+        name: string
+        deleted_at: string | null
+        product_images?: Array<{
+          storage_path: string
+          is_cover: boolean
+          deleted_at: string | null
+          variant_id: string | null
+        }>
+      }
+    | null
+    | undefined
+
+  const balances =
+    (row.inventory_balances as Array<{
+      quantity: number
+      location_id: string
+      deleted_at: string | null
+    }> | null) ?? []
+
+  const availableStock = balances
+    .filter((b) => !b.deleted_at && locationIds.includes(b.location_id))
+    .reduce((sum, b) => sum + Number(b.quantity ?? 0), 0)
+
+  const variantLabel = (row.name as string | null) || 'Default'
+  const productId = product?.id ?? (row.product_id as string)
+  const productName =
+    product && !product.deleted_at ? product.name : 'Product'
+
+  return {
+    variantId: row.id as string,
+    productId,
+    productName,
+    variantLabel,
+    sku: (row.sku as string | null) ?? '—',
     barcode: (row.barcode as string | null) ?? null,
     thumbnailUrl,
     unitPrice: Number(row.selling_price ?? 0),
@@ -482,6 +535,165 @@ export async function saveHeldSale(
   return held
 }
 
+export type HeldSaleResume = CartState & { heldSaleId: string }
+
+export async function getHeldSaleForResume(
+  heldSaleId: string,
+  branchId: string,
+): Promise<HeldSaleResume> {
+  const { data: held, error } = await supabase
+    .from('held_sales')
+    .select(
+      `
+      id,
+      branch_id,
+      customer_id,
+      note,
+      discount,
+      tax,
+      shipping,
+      held_sale_items (
+        variant_id,
+        qty,
+        unit_price,
+        line_discount,
+        sort_order,
+        deleted_at
+      )
+    `,
+    )
+    .eq('id', heldSaleId)
+    .is('deleted_at', null)
+    .single()
+
+  if (error) throw error
+
+  if (held.branch_id !== branchId) {
+    throw new Error('This held sale belongs to a different branch. Switch branch and try again.')
+  }
+
+  type HeldItemRow = {
+    variant_id: string
+    qty: number
+    unit_price: number
+    line_discount: number
+    sort_order: number
+    deleted_at: string | null
+  }
+
+  const rawItems = ((held.held_sale_items ?? []) as HeldItemRow[])
+    .filter((item) => !item.deleted_at)
+    .sort((a, b) => a.sort_order - b.sort_order)
+
+  if (rawItems.length === 0) throw new Error('Held sale has no items')
+
+  let customerLabel: string | null = null
+  if (held.customer_id) {
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('name')
+      .eq('id', held.customer_id)
+      .is('deleted_at', null)
+      .maybeSingle()
+    customerLabel = customer?.name ?? null
+  }
+
+  const variantIds = [...new Set(rawItems.map((item) => item.variant_id))]
+  const locationIds = await getSaleableLocationIds(branchId)
+
+  const { data: variants, error: variantsError } = await supabase
+    .from('product_variants')
+    .select(
+      `
+      id,
+      sku,
+      barcode,
+      name,
+      selling_price,
+      image_path,
+      product_id,
+      deleted_at,
+      products (
+        id,
+        name,
+        deleted_at,
+        product_images (
+          storage_path,
+          is_cover,
+          deleted_at,
+          variant_id
+        )
+      ),
+      inventory_balances (
+        quantity,
+        location_id,
+        deleted_at
+      )
+    `,
+    )
+    .in('id', variantIds)
+    .is('deleted_at', null)
+
+  if (variantsError) throw variantsError
+
+  const variantMap = new Map<string, PosVariant>()
+  for (const row of (variants ?? []) as unknown as Record<string, unknown>[]) {
+    const thumb = await resolveThumbnail(pickCoverPath(row), null)
+    const mapped = mapVariantRowForResume(row, locationIds, thumb)
+    if (mapped) variantMap.set(mapped.variantId, mapped)
+  }
+
+  const lines: CartLine[] = []
+  for (const item of rawItems) {
+    const variant = variantMap.get(item.variant_id)
+    const qty = Number(item.qty)
+    const unitPrice = Number(item.unit_price)
+    const lineDiscount = Number(item.line_discount ?? 0)
+
+    if (!variant) {
+      lines.push({
+        variantId: item.variant_id,
+        productId: item.variant_id,
+        productName: 'Unavailable product',
+        variantLabel: '—',
+        sku: '—',
+        barcode: '',
+        unitPrice,
+        qty,
+        lineDiscount,
+        availableStock: qty,
+      })
+      continue
+    }
+
+    lines.push({
+      variantId: item.variant_id,
+      productId: variant.productId,
+      productName: variant.productName,
+      variantLabel: variant.variantLabel,
+      sku: variant.sku,
+      barcode: variant.barcode ?? '',
+      thumbnailUrl: variant.thumbnailUrl ?? undefined,
+      unitPrice,
+      qty,
+      lineDiscount,
+      availableStock: Math.max(variant.availableStock, qty),
+    })
+  }
+
+  return {
+    heldSaleId: held.id,
+    lines,
+    customerId: held.customer_id,
+    customerLabel,
+    invoiceDiscount: Number(held.discount ?? 0),
+    tax: Number(held.tax ?? 0),
+    shipping: Number(held.shipping ?? 0),
+    payments: [],
+    note: held.note ?? '',
+  }
+}
+
 export async function deleteHeldSale(heldSaleId: string) {
   const now = new Date().toISOString()
   const { error: itemsError } = await supabase
@@ -510,6 +722,7 @@ export const posRepository = {
   listPaymentMethods,
   listFinancialAccounts,
   listHeldSales,
+  getHeldSaleForResume,
   saveHeldSale,
   deleteHeldSale,
 }

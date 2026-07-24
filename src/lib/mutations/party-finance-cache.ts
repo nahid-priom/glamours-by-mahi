@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query'
+import { invalidateInventoryQueries } from '@/features/inventory/lib/invalidate-inventory-queries'
 import { queryKeys } from '@/lib/query/keys'
 
 /** Invalidate caches touched by customer collections and related sales flows. */
@@ -70,12 +71,12 @@ export async function invalidateSaleCompletionCaches(
     qc.invalidateQueries({ queryKey: ['sales'] }),
     qc.invalidateQueries({ queryKey: ['sales-kpis'] }),
     qc.invalidateQueries({ queryKey: queryKeys.inventory({}) }),
-    qc.invalidateQueries({ queryKey: queryKeys.stockOverview() }),
     qc.invalidateQueries({ queryKey: queryKeys.stockLedger() }),
     qc.invalidateQueries({ queryKey: queryKeys.accounts }),
     qc.invalidateQueries({ queryKey: queryKeys.dashboard() }),
     qc.invalidateQueries({ queryKey: queryKeys.posProducts(opts.branchId ?? '', null) }),
   ]
+  invalidateInventoryQueries(qc)
 
   if (opts.customerId) {
     tasks.push(qc.invalidateQueries({ queryKey: queryKeys.customer(opts.customerId) }))
@@ -98,11 +99,11 @@ export async function invalidatePurchaseCompletionCaches(
   const tasks: Promise<unknown>[] = [
     qc.invalidateQueries({ queryKey: queryKeys.purchases() }),
     qc.invalidateQueries({ queryKey: queryKeys.inventory({}) }),
-    qc.invalidateQueries({ queryKey: queryKeys.stockOverview() }),
     qc.invalidateQueries({ queryKey: queryKeys.stockLedger() }),
     qc.invalidateQueries({ queryKey: queryKeys.accounts }),
     qc.invalidateQueries({ queryKey: queryKeys.dashboard() }),
   ]
+  invalidateInventoryQueries(qc)
 
   if (opts.supplierId) {
     tasks.push(qc.invalidateQueries({ queryKey: queryKeys.supplier(opts.supplierId) }))

@@ -10,8 +10,6 @@ import {
   SaleEditPage,
   SalesHistoryPage,
   SalesReturnsPage,
-  SalesCommissionsPage,
-  CommissionSettingsPage,
   withSuspense,
 } from './lazy'
 
@@ -30,11 +28,16 @@ export const salesRoutes: RouteObject[] = [
       { path: '/sales', element: withSuspense(SalesHistoryPage) },
       { path: '/sales/online-orders', element: withSuspense(OnlineOrdersPage) },
       { path: '/sales/returns', element: withSuspense(SalesReturnsPage) },
-      { path: '/sales/commissions', element: withSuspense(SalesCommissionsPage) },
+      {
+        element: <PermissionRoute permission="sales.commission.read" />,
+        children: [
+          { path: '/sales/commissions', element: <Navigate to="/hr/commissions" replace /> },
+        ],
+      },
       {
         element: <PermissionRoute permission="sales.commission.manage" />,
         children: [
-          { path: '/sales/commission-settings', element: withSuspense(CommissionSettingsPage) },
+          { path: '/sales/commission-settings', element: <Navigate to="/hr/commission-settings" replace /> },
         ],
       },
       { path: '/sales/collections', element: withSuspense(DueCollectionPage) },

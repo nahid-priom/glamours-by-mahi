@@ -16,6 +16,14 @@ export type ProductStockChip =
   | 'expiring_soon'
   | 'inactive'
 
+export type ProductCatalogSort =
+  | 'recently_added'
+  | 'name_asc'
+  | 'stock_desc'
+  | 'stock_asc'
+  | 'value_desc'
+  | 'value_asc'
+
 /** URL-friendly filter object for product catalog views */
 export type ProductCatalogFilters = {
   q?: string
@@ -23,8 +31,18 @@ export type ProductCatalogFilters = {
   brand?: string | null
   status?: ProductLifecycleStatus | 'all'
   stock?: ProductStockChip
+  sort?: ProductCatalogSort
   page?: number
 }
+
+export const SORT_OPTIONS: Array<{ value: ProductCatalogSort; label: string }> = [
+  { value: 'recently_added', label: 'Recently added' },
+  { value: 'name_asc', label: 'Name A–Z' },
+  { value: 'stock_desc', label: 'Highest stock' },
+  { value: 'stock_asc', label: 'Lowest stock' },
+  { value: 'value_desc', label: 'Highest value' },
+  { value: 'value_asc', label: 'Lowest value' },
+]
 
 export const STOCK_CHIP_OPTIONS: Array<{ value: ProductStockChip; label: string }> = [
   { value: 'all', label: 'All' },
@@ -54,6 +72,7 @@ export function filtersToSearchParams(filters: ProductCatalogFilters): URLSearch
   if (filters.brand) params.set('brand', filters.brand)
   if (filters.status && filters.status !== 'all') params.set('status', filters.status)
   if (filters.stock && filters.stock !== 'all') params.set('stock', filters.stock)
+  if (filters.sort && filters.sort !== 'name_asc') params.set('sort', filters.sort)
   if (filters.page && filters.page > 1) params.set('page', String(filters.page))
   return params
 }
@@ -65,12 +84,16 @@ export function searchParamsToFilters(params: URLSearchParams): ProductCatalogFi
     statusParam && statusParam !== 'all'
       ? (statusParam as ProductLifecycleStatus)
       : 'all'
+  const sortParam = params.get('sort') as ProductCatalogSort | null
+  const validSort = SORT_OPTIONS.some((opt) => opt.value === sortParam)
+
   return {
     q: params.get('q') ?? '',
     category: params.get('category'),
     brand: params.get('brand'),
     status,
     stock: stock && stock !== 'all' ? stock : 'all',
+    sort: validSort ? sortParam! : 'name_asc',
     page: Math.max(1, Number(params.get('page') ?? 1) || 1),
   }
 }
@@ -96,6 +119,19 @@ export function catalogFiltersToListParams(filters: ProductCatalogFilters) {
     brandId: filters.brand,
     status,
     stockStatus,
+    sort: filters.sort ?? 'name_asc',
     page: filters.page ?? 1,
+  }
+}
+
+export function clearProductCatalogFilters(): ProductCatalogFilters {
+  return {
+    q: '',
+    category: null,
+    brand: null,
+    status: 'all',
+    stock: 'all',
+    sort: 'name_asc',
+    page: 1,
   }
 }
