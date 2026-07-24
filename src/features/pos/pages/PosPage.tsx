@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Pause, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,6 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
 import { cn } from '@/lib/utils'
 import { assertSaleReady, canAddQty } from '../cart-utils'
 import {
@@ -58,6 +61,7 @@ function playScanSuccess() {
 export function PosPage() {
   const { activeBranchId, profile, can } = useAuth()
   const { toast } = useToast()
+  const qc = useQueryClient()
   const cart = usePosCart()
   const barcodeRef = useRef<PosBarcodeInputHandle>(null)
   const clientTxnKeyRef = useRef(crypto.randomUUID())
@@ -313,7 +317,13 @@ export function PosPage() {
       const saleId = result?.sale_id
       if (!saleId) throw new Error('Sale completed but no sale_id returned')
 
-      toast('Sale completed')
+      await invalidateSaleCompletionCaches(qc, {
+        customerId: state.customerId,
+        branchId,
+      })
+
+      const invoiceLabel = result?.invoice_no ? ` — Invoice ${result.invoice_no}` : ''
+      toast(`Sale completed successfully${invoiceLabel}`)
       cart.reset()
       clientTxnKeyRef.current = crypto.randomUUID()
       setMobileCartOpen(false)
@@ -323,7 +333,7 @@ export function PosPage() {
       })
       setPreviewOpen(true)
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not complete sale', 'error')
+      toast(friendlyRpcError(e, 'Could not complete sale'), 'error')
     } finally {
       setBusy(false)
       refocusBarcode()

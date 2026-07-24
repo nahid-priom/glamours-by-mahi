@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { purchasesRepository } from '../repositories/purchases.repository'
 import { EntityCombobox } from '@/components/entity-combobox'
@@ -7,7 +7,10 @@ import { useAuth } from '@/features/auth/auth-session'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { invalidatePurchaseCompletionCaches } from '@/lib/mutations/party-finance-cache'
 
 type Line = {
   variantId: string
@@ -20,6 +23,8 @@ type Line = {
 export function PurchaseNewPage() {
   const { activeBranchId } = useAuth()
   const navigate = useNavigate()
+  const { toast } = useToast()
+  const qc = useQueryClient()
   const [supplierId, setSupplierId] = useState<string | null>(null)
   const [lines, setLines] = useState<Line[]>([])
   const [discount, setDiscount] = useState(0)
@@ -71,7 +76,16 @@ export function PurchaseNewPage() {
         payments,
       })
     },
-    onSuccess: (res) => navigate(`/purchases/${res.purchase_id}`),
+    onSuccess: async (res) => {
+      await invalidatePurchaseCompletionCaches(qc, {
+        supplierId,
+        branchId: activeBranchId,
+      })
+      const label = res?.invoice_no ? ` — ${res.invoice_no}` : ''
+      toast(`Purchase completed successfully${label}`)
+      navigate(`/purchases/${res.purchase_id}`)
+    },
+    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
   })
 
   return (

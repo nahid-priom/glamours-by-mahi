@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { EntityCombobox } from '@/components/entity-combobox'
@@ -11,6 +11,8 @@ import { useAuth } from '@/features/auth/auth-session'
 import { simpleAccountingRepository } from '@/features/accounting/repositories/simple-accounting.repository'
 import { queryKeys } from '@/lib/query/keys'
 import { formatBDT } from '@/lib/format'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
 import {
   collectDue,
   listPaymentMethods,
@@ -27,6 +29,11 @@ export function DueCollectionPage() {
   const [accountId, setAccountId] = useState<string | null>(null)
   const [reference, setReference] = useState('')
   const [note, setNote] = useState('')
+  const clientTxnKeyRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `col-${Date.now()}`,
+  )
 
   const onSearchCustomers = useCallback((q: string) => searchCustomers(q), [])
 
@@ -59,16 +66,24 @@ export function DueCollectionPage() {
         branch_id: activeBranchId,
         note: note || null,
         reference: reference || null,
+        client_txn_key: clientTxnKeyRef.current,
       })
     },
-    onSuccess: async () => {
-      toast('Due collection recorded')
+    onSuccess: async (_data, _vars, _ctx) => {
+      await invalidateCustomerCollectionCaches(qc, {
+        customerId,
+        branchId: activeBranchId,
+      })
+      toast(`Collection received — ${formatBDT(Number(amount))}`)
       setAmount('')
       setReference('')
       setNote('')
-      await qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      clientTxnKeyRef.current =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `col-${Date.now()}`
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
   })
 
   return (

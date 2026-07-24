@@ -4,6 +4,10 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import {
+  invalidateCustomerCollectionCaches,
+  invalidateSaleCompletionCaches,
+} from '@/lib/mutations/party-finance-cache'
+import {
   defaultSalesFilters,
   filtersFromSearchParams,
   filtersToSearchParams,
@@ -57,14 +61,12 @@ export function useSalesKpisQuery(filters: SalesHistoryFilters) {
 
 export function useInvalidateSalesQueries() {
   const qc = useQueryClient()
-  return (saleId?: string) => {
-    void qc.invalidateQueries({ queryKey: ['sales'] })
-    void qc.invalidateQueries({ queryKey: ['sales-kpis'] })
-    if (saleId) void qc.invalidateQueries({ queryKey: queryKeys.sale(saleId) })
-    void qc.invalidateQueries({ queryKey: ['inventory'] })
-    void qc.invalidateQueries({ queryKey: ['stock-overview'] })
-    void qc.invalidateQueries({ queryKey: ['customers'] })
-    void qc.invalidateQueries({ queryKey: ['accounts'] })
+  return async (saleId?: string, customerId?: string | null, branchId?: string | null) => {
+    await invalidateSaleCompletionCaches(qc, { customerId, branchId })
+    if (saleId) await qc.invalidateQueries({ queryKey: queryKeys.sale(saleId) })
+    if (customerId) {
+      await invalidateCustomerCollectionCaches(qc, { customerId, saleId, branchId })
+    }
   }
 }
 

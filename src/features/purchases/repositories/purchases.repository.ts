@@ -36,6 +36,7 @@ export type PaySupplierPayload = {
   method?: string
   financial_account_id?: string | null
   reference?: string | null
+  client_txn_key?: string
 }
 
 async function searchSuppliers(query: string) {
@@ -166,9 +167,10 @@ async function paySupplier(payload: PaySupplierPayload) {
   if (!payload.branch_id) throw new Error('Select an active branch first')
   if (!payload.financial_account_id) throw new Error('Select a payment account')
   const clientTxnKey =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    payload.client_txn_key ??
+    (typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
-      : `spay-${Date.now()}`
+      : `spay-${Date.now()}`)
   const { data, error } = await supabase.rpc('pay_supplier', {
     payload: {
       supplier_id: payload.supplier_id,

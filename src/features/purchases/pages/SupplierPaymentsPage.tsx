@@ -1,21 +1,31 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Loader2 } from 'lucide-react'
 import { purchasesRepository } from '../repositories/purchases.repository'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { useAuth } from '@/features/auth/auth-session'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { invalidateSupplierPaymentCaches } from '@/lib/mutations/party-finance-cache'
 
 export function SupplierPaymentsPage() {
   const { activeBranchId } = useAuth()
+  const { toast } = useToast()
   const qc = useQueryClient()
   const [supplierId, setSupplierId] = useState<string | null>(null)
   const [amount, setAmount] = useState(0)
   const [method, setMethod] = useState('cash')
   const [financialAccountId, setFinancialAccountId] = useState<string | null>(null)
   const [reference, setReference] = useState('')
+  const clientTxnKeyRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `spay-${Date.now()}`,
+  )
 
   const { data: payments = [], isLoading, error } = useQuery({
     queryKey: ['supplier-payments'],
@@ -29,6 +39,7 @@ export function SupplierPaymentsPage() {
   const pay = useMutation({
     mutationFn: () => {
       if (!supplierId || amount <= 0) throw new Error('Supplier and amount required')
+      if (!financialAccountId) throw new Error('Select a payment account')
       return purchasesRepository.paySupplier({
         supplier_id: supplierId,
         branch_id: activeBranchId,
@@ -36,13 +47,23 @@ export function SupplierPaymentsPage() {
         method,
         financial_account_id: financialAccountId,
         reference: reference || null,
+        client_txn_key: clientTxnKeyRef.current,
       })
     },
     onSuccess: async () => {
+      await invalidateSupplierPaymentCaches(qc, {
+        supplierId,
+        branchId: activeBranchId,
+      })
+      toast(`Supplier payment completed — ${formatBDT(amount)}`)
       setAmount(0)
       setReference('')
-      await qc.invalidateQueries({ queryKey: ['supplier-payments'] })
+      clientTxnKeyRef.current =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `spay-${Date.now()}`
     },
+    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
   })
 
   return (
@@ -93,6 +114,7 @@ export function SupplierPaymentsPage() {
             className="sm:col-span-2"
           />
           <Button disabled={pay.isPending} onClick={() => pay.mutate()} className="sm:col-span-2">
+            {pay.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
             {pay.isPending ? 'Paying…' : 'Record payment'}
           </Button>
           {pay.error ? (

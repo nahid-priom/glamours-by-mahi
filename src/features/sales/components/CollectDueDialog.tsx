@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -9,9 +9,10 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { simpleAccountingRepository } from '@/features/accounting/repositories/simple-accounting.repository'
 import { formatBDT } from '@/lib/format'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
 import { queryKeys } from '@/lib/query/keys'
 import { collectDue, listPaymentMethods } from '../repositories/sales.repository'
-import { useInvalidateSalesQueries } from '../hooks/use-sales-list'
 
 export type CollectDueTarget = {
   saleId: string
@@ -34,7 +35,12 @@ export function CollectDueDialog({
 }) {
   const { activeBranchId } = useAuth()
   const { toast } = useToast()
-  const invalidate = useInvalidateSalesQueries()
+  const qc = useQueryClient()
+  const clientTxnKeyRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `col-${Date.now()}`,
+  )
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('cash')
   const [accountId, setAccountId] = useState<string | null>(null)
@@ -80,14 +86,23 @@ export function CollectDueDialog({
         branch_id: branchId,
         note: `Collection for ${target.invoiceNo}`,
         reference: reference || null,
+        client_txn_key: clientTxnKeyRef.current,
       })
     },
-    onSuccess: () => {
-      toast('Due payment collected successfully')
-      invalidate(target?.saleId)
+    onSuccess: async () => {
+      await invalidateCustomerCollectionCaches(qc, {
+        customerId: target?.customerId,
+        saleId: target?.saleId,
+        branchId,
+      })
+      toast(`Collection received — ${formatBDT(Number(amount))} for ${target?.invoiceNo ?? 'invoice'}`)
+      clientTxnKeyRef.current =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `col-${Date.now()}`
       onOpenChange(false)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
   })
 
   const payableMethods = methods.length

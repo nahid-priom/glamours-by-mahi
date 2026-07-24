@@ -275,13 +275,15 @@ export async function collectDue(payload: {
   branch_id?: string | null
   note?: string | null
   reference?: string | null
+  client_txn_key?: string
 }) {
   if (!payload.branch_id) throw new Error('Select an active branch first')
   if (!payload.financial_account_id) throw new Error('Select a receive account')
   const clientTxnKey =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    payload.client_txn_key ??
+    (typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
-      : `col-${Date.now()}`
+      : `col-${Date.now()}`)
   const { data, error } = await supabase.rpc('collect_customer_due', {
     payload: {
       customer_id: payload.customer_id,

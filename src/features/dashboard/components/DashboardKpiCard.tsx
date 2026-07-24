@@ -37,7 +37,7 @@ function MiniSparkline({ values, color }: { values: number[]; color: string }) {
     .join(' ')
 
   return (
-    <svg width="64" height="24" viewBox="0 0 64 24" className="shrink-0 opacity-80" aria-hidden>
+    <svg width="48" height="18" viewBox="0 0 64 24" className="shrink-0 opacity-80" aria-hidden>
       <polyline fill="none" stroke={color} strokeWidth="1.5" points={points} />
     </svg>
   )
@@ -66,24 +66,26 @@ export function DashboardKpiCard({
             : '#64748B'
 
   const content = (
-    <div className="flex h-full flex-col rounded-2xl border border-[#E5E7EB] bg-white p-3.5 shadow-sm transition hover:shadow-md">
-      <div className="flex items-start justify-between gap-2">
-        <div className={cn('inline-flex rounded-xl p-2', tones[tone])}>
-          <Icon className="h-4 w-4" />
+    <div className="flex h-full flex-col rounded-xl border border-[#E5E7EB] bg-white p-2 shadow-sm transition hover:shadow-md">
+      <div className="flex items-start justify-between gap-1">
+        <div className={cn('inline-flex rounded-lg p-1.5', tones[tone])}>
+          <Icon className="h-3.5 w-3.5" />
         </div>
         {sparkline && sparkline.length > 1 && <MiniSparkline values={sparkline} color={sparkColor} />}
       </div>
-      <p className="mt-3 truncate text-lg font-bold text-[#111111] sm:text-xl">{formatBDT(value)}</p>
-      <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-[#6B7280]">{title}</p>
+      <p className="mt-1.5 truncate text-sm font-bold leading-tight text-[#111111]">{formatBDT(value)}</p>
+      <p className="mt-0.5 truncate text-[10px] font-medium uppercase tracking-wide text-[#6B7280]">{title}</p>
       <div
         className={cn(
-          'mt-2 flex items-center gap-1 text-[10px] font-semibold',
+          'mt-1 flex items-center gap-0.5 truncate text-[9px] font-semibold',
           positive ? 'text-emerald-600' : 'text-[#E11D48]',
         )}
       >
-        {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-        {positive ? '+' : ''}
-        {trend}% {trendLabel}
+        {positive ? <TrendingUp className="h-2.5 w-2.5 shrink-0" /> : <TrendingDown className="h-2.5 w-2.5 shrink-0" />}
+        <span className="truncate">
+          {positive ? '+' : ''}
+          {trend}% {trendLabel}
+        </span>
       </div>
     </div>
   )

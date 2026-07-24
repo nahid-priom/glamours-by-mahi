@@ -61,9 +61,14 @@ export function CustomerDetailPage() {
   }
 
   const collectionTotal = collections.reduce((s, row) => s + Number(row.credit), 0)
-  const salesDueTotal = ledger
-    .filter((row) => row.entry_type === 'sale_due' || row.entry_type === 'opening')
+  const invoicedTotal = ledger
+    .filter((row) => row.entry_type === 'sale_invoice' || row.entry_type === 'sale_due' || row.entry_type === 'opening')
     .reduce((s, row) => s + Number(row.debit), 0)
+  const paidLedgerTotal = ledger
+    .filter((row) =>
+      ['sale_payment', 'collection', 'return_credit', 'reversal'].includes(row.entry_type),
+    )
+    .reduce((s, row) => s + Number(row.credit), 0)
 
   return (
     <div className="mx-auto w-full max-w-5xl min-w-0 space-y-4">
@@ -104,8 +109,8 @@ export function CustomerDetailPage() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Kpi label="Total spent" value={formatBDT(Number(customer.total_spent))} />
-        <Kpi label="Opening / sales due" value={formatBDT(salesDueTotal)} />
-        <Kpi label="Lifetime paid" value={formatBDT(Number(customer.total_paid))} />
+        <Kpi label="Invoiced (ledger)" value={formatBDT(invoicedTotal)} />
+        <Kpi label="Credits (ledger)" value={formatBDT(paidLedgerTotal)} />
       </div>
 
       <div>
