@@ -55,7 +55,8 @@ export function TopHeader() {
             {greeting}, {name.split(' ')[0]}
           </h2>
           <p className="truncate text-xs text-text-muted sm:text-sm">
-            {brandConfig.name} · {brandConfig.primaryLocation}
+            <span className="brand-gradient-text font-medium">{brandConfig.name}</span>
+            <span className="text-text-muted"> · {brandConfig.primaryLocation}</span>
           </p>
         </div>
 

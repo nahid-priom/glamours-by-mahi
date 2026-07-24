@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -7,8 +7,8 @@ import { visualizer } from 'rollup-plugin-visualizer'
 import path from 'path'
 
 const PWA_MANIFEST = {
-  name: 'Glamourous by Mahi',
-  short_name: 'Glamourous',
+  name: 'Glamorous Gallery By Mahi',
+  short_name: 'Glamorous Gallery',
   description: 'Multi-Branch Fashion Retail & E-commerce Business Automation System',
   theme_color: '#F8F6F2',
   background_color: '#F8F6F2',
@@ -19,8 +19,32 @@ const PWA_MANIFEST = {
 
 const analyzeBundle = process.env.ANALYZE === '1'
 
+const appBuildId =
+  process.env.VERCEL_GIT_COMMIT_SHA ??
+  process.env.VERCEL_DEPLOYMENT_ID ??
+  process.env.GITHUB_SHA ??
+  `local-${Date.now()}`
+
+function injectBuildIdMeta(): Plugin {
+  return {
+    name: 'inject-build-id-meta',
+    transformIndexHtml(html) {
+      const meta = `<meta name="app-build-id" content="${appBuildId}" />`
+      if (html.includes('name="app-build-id"')) {
+        return html.replace(/<meta name="app-build-id" content="[^"]*" \/>/, meta)
+      }
+      return html.replace('</head>', `    ${meta}\n  </head>`)
+    },
+  }
+}
+
 export default defineConfig({
+  base: '/',
+  define: {
+    __APP_BUILD_ID__: JSON.stringify(appBuildId),
+  },
   plugins: [
+    injectBuildIdMeta(),
     react({
       jsxRuntime: 'automatic',
     }),
@@ -112,25 +136,15 @@ export default defineConfig({
             urlPattern: ({ request, sameOrigin, url }) =>
               sameOrigin === true &&
               request.method === 'GET' &&
-              url.pathname.startsWith('/assets/') &&
-              (request.destination === 'script' || request.destination === 'style'),
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'app-chunks',
-              expiration: { maxEntries: 96, maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
-          {
-            urlPattern: ({ request, sameOrigin, url }) =>
-              sameOrigin === true &&
-              request.method === 'GET' &&
               request.mode === 'navigate' &&
-              !url.pathname.startsWith('/print/'),
+              !url.pathname.startsWith('/print/') &&
+              !url.pathname.startsWith('/assets/'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'html-shell',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 },
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 },
+              cacheableResponse: { statuses: [200] },
             },
           },
         ],

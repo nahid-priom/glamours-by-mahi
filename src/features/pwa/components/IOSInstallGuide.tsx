@@ -8,6 +8,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { PWA_BRAND } from '../config/pwa.config'
+import { brandConfig } from '@/config/brand'
 import { usePWAOptional } from '../context/PWAProvider'
 
 export function IOSInstallGuide() {
@@ -38,7 +39,7 @@ export function IOSInstallGuide() {
       >
         <SheetHeader>
           <SheetTitle className="font-serif text-xl">Install {PWA_BRAND.shortName} App</SheetTitle>
-          <SheetDescription>Add Glamourous by Mahi to your home screen for quick access.</SheetDescription>
+          <SheetDescription>Add {brandConfig.name} to your home screen for quick access.</SheetDescription>
         </SheetHeader>
 
         <ol className="mt-4 space-y-4">

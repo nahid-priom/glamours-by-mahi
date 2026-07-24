@@ -1,6 +1,7 @@
 import type { ReportFilters, ReportResult, ReportType } from './reports.types'
 import { reportsService } from './reports.service'
 import { MOCK_COURIERS, MOCK_STORES } from '@/lib/mock-data'
+import { brandConfig } from '@/config/brand'
 
 export type ReportTypeSlug =
   | 'order'
@@ -161,8 +162,8 @@ export const reportPrintService = {
         }),
         periodLabel: formatPeriod(filters),
         filterLabels,
-        companyName: 'Glamourous by Mahi',
-        poweredBy: 'Glamourous by Mahi',
+        companyName: brandConfig.name,
+        poweredBy: brandConfig.poweredBy,
       },
     }
   },

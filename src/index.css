@@ -57,6 +57,68 @@
   }
 }
 
+@keyframes brand-gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.brand-gradient-text {
+  background: linear-gradient(
+    90deg,
+    #e11d48,
+    #ff3f7f,
+    #6366f1,
+    #059669,
+    #d97706,
+    #e11d48
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: brand-gradient-shift 8s ease infinite;
+}
+
+.brand-gradient-border {
+  position: relative;
+}
+
+.brand-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(90deg, #e11d48, #6366f1, #059669, #ff3f7f, #e11d48);
+  background-size: 300% 100%;
+  animation: brand-gradient-shift 8s ease infinite;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-gradient-text,
+  .brand-gradient-border::before {
+    animation: none;
+    background: #e11d48;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    color: #e11d48;
+  }
+}
+
 html,
 body,
 #root {

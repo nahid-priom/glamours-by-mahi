@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Sparkles } from 'lucide-react'
 import { brandConfig } from '@/config/brand'
+import { BrandMark } from '@/components/brand/BrandMark'
+import { PoweredByCodeBondhu } from '@/components/brand/PoweredByCodeBondhu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -52,14 +54,16 @@ function LoginForm() {
   })
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-[#F8F6F2] px-4">
+    <div className="flex min-h-svh flex-col items-center justify-center bg-[#F8F6F2] px-4 py-8">
       <div className="w-full max-w-md overflow-hidden rounded-3xl border border-[#111111]/8 bg-white shadow-sm">
         <div className="bg-[#111111] px-6 py-8 text-white">
-          <div className="inline-flex rounded-2xl bg-[#E11D48] p-2.5">
+          <div className="brand-gradient-border inline-flex rounded-2xl bg-[#E11D48] p-2.5">
             <Sparkles className="h-5 w-5" />
           </div>
-          <h1 className="mt-4 font-serif text-3xl">{brandConfig.name}</h1>
-          <p className="mt-2 text-sm text-white/70">Retail ERP · Secure staff login</p>
+          <div className="mt-4">
+            <BrandMark variant="stacked" light animate />
+          </div>
+          <p className="mt-3 text-sm text-white/70">Retail ERP · Secure staff login</p>
           <p className="mt-1 text-xs text-white/50">{brandConfig.primaryLocation}</p>
         </div>
         <form onSubmit={onSubmit} className="space-y-4 p-6" noValidate>
@@ -98,6 +102,7 @@ function LoginForm() {
           </p>
         </form>
       </div>
+      <PoweredByCodeBondhu className="mt-6" />
     </div>
   )
 }

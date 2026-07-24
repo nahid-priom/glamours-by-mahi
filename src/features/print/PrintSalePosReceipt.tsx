@@ -109,7 +109,9 @@ export function PrintSalePosReceipt({
       <p className="mt-1 text-center text-[9px] opacity-80">
         Returns accepted with original invoice within store policy.
       </p>
-      <p className="pos-receipt-powered mt-2 text-center">Powered by Code Bondhu IT</p>
+      <p className="pos-receipt-powered mt-2 text-center">
+        Powered by <span className="brand-gradient-text font-semibold">Code Bondhu IT</span>
+      </p>
     </div>
   )
 }

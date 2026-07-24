@@ -16,6 +16,8 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { brandConfig } from '@/config/brand'
+import { BrandMark } from '@/components/brand/BrandMark'
+import { PoweredByCodeBondhu } from '@/components/brand/PoweredByCodeBondhu'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/auth-session'
 import { hasAnyModuleAccess, hasPermission, type Permission } from '@/lib/permissions'
@@ -230,13 +232,10 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
       style={{ background: 'linear-gradient(180deg, #0B0F15 0%, #111827 100%)' }}
     >
       <div className="flex items-center gap-2.5 border-b border-white/10 px-5 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#E11D48]">
+        <div className="brand-gradient-border flex h-9 w-9 items-center justify-center rounded-xl bg-[#E11D48]">
           <Sparkles className="h-5 w-5 text-white" />
         </div>
-        <div className="min-w-0">
-          <h1 className="truncate text-sm font-bold leading-tight">{brandConfig.shortName}</h1>
-          <p className="truncate text-[10px] text-white/50">by Mahi · Retail ERP</p>
-        </div>
+        <BrandMark variant="compact" light animate className="flex-1" />
       </div>
 
       <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
@@ -306,9 +305,12 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
         })}
       </nav>
 
-      <div className="mx-3 mb-3 mt-auto rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
+      <div className="mx-3 mb-3 mt-auto space-y-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
         <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{brandConfig.primaryLocation}</p>
-        <p className="mt-1 text-xs font-semibold text-white/80">{brandConfig.name}</p>
+        <p className="text-xs font-semibold text-white/80">
+          <span className="brand-gradient-text">{brandConfig.name}</span>
+        </p>
+        <PoweredByCodeBondhu size="xs" className="text-white/45 [&_.brand-gradient-text]:text-[10px]" />
       </div>
     </aside>
   )

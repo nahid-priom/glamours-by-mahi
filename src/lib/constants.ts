@@ -54,7 +54,7 @@ export type FraudLevel = (typeof FRAUD_LEVELS)[number]
 export const SIDEBAR_WIDTH = 260
 
 export const ECOMMERCE_STORE_ID = 's5'
-export const ECOMMERCE_STORE_NAME = 'Glamourous Website'
+export const ECOMMERCE_STORE_NAME = 'Glamorous Gallery Website'
 export const STOREFRONT_BRAND = brandConfig.name
 export const DELIVERY_CHARGE = 120
 export const FREE_DELIVERY_THRESHOLD = 3000

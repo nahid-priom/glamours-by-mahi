@@ -4,6 +4,7 @@ import { AppSidebar } from '@/components/layout/AppSidebar'
 import { TopHeader } from '@/components/layout/TopHeader'
 import { MobileTopBar } from '@/components/layout/MobileTopBar'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
+import { AppFooter } from '@/components/layout/AppFooter'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
@@ -62,7 +63,7 @@ export function DashboardLayout() {
         <main
           className={cn(
             'min-h-0 flex-1 overflow-x-hidden',
-            isPosRoute ? 'overflow-hidden pb-0 lg:pb-0' : 'overflow-y-auto pb-20 lg:pb-6',
+            isPosRoute ? 'overflow-hidden pb-0 lg:pb-0' : 'overflow-y-auto pb-20 lg:pb-24',
           )}
         >
           <div
@@ -76,6 +77,12 @@ export function DashboardLayout() {
             <Outlet />
           </div>
         </main>
+
+        {!isPosRoute ? (
+          <div className="no-print">
+            <AppFooter />
+          </div>
+        ) : null}
 
         <div className="no-print">
           <MobileBottomNav />

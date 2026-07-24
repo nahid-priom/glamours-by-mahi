@@ -1,7 +1,9 @@
 import { Outlet } from 'react-router-dom'
 import { createBrowserRouter } from 'react-router-dom'
 import { ScrollToTop } from '@/components/common/ScrollToTop'
+import { RouteErrorElement } from '@/components/errors/AppErrorPage'
 import { PWAProvider } from '@/features/pwa/core'
+import { useAppBootstrap } from '@/lib/deployment/use-app-bootstrap'
 import { AdminAuthGuard } from '@/app/guards/AdminAuthGuard'
 import { DashboardLayout } from './lazy-layouts'
 import { accountsRoutes } from './accounts.routes'
@@ -21,6 +23,8 @@ import { storefrontRoutes } from './storefront.routes'
 import { suppliersRoutes } from './suppliers.routes'
 
 function RootLayout() {
+  useAppBootstrap()
+
   return (
     <PWAProvider>
       <ScrollToTop />
@@ -32,6 +36,7 @@ function RootLayout() {
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
+    errorElement: <RouteErrorElement />,
     children: [
       storefrontRoutes,
       { path: '/admin/login', element: withSuspense(AdminLoginPage) },

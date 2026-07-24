@@ -1,4 +1,5 @@
-import { lazy, Suspense, type ComponentType, type ReactNode } from 'react'
+import { Suspense, type ComponentType, type ReactNode } from 'react'
+import { lazyWithRetry as lazy } from '@/lib/deployment/lazy-with-retry'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function PageLoader() {

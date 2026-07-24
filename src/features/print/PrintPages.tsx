@@ -13,6 +13,7 @@ import { PrintSaleGiftLabel } from './PrintSaleGiftLabel'
 import { reportPrintService } from '@/features/reports/report-print.service'
 import type { ShippingLabelSize } from './print.utils'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
+import { brandConfig } from '@/config/brand'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 
@@ -240,7 +241,7 @@ export function PrintReportPage() {
   })
 
   useEffect(() => {
-    if (document) document.title = `${document.title} — Glamourous by Mahi`
+    if (document) document.title = `${document.title} — ${brandConfig.name}`
   }, [document])
 
   const reportLabel = REPORT_SLUG_LABELS[reportType] ?? 'Report'

@@ -21,6 +21,8 @@ import { UtilityBar } from './UtilityBar'
 import { categoryShopUrl } from '../lib/category-links'
 import { CategoryMegaMenu } from './CategoryMegaMenu'
 import { HeaderSearch } from './HeaderSearch'
+import { brandConfig } from '@/config/brand'
+import { BrandMark } from '@/components/brand/BrandMark'
 
 const MEGA_MENU_ID = 'storefront-category-menu'
 
@@ -28,19 +30,14 @@ function BrandLogo({ className }: { className?: string }) {
   return (
     <Link
       to="/"
-      aria-label="Glamours Gallery by Mahi — home"
+      aria-label={`${brandConfig.name} — home`}
       className={cn(
-        'block w-[150px] shrink-0 whitespace-nowrap text-[var(--sf-ink)] sm:w-[190px]',
+        'block w-[150px] shrink-0 sm:w-[200px]',
         'rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--sf-primary)]/50',
         className,
       )}
     >
-      <span className="block text-[8px] font-semibold uppercase leading-none tracking-[0.32em] text-[var(--sf-muted)] sm:text-[10px]">
-        Glamours Gallery
-      </span>
-      <span className="mt-0.5 block font-serif text-xl font-semibold leading-none tracking-[0.24em] sm:text-2xl">
-        BY MAHI
-      </span>
+      <BrandMark variant="stacked" animate />
     </Link>
   )
 }

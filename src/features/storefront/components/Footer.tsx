@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { STOREFRONT_BRAND } from '@/lib/constants'
 import { brandConfig } from '@/config/brand'
+import { PoweredByCodeBondhu } from '@/components/brand/PoweredByCodeBondhu'
 import { CreditCard, RotateCcw, Shield, Truck } from 'lucide-react'
 
 const trust = [
@@ -29,7 +30,10 @@ export function Footer() {
 
       <div className="sf-container grid max-w-[1440px] gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-2">
-          <p className="font-serif text-2xl tracking-[0.12em]">{STOREFRONT_BRAND}</p>
+          <p className="font-serif text-2xl tracking-[0.08em]">
+            <span className="brand-gradient-text">{brandConfig.displayLine1}</span>
+            <span className="text-white"> {brandConfig.displayLine2}</span>
+          </p>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/55">
             {brandConfig.tagline}. Authentic cosmetics, trendy fashion and premium lifestyle products —
             delivered nationwide.
@@ -126,12 +130,7 @@ export function Footer() {
           <p>
             © {new Date().getFullYear()} {STOREFRONT_BRAND}. All rights reserved.
           </p>
-          <p>
-            Powered by{' '}
-            <span className="bg-gradient-to-r from-[var(--sf-primary)] via-[#f7b4c9] to-[var(--sf-primary)] bg-clip-text font-semibold text-transparent">
-              Code Bondhu IT
-            </span>
-          </p>
+          <PoweredByCodeBondhu align="right" className="text-white/50" prefixClassName="text-white/50" />
         </div>
       </div>
     </footer>

@@ -1,4 +1,4 @@
-import { lazy } from 'react'
+import { lazyWithRetry as lazy } from '@/lib/deployment/lazy-with-retry'
 
 export const StorefrontLayout = lazy(() =>
   import('@/features/storefront/StorefrontLayout').then((m) => ({ default: m.StorefrontLayout })),
