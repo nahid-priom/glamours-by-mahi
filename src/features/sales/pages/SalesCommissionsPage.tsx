@@ -1,8 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { commissionsRepository } from '../repositories/commissions.repository'
+import { listEmployees } from '@/features/hr/repositories/employees.repository'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
@@ -18,14 +26,35 @@ function employeeName(row: Awaited<ReturnType<typeof commissionsRepository.listC
   return '—'
 }
 
+function isPayable(status: string) {
+  return status === 'approved' || status === 'pending'
+}
+
+function statusLabel(status: string) {
+  if (status === 'pending' || status === 'approved') return 'unpaid'
+  return status
+}
+
 export function SalesCommissionsPage() {
   const { toast } = useToast()
   const qc = useQueryClient()
   const [payAccountId, setPayAccountId] = useState<string>('')
+  const [employeeId, setEmployeeId] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  const filters = {
+    employeeId: employeeId === 'all' ? null : employeeId,
+    status: statusFilter === 'all' ? null : statusFilter,
+  }
 
   const { data = [], isLoading, error } = useQuery({
-    queryKey: queryKeys.salesCommissions({}),
-    queryFn: () => commissionsRepository.listCommissions(),
+    queryKey: queryKeys.salesCommissions(filters),
+    queryFn: () => commissionsRepository.listCommissions(filters),
+  })
+
+  const { data: employeesData } = useQuery({
+    queryKey: queryKeys.employees({ status: 'active', pageSize: 200 }),
+    queryFn: () => listEmployees({ status: 'active', pageSize: 200 }),
   })
 
   const { data: accounts = [] } = useQuery({
@@ -33,28 +62,22 @@ export function SalesCommissionsPage() {
     queryFn: () => commissionsRepository.listFinancialAccounts(),
   })
 
+  const employees = employeesData?.items ?? []
+
   const kpis = useMemo(() => {
-    const sum = (status: string) =>
-      data.filter((r) => r.status === status).reduce((s, r) => s + Number(r.commission_amount), 0)
+    const sum = (statuses: string[]) =>
+      data
+        .filter((r) => statuses.includes(r.status))
+        .reduce((s, r) => s + Number(r.commission_amount), 0)
     return {
-      pending: sum('pending'),
-      approved: sum('approved'),
-      paid: sum('paid'),
-      reversed: sum('reversed'),
+      unpaid: sum(['approved', 'pending']),
+      paid: sum(['paid']),
+      reversed: sum(['reversed']),
       month: data
         .filter((r) => r.created_at.slice(0, 7) === new Date().toISOString().slice(0, 7))
         .reduce((s, r) => s + Number(r.commission_amount), 0),
     }
   }, [data])
-
-  const approve = useMutation({
-    mutationFn: commissionsRepository.approveCommission,
-    onSuccess: () => {
-      toast('Commission approved')
-      void qc.invalidateQueries({ queryKey: ['sales-commissions'] })
-    },
-    onError: (e) => toast(e instanceof Error ? e.message : 'Could not approve', 'error'),
-  })
 
   const pay = useMutation({
     mutationFn: ({ id, accountId }: { id: string; accountId: string }) =>
@@ -73,14 +96,14 @@ export function SalesCommissionsPage() {
       <div>
         <h1 className="text-xl font-bold text-[#111827]">Commissions</h1>
         <p className="text-sm text-[#6B7280]">
-          Employee commissions from POS sales — approve, pay directly, or include in payroll.
+          Employee commissions from POS sales — auto-assigned from commission rules, pay directly or
+          include in payroll.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Pending', value: kpis.pending },
-          { label: 'Approved', value: kpis.approved },
+          { label: 'Unpaid', value: kpis.unpaid },
           { label: 'Paid', value: kpis.paid },
           { label: 'Reversed', value: kpis.reversed },
           { label: 'This month', value: kpis.month },
@@ -92,25 +115,64 @@ export function SalesCommissionsPage() {
         ))}
       </div>
 
-      {accounts.length > 0 ? (
-        <label className="flex flex-wrap items-center gap-2 text-sm">
-          Payment account
-          <select
-            className="h-9 min-w-[12rem] rounded-md border border-border px-2"
-            value={defaultAccount}
-            onChange={(e) => setPayAccountId(e.target.value)}
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="space-y-1 text-sm">
+          <span className="text-[#6B7280]">Employee</span>
+          <Select value={employeeId} onValueChange={setEmployeeId}>
+            <SelectTrigger className="h-9 min-w-[12rem]">
+              <SelectValue placeholder="All employees" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All employees</SelectItem>
+              {employees.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.full_name} ({e.employee_code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
-      ) : null}
+
+        <label className="space-y-1 text-sm">
+          <span className="text-[#6B7280]">Status</span>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-9 min-w-[10rem]">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="reversed">Reversed</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+
+        {accounts.length > 0 ? (
+          <label className="space-y-1 text-sm">
+            <span className="text-[#6B7280]">Payment account</span>
+            <select
+              className="flex h-9 min-w-[12rem] rounded-md border border-border px-2"
+              value={defaultAccount}
+              onChange={(e) => setPayAccountId(e.target.value)}
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+      </div>
 
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
-      {error ? <p className="text-sm text-[#E11D48]">Could not load commissions.</p> : null}
+      {error ? (
+        <p className="text-sm text-[#E11D48]">
+          {error instanceof Error ? error.message : 'Could not load commissions.'}
+        </p>
+      ) : null}
 
       <div className="hidden overflow-x-auto rounded-xl border border-border bg-white md:block">
         <table className="w-full min-w-[760px] text-sm">
@@ -134,37 +196,28 @@ export function SalesCommissionsPage() {
                 <td className="px-3 py-2">
                   <span
                     className={cn(
-                      'rounded-full px-2 py-0.5 text-xs font-medium',
-                      row.status === 'pending' && 'bg-amber-100 text-amber-900',
-                      row.status === 'approved' && 'bg-blue-100 text-blue-900',
+                      'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
+                      (row.status === 'pending' || row.status === 'approved') &&
+                        'bg-blue-100 text-blue-900',
                       row.status === 'paid' && 'bg-emerald-100 text-emerald-900',
                       row.status === 'reversed' && 'bg-rose-100 text-rose-900',
                     )}
                   >
-                    {row.status}
+                    {statusLabel(row.status)}
                   </span>
                 </td>
                 <td className="px-3 py-2">
-                  <div className="flex gap-1">
-                    {row.status === 'pending' ? (
-                      <PermissionGate permission="sales.commission.approve">
-                        <Button size="sm" variant="outline" onClick={() => approve.mutate(row.id)}>
-                          Approve
-                        </Button>
-                      </PermissionGate>
-                    ) : null}
-                    {row.status === 'approved' ? (
-                      <PermissionGate permission="sales.commission.pay">
-                        <Button
-                          size="sm"
-                          disabled={!defaultAccount}
-                          onClick={() => pay.mutate({ id: row.id, accountId: defaultAccount })}
-                        >
-                          Pay
-                        </Button>
-                      </PermissionGate>
-                    ) : null}
-                  </div>
+                  {isPayable(row.status) ? (
+                    <PermissionGate permission="sales.commission.pay">
+                      <Button
+                        size="sm"
+                        disabled={!defaultAccount}
+                        onClick={() => pay.mutate({ id: row.id, accountId: defaultAccount })}
+                      >
+                        Pay
+                      </Button>
+                    </PermissionGate>
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -184,27 +237,22 @@ export function SalesCommissionsPage() {
                 {formatBDT(Number(row.commission_amount))}
               </p>
             </div>
-            <p className="mt-2 text-xs text-[#6B7280]">Status: {row.status}</p>
-            <div className="mt-3 flex gap-2">
-              {row.status === 'pending' ? (
-                <PermissionGate permission="sales.commission.approve">
-                  <Button className="min-h-11 flex-1" variant="outline" onClick={() => approve.mutate(row.id)}>
-                    Approve
-                  </Button>
-                </PermissionGate>
-              ) : null}
-              {row.status === 'approved' ? (
+            <p className="mt-2 text-xs text-[#6B7280] capitalize">
+              Status: {statusLabel(row.status)}
+            </p>
+            {isPayable(row.status) ? (
+              <div className="mt-3">
                 <PermissionGate permission="sales.commission.pay">
                   <Button
-                    className="min-h-11 flex-1"
+                    className="min-h-11 w-full"
                     disabled={!defaultAccount}
                     onClick={() => pay.mutate({ id: row.id, accountId: defaultAccount })}
                   >
                     Pay
                   </Button>
                 </PermissionGate>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

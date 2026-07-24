@@ -56,7 +56,6 @@ export function TopHeader() {
           </h2>
           <p className="truncate text-xs text-text-muted sm:text-sm">
             <span className="brand-gradient-text font-medium">{brandConfig.name}</span>
-            <span className="text-text-muted"> · {brandConfig.primaryLocation}</span>
           </p>
         </div>
 

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { purchasesRepository } from '../repositories/purchases.repository'
+import { PurchasePrintActions } from '../components/PurchasePrintActions'
 import { Button } from '@/components/ui/button'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
@@ -34,19 +35,19 @@ export function PurchaseHistoryPage() {
           const supplier = p.suppliers as unknown as { name: string } | null
           return (
             <li key={p.id}>
-              <Link
-                to={`/purchases/${p.id}`}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3 hover:border-[#E11D48]/40"
-              >
-                <div className="min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-white px-4 py-3 hover:border-[#E11D48]/40">
+                <Link to={`/purchases/${p.id}`} className="min-w-0 flex-1">
                   <p className="font-semibold">{p.invoice_no}</p>
                   <p className="text-xs text-[#9CA3AF]">
                     {supplier?.name || 'Supplier'} · {p.payment_status} ·{' '}
                     {p.completed_at ? new Date(p.completed_at).toLocaleString() : '—'}
                   </p>
+                </Link>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold">{formatBDT(Number(p.grand_total))}</p>
+                  <PurchasePrintActions purchaseId={p.id} />
                 </div>
-                <p className="font-semibold">{formatBDT(Number(p.grand_total))}</p>
-              </Link>
+              </div>
             </li>
           )
         })}

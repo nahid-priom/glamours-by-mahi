@@ -1,5 +1,31 @@
 import { supabase } from '@/lib/supabase/client'
-import type { Json } from '@/types/database'
+import type { Json, Tables } from '@/types/database'
+
+export type CourierCompany = Tables<'courier_companies'>
+
+export type CourierCompanyListItem = Pick<
+  CourierCompany,
+  | 'id'
+  | 'name'
+  | 'code'
+  | 'contact_phone'
+  | 'status'
+  | 'connection_status'
+  | 'success_rate'
+  | 'api_base_url'
+  | 'created_at'
+  | 'updated_at'
+>
+
+export type CourierCompanyInput = {
+  id?: string
+  organization_id: string
+  name: string
+  code?: string | null
+  contact_phone?: string | null
+  api_base_url?: string | null
+  status?: 'active' | 'inactive' | 'archived'
+}
 
 export type ParcelBookingInput = {
   organization_id: string
@@ -14,57 +40,78 @@ export type ParcelBookingInput = {
   courier_charge?: number
 }
 
-async function listCompanies() {
-  const { data, error } = await supabase
+async function listCompanies(filters?: { search?: string; status?: string | null }): Promise<CourierCompanyListItem[]> {
+  let q = supabase
     .from('courier_companies')
     .select(
-      'id, name, code, contact_phone, status, connection_status, success_rate, api_base_url, created_at',
+      'id, name, code, contact_phone, status, connection_status, success_rate, api_base_url, created_at, updated_at',
     )
     .is('deleted_at', null)
     .order('name', { ascending: true })
+
+  if (filters?.status) q = q.eq('status', filters.status)
+  if (filters?.search?.trim()) {
+    const term = filters.search.trim()
+    q = q.or(`name.ilike.%${term}%,code.ilike.%${term}%,contact_phone.ilike.%${term}%`)
+  }
+
+  const { data, error } = await q
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as CourierCompanyListItem[]
 }
 
-async function upsertCompany(input: {
-  id?: string
-  organization_id: string
-  name: string
-  code?: string | null
-  contact_phone?: string | null
-  api_base_url?: string | null
-  status?: 'active' | 'inactive' | 'archived'
-}) {
+async function getCompany(id: string) {
+  const { data, error } = await supabase
+    .from('courier_companies')
+    .select('*')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+async function upsertCompany(input: CourierCompanyInput) {
+  const payload = {
+    name: input.name.trim(),
+    code: input.code?.trim() || null,
+    contact_phone: input.contact_phone?.trim() || null,
+    api_base_url: input.api_base_url?.trim() || null,
+    status: input.status ?? 'active',
+  }
+
   if (input.id) {
     const { data, error } = await supabase
       .from('courier_companies')
-      .update({
-        name: input.name,
-        code: input.code ?? null,
-        contact_phone: input.contact_phone ?? null,
-        api_base_url: input.api_base_url ?? null,
-        status: input.status ?? 'active',
-      })
+      .update(payload)
       .eq('id', input.id)
-      .select('id')
+      .select('*')
       .single()
     if (error) throw error
     return data
   }
+
   const { data, error } = await supabase
     .from('courier_companies')
     .insert({
       organization_id: input.organization_id,
-      name: input.name,
-      code: input.code ?? null,
-      contact_phone: input.contact_phone ?? null,
-      api_base_url: input.api_base_url ?? null,
-      status: input.status ?? 'active',
+      ...payload,
     })
-    .select('id')
+    .select('*')
     .single()
   if (error) throw error
   return data
+}
+
+async function deleteCompany(id: string) {
+  const { error } = await supabase
+    .from('courier_companies')
+    .update({
+      deleted_at: new Date().toISOString(),
+      status: 'archived',
+    })
+    .eq('id', id)
+  if (error) throw error
 }
 
 async function listParcels(filters?: {
@@ -293,7 +340,9 @@ async function searchSales(query: string) {
 
 export const courierRepository = {
   listCompanies,
+  getCompany,
   upsertCompany,
+  deleteCompany,
   listParcels,
   bookParcel,
   listTrackingEvents,

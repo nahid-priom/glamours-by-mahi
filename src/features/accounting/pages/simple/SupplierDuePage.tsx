@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { invalidateSupplierPaymentCaches } from '@/lib/mutations/party-finance-cache'
 
 export function SupplierDuePage() {
   const { activeBranchId } = useAuth()
@@ -58,10 +59,14 @@ export function SupplierDuePage() {
     },
     onSuccess: async () => {
       toast('Payment recorded')
+      const supplierId = selected?.id
       setSelected(null)
       setAmount('')
       setReference('')
-      await qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      await invalidateSupplierPaymentCaches(qc, {
+        supplierId,
+        branchId: activeBranchId,
+      })
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })

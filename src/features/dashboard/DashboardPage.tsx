@@ -20,10 +20,8 @@ import { LowStockCard } from './components/LowStockCard'
 import { AttendanceSummaryCard } from './components/AttendanceSummaryCard'
 import { RecentActivityCard } from './components/RecentActivityCard'
 import { DashboardSectionCard } from './components/DashboardSectionCard'
-import {
-  getDashboardOverview,
-  listDashboardBranches,
-} from './repositories/dashboard.repository'
+import { useDashboardOverview } from './hooks/use-dashboard-overview'
+import { listDashboardBranches } from './repositories/dashboard.repository'
 
 const SalesOverviewChart = lazy(() =>
   import('./components/SalesOverviewChart').then((m) => ({ default: m.SalesOverviewChart })),
@@ -59,15 +57,7 @@ export function DashboardPage() {
     enabled: Boolean(profile),
   })
 
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: queryKeys.dashboard({ branchId: branchId || null }),
-    queryFn: () => getDashboardOverview(branchId || null),
-    enabled: Boolean(profile),
-  })
+  const { data, isLoading, error } = useDashboardOverview(branchId)
 
   const salesSpark = data?.salesOverview.map((d) => d.sales) ?? []
   const collectionSpark = data?.salesOverview.map((d) => d.collection) ?? []

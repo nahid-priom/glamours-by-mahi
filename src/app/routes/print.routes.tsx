@@ -5,6 +5,7 @@ import { PermissionRoute } from '@/app/guards/PermissionRoute'
 import { PrintLayout } from './lazy-layouts'
 import {
   PrintReportPage,
+  PrintPurchaseA4Page,
   PrintSaleA4Page,
   PrintSaleGiftLabelPage,
   PrintSalePosPage,
@@ -30,6 +31,10 @@ export const printRoutes: RouteObject = {
             { path: 'sales/:id/pos', element: withSuspense(PrintSalePosPage) },
             { path: 'sales/:id/gift-label', element: withSuspense(PrintSaleGiftLabelPage) },
           ],
+        },
+        {
+          element: <PermissionRoute permission="purchases.read" />,
+          children: [{ path: 'purchases/:id/a4', element: withSuspense(PrintPurchaseA4Page) }],
         },
         {
           element: <PermissionRoute permission="reports.read" />,

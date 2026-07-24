@@ -15,7 +15,6 @@ import {
   ChevronDown,
   Sparkles,
 } from 'lucide-react'
-import { brandConfig } from '@/config/brand'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { PoweredByCodeBondhu } from '@/components/brand/PoweredByCodeBondhu'
 import { cn } from '@/lib/utils'
@@ -305,11 +304,7 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
         })}
       </nav>
 
-      <div className="mx-3 mb-3 mt-auto space-y-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{brandConfig.primaryLocation}</p>
-        <p className="text-xs font-semibold text-white/80">
-          <span className="brand-gradient-text">{brandConfig.name}</span>
-        </p>
+      <div className="mx-3 mb-3 mt-auto rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
         <PoweredByCodeBondhu size="xs" className="text-white/45 [&_.brand-gradient-text]:text-[10px]" />
       </div>
     </aside>

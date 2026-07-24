@@ -8,5 +8,6 @@ export type {
 
 export { PurchaseNewPage } from './pages/PurchaseNewPage'
 export { PurchaseHistoryPage } from './pages/PurchaseHistoryPage'
+export { PurchaseDetailPage } from './pages/PurchaseDetailPage'
 export { PurchaseReturnsPage } from './pages/PurchaseReturnsPage'
 export { SupplierPaymentsPage } from './pages/SupplierPaymentsPage'

@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth.context'
 import { salesService } from '@/services/sales.service'
 import { formatBDT } from '@/lib/format'
+import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
 
 export function SaleReturnPage() {
   const { id } = useParams<{ id: string }>()
@@ -33,8 +34,11 @@ export function SaleReturnPage() {
         userName: session.name,
         idempotencyKey: `return_${id}_${Date.now()}`,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] })
+    onSuccess: async () => {
+      await invalidateSaleCompletionCaches(queryClient, {
+        customerId: sale?.customerId,
+        branchId: session.branchId,
+      })
       toast('Sale returned — stock restored & finance reversed')
       navigate(`/sales/${id}`)
     },

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { lowStock } from '@/features/inventory/repositories/inventory.repository'
 import { getInventoryValuationSummary } from '@/features/inventory/repositories/inventory-valuation.repository'
+import { getTodayAttendanceSummary } from '@/features/hr/repositories/attendance.repository'
 
 export type DashboardBranch = { id: string; name: string; code: string }
 
@@ -184,6 +185,7 @@ export async function getDashboardOverview(branchId?: string | null): Promise<Da
     accountsRes,
     lowStockRes,
     valuationRes,
+    attendanceRes,
   ] = await Promise.all([
     salesTotals(todayStart, todayEnd, branchId),
     salesTotals(yesterdayStart, yesterdayEnd, branchId),
@@ -214,6 +216,13 @@ export async function getDashboardOverview(branchId?: string | null): Promise<Da
       total: 0,
     })),
     getInventoryValuationSummary({ branchId: branchId ?? undefined }).catch(() => null),
+    getTodayAttendanceSummary(branchId).catch(() => ({
+      present: 0,
+      late: 0,
+      absent: 0,
+      leave: 0,
+      employees: [],
+    })),
   ])
 
   if (recentSalesRes.error) throw recentSalesRes.error
@@ -282,7 +291,7 @@ export async function getDashboardOverview(branchId?: string | null): Promise<Da
       expense: 0,
       profit: d.collection,
     })),
-    attendanceToday: { present: 0, late: 0, absent: 0, leave: 0, employees: [] },
+    attendanceToday: attendanceRes,
     recentActivity: recentSales.map((s) => {
       const cust = s.customers as unknown as { name: string } | null
       return {

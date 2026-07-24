@@ -7,6 +7,7 @@ import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EntityCombobox } from '@/components/entity-combobox'
+import { invalidatePurchaseCompletionCaches } from '@/lib/mutations/party-finance-cache'
 
 type ReturnLine = { purchaseItemId: string; variantId: string; label: string; maxQty: number; qty: number }
 
@@ -73,10 +74,15 @@ export function PurchaseReturnsPage() {
       })
     },
     onSuccess: async () => {
+      const supplierId = purchase?.supplier_id
       setShowForm(false)
       setPurchaseId(null)
       setLines([])
       setReason('')
+      await invalidatePurchaseCompletionCaches(qc, {
+        supplierId,
+        branchId: activeBranchId,
+      })
       await qc.invalidateQueries({ queryKey: ['purchase-returns'] })
     },
   })

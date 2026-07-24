@@ -244,6 +244,9 @@ export const PurchaseNewPage = lazy(() =>
 export const PurchaseHistoryPage = lazy(() =>
   import('@/features/purchases/pages/PurchaseHistoryPage').then((m) => ({ default: m.PurchaseHistoryPage })),
 )
+export const PurchaseDetailPage = lazy(() =>
+  import('@/features/purchases/pages/PurchaseDetailPage').then((m) => ({ default: m.PurchaseDetailPage })),
+)
 export const PurchaseReturnsPage = lazy(() =>
   import('@/features/purchases/pages/PurchaseReturnsPage').then((m) => ({ default: m.PurchaseReturnsPage })),
 )
@@ -338,9 +341,30 @@ export const HrLeavesPage = lazy(() =>
 export const HrPayrollPage = lazy(() =>
   import('@/features/hr/HrPages').then((m) => ({ default: m.HrPayrollPage })),
 )
+export const HrPayrollNewPage = lazy(() =>
+  import('@/features/hr/HrPages').then((m) => ({ default: m.HrPayrollNewPage })),
+)
+export const HrPayrollRunDetailPage = lazy(() =>
+  import('@/features/hr/HrPages').then((m) => ({ default: m.HrPayrollRunDetailPage })),
+)
+export const HrPayslipPage = lazy(() =>
+  import('@/features/hr/HrPages').then((m) => ({ default: m.HrPayslipPage })),
+)
+export const HrSalaryStructuresPage = lazy(() =>
+  import('@/features/hr/HrPages').then((m) => ({ default: m.HrSalaryStructuresPage })),
+)
+export const HrPayrollAdvancesPage = lazy(() =>
+  import('@/features/hr/HrPages').then((m) => ({ default: m.HrPayrollAdvancesPage })),
+)
+export const HrPayrollReportsPage = lazy(() =>
+  import('@/features/hr/HrPages').then((m) => ({ default: m.HrPayrollReportsPage })),
+)
 
 export const PrintSaleA4Page = lazy(() =>
   import('@/features/print/PrintPages').then((m) => ({ default: m.PrintSaleA4Page })),
+)
+export const PrintPurchaseA4Page = lazy(() =>
+  import('@/features/print/PrintPages').then((m) => ({ default: m.PrintPurchaseA4Page })),
 )
 export const PrintSalePosPage = lazy(() =>
   import('@/features/print/PrintPages').then((m) => ({ default: m.PrintSalePosPage })),

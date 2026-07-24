@@ -29,6 +29,11 @@ export type CommissionRuleRow = {
   created_at: string
 }
 
+export type CommissionFilters = {
+  status?: string | null
+  employeeId?: string | null
+}
+
 export type SalesCommissionRow = {
   id: string
   profile_id: string | null
@@ -124,7 +129,7 @@ async function searchSalespeople(query: string) {
   }))
 }
 
-async function listCommissions(status?: string) {
+async function listCommissions(filters: CommissionFilters = {}) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   let q = db
@@ -132,14 +137,15 @@ async function listCommissions(status?: string) {
     .select(
       `id, profile_id, employee_id, sale_id, base_amount, commission_amount, status,
        needs_employee_link, created_at,
-       profiles(full_name),
-       employees(full_name, employee_code, designation),
-       sales(invoice_no)`,
+       profiles!salesman_commissions_profile_id_fkey(full_name),
+       employees!salesman_commissions_employee_id_fkey(full_name, employee_code, designation),
+       sales!salesman_commissions_sale_id_fkey(invoice_no)`,
     )
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
-    .limit(100)
-  if (status) q = q.eq('status', status)
+    .limit(200)
+  if (filters.status) q = q.eq('status', filters.status)
+  if (filters.employeeId) q = q.eq('employee_id', filters.employeeId)
   const { data, error } = await q
   if (error) throw error
   return (data ?? []) as SalesCommissionRow[]

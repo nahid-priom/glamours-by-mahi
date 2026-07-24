@@ -9,15 +9,18 @@ export function PrintLayout() {
   const isReportRoute =
     location.pathname.startsWith('/print/reports') ||
     location.pathname.startsWith('/print/sales/report')
+  const isPurchaseRoute = location.pathname.startsWith('/print/purchases')
+  const backTo = isPurchaseRoute ? '/purchases' : '/sales'
+  const backLabel = isPurchaseRoute ? 'Back to Purchases' : 'Back to Sales'
 
   return (
     <div className="print-root">
       {!isReportRoute && (
         <div className="no-print print-toolbar">
-          <Link to="/sales">
+          <Link to={backTo}>
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-3.5 w-3.5" />
-              Back to Sales
+              {backLabel}
             </Button>
           </Link>
           <Button size="sm" onClick={() => printService.triggerPrint()}>

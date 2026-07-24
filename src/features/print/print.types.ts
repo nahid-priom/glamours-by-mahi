@@ -24,6 +24,41 @@ export interface PrintOrderData {
   created_at: string
 }
 
+export interface PrintPurchaseData {
+  id: string
+  purchaseNo: string
+  storeName: string
+  branchName: string
+  branchAddress?: string
+  branchPhone?: string
+  supplierName: string
+  supplierPhone: string
+  supplierAddress: string
+  paymentMethod: string
+  payments?: Array<{ method: string; amount: number; reference?: string | null }>
+  items: {
+    variantId: string
+    name: string
+    sku?: string | null
+    quantity: number
+    unitCost: number
+    discount: number
+    total: number
+  }[]
+  subtotal: number
+  discount: number
+  tax: number
+  shipping: number
+  total: number
+  paidAmount: number
+  dueAmount: number
+  note: string
+  status: string
+  paymentStatus: string
+  createdAt: string
+  barcodeValue?: string
+}
+
 export interface PrintSaleData {
   id: string
   saleNo: string

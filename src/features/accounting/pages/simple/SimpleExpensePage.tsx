@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { invalidateExpenseCaches } from '@/lib/mutations/party-finance-cache'
 
 function monthRange() {
   const to = new Date().toISOString().slice(0, 10)
@@ -74,7 +75,7 @@ export function SimpleExpensePage() {
       toast('Expense recorded')
       setAmount('')
       setNote('')
-      await qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      await invalidateExpenseCaches(qc)
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })
@@ -87,7 +88,7 @@ export function SimpleExpensePage() {
       }),
     onSuccess: async () => {
       toast('Transaction voided')
-      await qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      await invalidateExpenseCaches(qc)
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })

@@ -1,7 +1,8 @@
-import type { PrintOrderData, PrintSaleData } from './print.types'
+import type { PrintOrderData, PrintPurchaseData, PrintSaleData } from './print.types'
 import type { Order } from '@/types'
 import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
 import { getSale } from '@/features/sales/repositories/sales.repository'
+import { purchasesRepository } from '@/features/purchases/repositories/purchases.repository'
 import { supabase } from '@/lib/supabase/client'
 
 export function orderToPrintData(order: Order): PrintOrderData {
@@ -102,6 +103,117 @@ export async function saleToPrintData(saleId: string): Promise<PrintSaleData | n
   }
 }
 
+export async function purchaseToPrintData(purchaseId: string): Promise<PrintPurchaseData | null> {
+  const purchase = await purchasesRepository.getPurchase(purchaseId)
+  if (!purchase || purchase.deleted_at) return null
+
+  const supplier = purchase.suppliers as {
+    name: string
+    phone: string | null
+    address?: string | null
+  } | null
+
+  const [{ data: org }, { data: branch }] = await Promise.all([
+    supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', purchase.organization_id)
+      .maybeSingle(),
+    purchase.branch_id
+      ? supabase
+          .from('branches')
+          .select('name, address, phone')
+          .eq('id', purchase.branch_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const paymentMethod =
+    ((purchase.purchase_payments ?? []) as Array<{ method: string; deleted_at: string | null }>)
+      .filter((p) => !p.deleted_at)
+      .map((p) => p.method)
+      .filter(Boolean)
+      .join(' + ') || purchase.payment_status
+
+  const payments = (
+    (purchase.purchase_payments ?? []) as Array<{
+      method: string
+      amount: number
+      reference: string | null
+      deleted_at: string | null
+    }>
+  )
+    .filter((p) => !p.deleted_at)
+    .map((p) => ({
+      method: p.method,
+      amount: Number(p.amount),
+      reference: p.reference,
+    }))
+
+  return {
+    id: purchase.id,
+    purchaseNo: purchase.invoice_no,
+    storeName: org?.name || 'Store',
+    branchName: branch?.name ?? '—',
+    branchAddress: branch?.address ?? undefined,
+    branchPhone: branch?.phone ?? undefined,
+    supplierName: supplier?.name ?? '—',
+    supplierPhone: supplier?.phone ?? '',
+    supplierAddress: supplier?.address ?? '',
+    paymentMethod,
+    payments,
+    items: (
+      (purchase.purchase_items ?? []) as Array<{
+        variant_id: string
+        qty: number
+        unit_cost: number
+        line_discount: number
+        line_total: number
+        deleted_at: string | null
+        product_variants: {
+          sku: string
+          name: string | null
+          products: { name: string } | null
+        } | null
+      }>
+    )
+      .filter((i) => !i.deleted_at)
+      .map((i) => ({
+        variantId: i.variant_id,
+        name:
+          i.product_variants?.products?.name ||
+          i.product_variants?.name ||
+          i.product_variants?.sku ||
+          'Item',
+        sku: i.product_variants?.sku ?? null,
+        quantity: Number(i.qty),
+        unitCost: Number(i.unit_cost),
+        discount: Number(i.line_discount ?? 0),
+        total: Number(i.line_total),
+      })),
+    subtotal: Number(purchase.subtotal),
+    discount: Number(purchase.discount),
+    tax: Number(purchase.tax),
+    shipping: Number(purchase.shipping),
+    total: Number(purchase.grand_total),
+    paidAmount: Number(purchase.paid_total),
+    dueAmount: Number(purchase.due_total),
+    note: purchase.note ?? '',
+    status: purchase.status,
+    paymentStatus: purchase.payment_status,
+    createdAt: purchase.completed_at ?? purchase.created_at,
+    barcodeValue: purchase.invoice_no,
+  }
+}
+
+export function getPurchasePrintUrl(purchaseId: string) {
+  return `/print/purchases/${purchaseId}/a4`
+}
+
+export function openPurchasePrint(purchaseId: string) {
+  window.open(getPurchasePrintUrl(purchaseId), '_blank', 'noopener,noreferrer')
+}
+
 export const printService = {
   async getOrderForPrint(id: string): Promise<PrintOrderData | null> {
     const order = await ordersService.getOrderById(id)
@@ -116,6 +228,10 @@ export const printService = {
 
   async getSaleForPrint(id: string): Promise<PrintSaleData | null> {
     return saleToPrintData(id)
+  },
+
+  async getPurchaseForPrint(id: string): Promise<PrintPurchaseData | null> {
+    return purchaseToPrintData(id)
   },
 
   triggerPrint() {

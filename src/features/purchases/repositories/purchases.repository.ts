@@ -108,7 +108,7 @@ async function getPurchase(id: string) {
     .select(
       `
       *,
-      suppliers(name, phone),
+      suppliers(name, phone, address),
       purchase_items(*, product_variants(sku, name, products(name))),
       purchase_payments(*)
     `,

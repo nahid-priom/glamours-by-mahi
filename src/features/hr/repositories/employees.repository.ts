@@ -77,7 +77,7 @@ export async function listEmployees(
   let builder = supabase
     .from('employees')
     .select(
-      '*, branches(name), employee_device_mappings(device_user_id, is_active)',
+      '*, branches!employees_branch_id_fkey(name), employee_device_mappings(device_user_id, is_active)',
       { count: 'exact' },
     )
     .is('deleted_at', null)

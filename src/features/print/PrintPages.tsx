@@ -8,6 +8,7 @@ import { PrintShippingLabel } from './PrintShippingLabel'
 import { PrintGiftLabel } from './PrintGiftLabel'
 import { PrintReportA4 } from './PrintReportA4'
 import { PrintSaleInvoiceA4 } from './PrintSaleInvoiceA4'
+import { PrintPurchaseInvoiceA4 } from './PrintPurchaseInvoiceA4'
 import { PrintSalePosReceipt } from './PrintSalePosReceipt'
 import { PrintSaleGiftLabel } from './PrintSaleGiftLabel'
 import { reportPrintService } from '@/features/reports/report-print.service'
@@ -107,6 +108,21 @@ export function PrintSaleA4Page() {
   if (isLoading) return <LoadingSkeleton rows={8} />
   if (!sale) return <EmptyState title="Sale not found" />
   return <PrintSaleInvoiceA4 sale={sale} />
+}
+
+export function PrintPurchaseA4Page() {
+  const { id } = useParams<{ id: string }>()
+  const { data: purchase, isLoading } = useQuery({
+    queryKey: ['print', 'purchase-a4', id],
+    queryFn: () => printService.getPurchaseForPrint(id!),
+    enabled: !!id,
+  })
+  useEffect(() => {
+    if (purchase) document.title = `Purchase ${purchase.purchaseNo}`
+  }, [purchase])
+  if (isLoading) return <LoadingSkeleton rows={8} />
+  if (!purchase) return <EmptyState title="Purchase not found" />
+  return <PrintPurchaseInvoiceA4 purchase={purchase} />
 }
 
 export function PrintSalePosPage() {

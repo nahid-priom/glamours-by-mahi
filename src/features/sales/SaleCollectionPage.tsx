@@ -11,6 +11,7 @@ import { useAuth } from '@/features/auth/auth.context'
 import { peekDatabase } from '@/database/transaction'
 import { salesService } from '@/services/sales.service'
 import { formatBDT } from '@/lib/format'
+import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
 
 export function SaleCollectionPage() {
   const { id } = useParams<{ id: string }>()
@@ -42,8 +43,12 @@ export function SaleCollectionPage() {
         userName: session.name,
         idempotencyKey: `pay_${id}_${Date.now()}`,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] })
+    onSuccess: async () => {
+      await invalidateCustomerCollectionCaches(queryClient, {
+        customerId: sale?.customerId,
+        saleId: id,
+        branchId: session.branchId,
+      })
       toast('Payment received')
       navigate(`/sales/${id}`)
     },

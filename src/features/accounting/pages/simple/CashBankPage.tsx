@@ -17,6 +17,10 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import {
+  invalidateAccountingMovementCaches,
+  invalidateExpenseCaches,
+} from '@/lib/mutations/party-finance-cache'
 
 type DialogMode = 'deposit' | 'withdraw' | 'transfer' | 'add' | null
 
@@ -53,7 +57,7 @@ export function CashBankPage() {
   const activeAccounts = useMemo(() => data.filter((a) => a.is_active), [data])
 
   const invalidate = async () => {
-    await qc.invalidateQueries({ queryKey: queryKeys.accounts })
+    await invalidateAccountingMovementCaches(qc)
   }
 
   const mutateMove = useMutation({
@@ -100,11 +104,16 @@ export function CashBankPage() {
       throw new Error('Unknown action')
     },
     onSuccess: async () => {
+      const action = mode
       toast('Saved')
       setMode(null)
       setAmount('')
       setNote('')
-      await invalidate()
+      if (action === 'withdraw') {
+        await invalidateExpenseCaches(qc)
+      } else {
+        await invalidateAccountingMovementCaches(qc)
+      }
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })

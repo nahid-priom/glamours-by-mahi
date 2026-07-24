@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { invalidateAccountingMovementCaches } from '@/lib/mutations/party-finance-cache'
 
 function monthRange() {
   const to = new Date().toISOString().slice(0, 10)
@@ -74,7 +75,7 @@ export function SimpleIncomePage() {
       toast('Income recorded')
       setAmount('')
       setNote('')
-      await qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      await invalidateAccountingMovementCaches(qc)
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })

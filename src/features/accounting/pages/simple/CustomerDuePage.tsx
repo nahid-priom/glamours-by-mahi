@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
 import { listPaymentMethods } from '@/features/sales/repositories/sales.repository'
 
 export function CustomerDuePage() {
@@ -63,10 +64,14 @@ export function CustomerDuePage() {
     },
     onSuccess: async () => {
       toast('Collection recorded')
+      const customerId = selected?.id
       setSelected(null)
       setAmount('')
       setReference('')
-      await qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      await invalidateCustomerCollectionCaches(qc, {
+        customerId,
+        branchId: activeBranchId,
+      })
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })
