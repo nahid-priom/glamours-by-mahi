@@ -14,7 +14,7 @@ import {
 import { formatDate } from '@/lib/format'
 import { brandConfig } from '@/config/brand'
 import { useAuth } from '@/features/auth/auth.context'
-import { PWAInstallButton } from '@/features/pwa'
+import { PWAInstallButton } from '@/features/pwa/components/PWAInstallButton'
 import { QuickActionsMenu } from '@/features/dashboard/components/QuickActionsMenu'
 
 export function TopHeader() {

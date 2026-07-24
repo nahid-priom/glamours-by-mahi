@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowDownRight,
@@ -13,13 +13,10 @@ import { useAuth } from '@/features/auth/auth.context'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { DashboardKpiCard } from './components/DashboardKpiCard'
-import { SalesOverviewChart } from './components/SalesOverviewChart'
-import { SalesChannelChart } from './components/SalesChannelChart'
 import { CourierStatusCard } from './components/CourierStatusCard'
 import { TopSellingProductsCard } from './components/TopSellingProductsCard'
 import { BranchPerformanceCard } from './components/BranchPerformanceCard'
 import { LowStockCard } from './components/LowStockCard'
-import { CashFlowChart } from './components/CashFlowChart'
 import { AttendanceSummaryCard } from './components/AttendanceSummaryCard'
 import { RecentActivityCard } from './components/RecentActivityCard'
 import { DashboardSectionCard } from './components/DashboardSectionCard'
@@ -27,6 +24,30 @@ import {
   getDashboardOverview,
   listDashboardBranches,
 } from './repositories/dashboard.repository'
+
+const SalesOverviewChart = lazy(() =>
+  import('./components/SalesOverviewChart').then((m) => ({ default: m.SalesOverviewChart })),
+)
+const SalesChannelChart = lazy(() =>
+  import('./components/SalesChannelChart').then((m) => ({ default: m.SalesChannelChart })),
+)
+const CashFlowChart = lazy(() =>
+  import('./components/CashFlowChart').then((m) => ({ default: m.CashFlowChart })),
+)
+
+function ChartBlock({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-[260px] items-center justify-center rounded-2xl border border-[#E5E7EB] bg-white">
+          <Loader2 className="h-6 w-6 animate-spin text-[#6B7280]" aria-hidden />
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  )
+}
 
 export function DashboardPage() {
   const { session, profile } = useAuth()
@@ -162,10 +183,14 @@ export function DashboardPage() {
 
           <div className="grid gap-3 lg:grid-cols-12">
             <div className="lg:col-span-6">
-              <SalesOverviewChart data={data.salesOverview} />
+              <ChartBlock>
+                <SalesOverviewChart data={data.salesOverview} />
+              </ChartBlock>
             </div>
             <div className="lg:col-span-3">
-              <SalesChannelChart data={data.channelPerformance} total={data.channelTotal} />
+              <ChartBlock>
+                <SalesChannelChart data={data.channelPerformance} total={data.channelTotal} />
+              </ChartBlock>
             </div>
             <div className="lg:col-span-3">
               <CourierStatusCard statuses={data.orderStatuses} />
@@ -180,7 +205,9 @@ export function DashboardPage() {
 
           <div className="grid gap-3 lg:grid-cols-12">
             <div className="lg:col-span-5">
-              <CashFlowChart data={data.cashFlowTrend} />
+              <ChartBlock>
+                <CashFlowChart data={data.cashFlowTrend} />
+              </ChartBlock>
             </div>
             <div className="lg:col-span-4">
               <AttendanceSummaryCard

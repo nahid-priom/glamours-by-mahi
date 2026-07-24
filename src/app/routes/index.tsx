@@ -1,16 +1,16 @@
 import { Outlet } from 'react-router-dom'
 import { createBrowserRouter } from 'react-router-dom'
 import { ScrollToTop } from '@/components/common/ScrollToTop'
-import { PWAProvider } from '@/features/pwa'
-import { DashboardLayout } from '@/layouts/DashboardLayout'
+import { PWAProvider } from '@/features/pwa/core'
 import { AdminAuthGuard } from '@/app/guards/AdminAuthGuard'
+import { DashboardLayout } from './lazy-layouts'
 import { accountsRoutes } from './accounts.routes'
 import { courierRoutes } from './courier.routes'
 import { customersRoutes } from './customers.routes'
 import { dashboardRoutes } from './dashboard.routes'
 import { hrRoutes } from './hr.routes'
 import { inventoryRoutes } from './inventory.routes'
-import { AdminLoginPage, NotFoundPage, withSuspense } from './lazy'
+import { AdminLoginPage, NotFoundPage, PageLoader, withSuspense } from './lazy'
 import { printRoutes, publicInvoiceRoute } from './print.routes'
 import { productsRoutes } from './products.routes'
 import { purchasesRoutes } from './purchases.routes'
@@ -40,7 +40,7 @@ export const router = createBrowserRouter([
         element: <AdminAuthGuard />,
         children: [
           {
-            element: <DashboardLayout />,
+            element: withSuspense(DashboardLayout, <PageLoader />),
             children: [
               dashboardRoutes,
               ...salesRoutes,

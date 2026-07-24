@@ -8,7 +8,7 @@ import { brandConfig } from '@/config/brand'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PWAInstallButton } from '@/features/pwa'
+import { PWAInstallButton } from '@/features/pwa/components/PWAInstallButton'
 import { AuthSessionProvider, useAuth } from '@/features/auth/auth-session'
 import { FullPageLoader } from '@/components/loading/FullPageLoader'
 

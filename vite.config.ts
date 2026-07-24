@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { visualizer } from 'rollup-plugin-visualizer'
 import path from 'path'
 
 const PWA_MANIFEST = {
@@ -16,9 +17,13 @@ const PWA_MANIFEST = {
   categories: ['shopping', 'fashion', 'lifestyle'] as const,
 }
 
+const analyzeBundle = process.env.ANALYZE === '1'
+
 export default defineConfig({
   plugins: [
-    react(),
+    react({
+      jsxRuntime: 'automatic',
+    }),
     tailwindcss(),
     VitePWA({
       registerType: 'prompt',
@@ -73,9 +78,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,webmanifest}'],
+        globPatterns: ['index.html', 'offline.html', 'manifest.webmanifest', 'favicon.svg', 'icons/*'],
+        globIgnores: ['**/assets/**', '**/*.map'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/print\//],
+        navigateFallbackDenylist: [/^\/print\//, /^\/api\//],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
@@ -103,13 +109,28 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: ({ request, sameOrigin }) =>
-              sameOrigin === true && request.method === 'GET',
+            urlPattern: ({ request, sameOrigin, url }) =>
+              sameOrigin === true &&
+              request.method === 'GET' &&
+              url.pathname.startsWith('/assets/') &&
+              (request.destination === 'script' || request.destination === 'style'),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'app-chunks',
+              expiration: { maxEntries: 96, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: ({ request, sameOrigin, url }) =>
+              sameOrigin === true &&
+              request.method === 'GET' &&
+              request.mode === 'navigate' &&
+              !url.pathname.startsWith('/print/'),
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'pages-cache',
+              cacheName: 'html-shell',
               networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 },
             },
           },
         ],
@@ -118,10 +139,46 @@ export default defineConfig({
         enabled: false,
       },
     }),
+    analyzeBundle
+      ? visualizer({
+          filename: 'dist/bundle-report.html',
+          gzipSize: true,
+          brotliSize: true,
+          open: false,
+          template: 'treemap',
+        })
+      : undefined,
   ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  build: {
+    sourcemap: false,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor-react',
+              test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+            },
+            {
+              name: 'vendor-router-query',
+              test: /node_modules[\\/](react-router|react-router-dom|@tanstack[\\/]react-query)[\\/]/,
+            },
+            {
+              name: 'vendor-supabase',
+              test: /node_modules[\\/]@supabase[\\/]/,
+            },
+            {
+              name: 'vendor-recharts',
+              test: /node_modules[\\/](recharts|d3-[^/]+|internmap|victory-vendor)[\\/]/,
+            },
+          ],
+        },
+      },
     },
   },
   test: {

@@ -2,7 +2,7 @@ import type { RouteObject } from 'react-router-dom'
 import { Navigate } from 'react-router-dom'
 import { AdminAuthGuard } from '@/app/guards/AdminAuthGuard'
 import { PermissionRoute } from '@/app/guards/PermissionRoute'
-import { PrintLayout } from '@/features/print/PrintLayout'
+import { PrintLayout } from './lazy-layouts'
 import {
   PrintReportPage,
   PrintSaleA4Page,
@@ -19,7 +19,7 @@ export const printRoutes: RouteObject = {
   element: <AdminAuthGuard />,
   children: [
     {
-      element: <PrintLayout />,
+      element: withSuspense(PrintLayout),
       children: [
         { path: 'orders/*', element: <Navigate to="/sales" replace /> },
         {

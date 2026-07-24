@@ -1,5 +1,5 @@
 import type { RouteObject } from 'react-router-dom'
-import { StorefrontLayout } from '@/features/storefront/StorefrontLayout'
+import { StorefrontLayout } from './lazy-layouts'
 import {
   AccountAddressesPage,
   AccountOrdersPage,
@@ -23,7 +23,7 @@ import {
 
 export const storefrontRoutes: RouteObject = {
   path: '/',
-  element: <StorefrontLayout />,
+  element: withSuspense(StorefrontLayout, <StorefrontLoader />),
   children: [
     { index: true, element: withSuspense(HomePage, <StorefrontLoader />) },
     { path: 'shop', element: withSuspense(ShopPage, <StorefrontLoader />) },
