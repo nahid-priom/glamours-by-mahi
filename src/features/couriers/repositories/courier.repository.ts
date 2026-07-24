@@ -188,7 +188,7 @@ async function listSettlements() {
     .from('courier_settlements')
     .select(
       `
-      id, status, cod_amount, courier_charge, return_charge, settlement_amount,
+      id, status, cod_amount, courier_charge, return_charge, settlement_amount, settled_amount,
       settlement_date, notes, created_at, courier_company_id, parcel_id, sale_id,
       courier_companies(name), courier_parcels(tracking_no)
     `,
@@ -200,19 +200,71 @@ async function listSettlements() {
   return data ?? []
 }
 
-async function markSettlementSettled(id: string, financialAccountId?: string | null) {
-  const { data, error } = await supabase
-    .from('courier_settlements')
-    .update({
-      status: 'settled',
-      settlement_date: new Date().toISOString().slice(0, 10),
-      financial_account_id: financialAccountId ?? null,
-    })
-    .eq('id', id)
-    .select('id')
-    .single()
+async function markSettlementSettled(
+  id: string,
+  financialAccountId: string,
+  amount?: number,
+) {
+  const clientTxnKey =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `cset-${Date.now()}`
+  const payload: Record<string, unknown> = {
+    settlement_id: id,
+    financial_account_id: financialAccountId,
+    client_txn_key: clientTxnKey,
+  }
+  if (amount != null && amount > 0) payload.amount = amount
+  const { data, error } = await supabase.rpc('settle_courier_settlement', {
+    payload: payload as unknown as Json,
+  })
   if (error) throw error
   return data
+}
+
+async function reverseSettlement(id: string, reason: string) {
+  const clientTxnKey =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `cset-rev-${Date.now()}`
+  const { data, error } = await supabase.rpc('reverse_courier_settlement', {
+    payload: {
+      settlement_id: id,
+      client_txn_key: clientTxnKey,
+      reason,
+    } as unknown as Json,
+  })
+  if (error) throw error
+  return data
+}
+
+async function updateParcelStatus(parcelId: string, status: string, notes?: string) {
+  const { data, error } = await supabase.rpc('update_courier_parcel_status', {
+    p_parcel_id: parcelId,
+    p_status: status,
+    p_notes: notes ?? undefined,
+  })
+  if (error) throw error
+  return data
+}
+
+async function recordCodReceivable(parcelId: string) {
+  const { data, error } = await supabase.rpc('record_courier_cod_receivable', {
+    p_parcel_id: parcelId,
+  })
+  if (error) throw error
+  return data
+}
+
+async function listFinancialAccounts() {
+  const { data, error } = await supabase
+    .from('financial_accounts')
+    .select('id, name, account_kind, current_balance')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('name')
+  if (error) throw error
+  return data ?? []
 }
 
 async function searchSales(query: string) {
@@ -250,5 +302,9 @@ export const courierRepository = {
   rejectReturn,
   listSettlements,
   markSettlementSettled,
+  reverseSettlement,
+  updateParcelStatus,
+  recordCodReceivable,
+  listFinancialAccounts,
   searchSales,
 }

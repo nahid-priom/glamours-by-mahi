@@ -99,6 +99,9 @@ export const StoresPage = lazy(() =>
 export const CustomersAdminPage = lazy(() =>
   import('@/features/customers').then((m) => ({ default: m.CustomersAdminPage })),
 )
+export const CustomerDetailPage = lazy(() =>
+  import('@/features/customers').then((m) => ({ default: m.CustomerDetailPage })),
+)
 export const SettingsPage = lazy(() =>
   import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 )
@@ -143,6 +146,12 @@ export const DueCollectionPage = lazy(() =>
 )
 export const SalesReturnsPage = lazy(() =>
   import('@/features/sales').then((m) => ({ default: m.SalesReturnsPage })),
+)
+export const SalesCommissionsPage = lazy(() =>
+  import('@/features/sales').then((m) => ({ default: m.SalesCommissionsPage })),
+)
+export const CommissionSettingsPage = lazy(() =>
+  import('@/features/sales').then((m) => ({ default: m.CommissionSettingsPage })),
 )
 export const OnlineOrdersPage = lazy(() =>
   import('@/features/sales').then((m) => ({ default: m.OnlineOrdersPage })),

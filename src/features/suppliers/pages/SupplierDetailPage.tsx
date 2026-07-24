@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatBDT } from '@/lib/format'
+import { partyLedgerEntryLabel } from '@/lib/party-ledger'
 import { queryKeys } from '@/lib/query/keys'
 import {
   getSupplier,
@@ -21,8 +22,12 @@ export function SupplierDetailPage() {
     enabled: Boolean(id),
   })
 
-  const { data: ledger = [] } = useQuery({
-    queryKey: [...queryKeys.supplier(id), 'ledger'],
+  const {
+    data: ledger = [],
+    isLoading: ledgerLoading,
+    error: ledgerError,
+  } = useQuery({
+    queryKey: queryKeys.suppliersLedger(id),
     queryFn: () => listSupplierLedger(id),
     enabled: Boolean(id),
   })
@@ -55,7 +60,12 @@ export function SupplierDetailPage() {
     )
   }
 
-  const paymentCredits = payments.reduce((s, p) => s + Number(p.credit), 0)
+  const paymentTotal = payments.reduce((s, p) => s + Number(p.credit), 0)
+  const purchaseDueTotal = ledger.reduce((sum, row) => {
+    if (row.entry_type === 'purchase_due') return sum + Number(row.debit)
+    if (row.entry_type === 'opening') return sum + Number(row.credit)
+    return sum
+  }, 0)
 
   return (
     <div className="mx-auto w-full max-w-5xl min-w-0 space-y-4">
@@ -81,12 +91,34 @@ export function SupplierDetailPage() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Current due" value={formatBDT(Number(supplier.current_due))} accent />
         <Kpi label="Ledger entries" value={String(ledger.length)} />
-        <Kpi label="Payments logged" value={String(payments.length)} />
-        <Kpi label="Credits total" value={formatBDT(paymentCredits)} />
+        <Kpi label="Payments" value={String(payments.length)} />
+        <Kpi label="Paid total" value={formatBDT(paymentTotal)} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2">
+        <Kpi label="Purchase / opening due" value={formatBDT(purchaseDueTotal)} />
+        <Kpi
+          label="Last movement"
+          value={
+            ledger[0]?.occurred_at
+              ? new Date(ledger[0].occurred_at).toLocaleDateString()
+              : '—'
+          }
+        />
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-semibold text-[#111827]">Supplier ledger</h2>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-[#111827]">Supplier ledger</h2>
+          {ledgerLoading ? (
+            <span className="text-xs text-[#6B7280]">Loading ledger…</span>
+          ) : null}
+        </div>
+        {ledgerError ? (
+          <p className="mb-2 text-sm text-[#E11D48]">
+            Could not load ledger. Check suppliers.read or accounts.read permission.
+          </p>
+        ) : null}
         <div className="rounded-xl border border-border bg-white">
           <Table>
             <TableHeader>
@@ -105,7 +137,7 @@ export function SupplierDetailPage() {
                     {new Date(row.occurred_at).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="info">{row.entry_type}</Badge>
+                    <Badge variant="info">{partyLedgerEntryLabel(row.entry_type)}</Badge>
                     {row.notes ? (
                       <p className="mt-0.5 text-xs text-[#9CA3AF]">{row.notes}</p>
                     ) : null}
@@ -119,8 +151,10 @@ export function SupplierDetailPage() {
               ))}
             </TableBody>
           </Table>
-          {ledger.length === 0 ? (
-            <p className="p-6 text-center text-sm text-[#6B7280]">No ledger movements yet.</p>
+          {!ledgerLoading && ledger.length === 0 ? (
+            <p className="p-6 text-center text-sm text-[#6B7280]">
+              No ledger movements yet. If due shows above, run party ledger backfill migration.
+            </p>
           ) : null}
         </div>
       </div>

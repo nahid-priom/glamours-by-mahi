@@ -17,6 +17,7 @@ export const queryKeys = {
   posFinancialAccounts: (branchId: string) => ['pos-financial-accounts', branchId] as const,
   customers: (q: string) => ['customers', q] as const,
   customersAdmin: (filters: Record<string, unknown> = {}) => ['customers-admin', filters] as const,
+  customer: (id: string) => ['customer', id] as const,
   suppliers: (filters: Record<string, unknown> = {}) => ['suppliers', filters] as const,
   supplier: (id: string) => ['supplier', id] as const,
   dashboard: (filters: Record<string, unknown> = {}) => ['dashboard', filters] as const,
@@ -33,6 +34,12 @@ export const queryKeys = {
   stockTransfers: (filters: Record<string, unknown> = {}) => ['stock-transfers', filters] as const,
   stockTransfer: (id: string) => ['stock-transfer', id] as const,
   stockLocations: (branchId: string) => ['stock-locations', branchId] as const,
+  inventoryValuationSummary: (filters: Record<string, unknown> = {}) =>
+    ['inventory-valuation-summary', filters] as const,
+  inventoryBranchSummary: (includeNonSaleable: boolean) =>
+    ['inventory-branch-summary', includeNonSaleable] as const,
+  inventoryStockBreakdown: (filters: Record<string, unknown> = {}) =>
+    ['inventory-stock-breakdown', filters] as const,
   accounts: ['accounts'] as const,
   couriers: ['couriers'] as const,
   paymentMethods: ['payment-methods'] as const,

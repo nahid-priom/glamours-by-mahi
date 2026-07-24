@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Copy, Loader2, Plus, Printer, Upload } from 'lucide-react'
 import { AppImage } from '@/components/common/AppImage'
@@ -8,6 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
+import { MoneyValue } from '@/features/inventory/components/InventoryValuationUi'
+import { StockStatusBadge } from '@/features/inventory/components/StockStatusBadge'
+import { getInventoryStockBreakdown, type InventoryProductStockRow } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { BarcodePrintDialog, type BarcodePrintItem } from '../components/BarcodePrintDialog'
@@ -51,7 +54,7 @@ function productToBarcodeItems(product: ProductListItem): BarcodePrintItem[] {
 }
 
 export function AdminProductsPage() {
-  const { profile } = useAuth()
+  const { profile, can } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -77,6 +80,40 @@ export function AdminProductsPage() {
     queryKey: queryKeys.products(listParams),
     queryFn: () => listProducts(listParams),
   })
+
+  const valuationFilters = useMemo(
+    () => ({
+      search: listParams.search,
+      categoryId: listParams.categoryId,
+      brandId: listParams.brandId,
+      stockStatus:
+        listParams.stockStatus === 'low_stock' || listParams.stockStatus === 'out_of_stock'
+          ? listParams.stockStatus
+          : null,
+      page: listParams.page ?? 1,
+      pageSize: 24,
+    }),
+    [listParams],
+  )
+
+  const { data: valuation } = useQuery({
+    queryKey: queryKeys.inventoryStockBreakdown(valuationFilters),
+    queryFn: () => getInventoryStockBreakdown(valuationFilters),
+    enabled: listParams.stockStatus !== 'expiring_soon',
+    placeholderData: keepPreviousData,
+  })
+
+  const valuationByProduct = useMemo(() => {
+    const map = new Map<string, InventoryProductStockRow>()
+    for (const row of valuation?.items ?? []) {
+      map.set(row.product_id, row)
+    }
+    return map
+  }, [valuation])
+
+  const canViewCost =
+    valuation?.can_view_cost ??
+    (can('inventory.valuation') || can('accounting.view') || can('products.manage_prices'))
 
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<ProductListItem | null>(null)
@@ -178,13 +215,19 @@ export function AdminProductsPage() {
               <TableHead>Brand</TableHead>
               <TableHead>Variants</TableHead>
               <TableHead>Price</TableHead>
-              <TableHead>Stock</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="text-right">On hand</TableHead>
+              <TableHead className="text-right">Avail.</TableHead>
+              {canViewCost ? <TableHead className="text-right">Stock cost</TableHead> : null}
+              <TableHead className="text-right">Stock value</TableHead>
+              <TableHead>Stock status</TableHead>
+              <TableHead>Lifecycle</TableHead>
               <TableHead className="w-36" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(data?.items ?? []).map((row) => (
+            {(data?.items ?? []).map((row) => {
+              const stock = valuationByProduct.get(row.id)
+              return (
               <TableRow key={row.id}>
                 <TableCell>
                   <AppImage
@@ -202,7 +245,25 @@ export function AdminProductsPage() {
                 <TableCell className="text-[#6B7280]">{row.brands?.name ?? '—'}</TableCell>
                 <TableCell className="text-[#6B7280]">{row.variantCount ?? 0}</TableCell>
                 <TableCell>{formatBDT(Number(row.selling_price))}</TableCell>
-                <TableCell className="text-[#6B7280]">{row.totalStock ?? 0}</TableCell>
+                <TableCell className="text-right font-medium">
+                  {stock?.total_quantity ?? row.totalStock ?? 0}
+                </TableCell>
+                <TableCell className="text-right text-[#6B7280]">
+                  {stock?.available_quantity ?? row.totalStock ?? 0}
+                </TableCell>
+                {canViewCost ? (
+                  <TableCell className="text-right">
+                    <MoneyValue amount={stock?.total_purchase_cost} />
+                  </TableCell>
+                ) : null}
+                <TableCell className="text-right">
+                  <MoneyValue amount={stock?.total_stock_value ?? 0} />
+                </TableCell>
+                <TableCell>
+                  <StockStatusBadge
+                    status={stock?.stock_status ?? ((row.totalStock ?? 0) > 0 ? 'in_stock' : 'out_of_stock')}
+                  />
+                </TableCell>
                 <TableCell>
                   <ProductStatusBadge status={row.status ?? (row.is_active ? 'active' : 'inactive')} />
                 </TableCell>
@@ -236,7 +297,7 @@ export function AdminProductsPage() {
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
           </TableBody>
         </Table>
         {!isLoading && (data?.items.length ?? 0) === 0 ? (

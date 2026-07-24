@@ -52,6 +52,8 @@ const groups: NavGroup[] = [
       { to: '/sales/online-orders', label: 'Online Orders', permission: ['orders.read', 'sales.read'] },
       { to: '/sales/returns', label: 'Sales Returns', permission: ['sales.read', 'sales.return.review'] },
       { to: '/sales/collections', label: 'Due Collection', permission: 'sales.read' },
+      { to: '/sales/commissions', label: 'Commissions', permission: 'sales.commission.read' },
+      { to: '/sales/commission-settings', label: 'Commission Settings', permission: 'sales.commission.manage' },
       { to: '/sales/held', label: 'Held Sales', permission: 'pos.create' },
     ],
   },

@@ -163,6 +163,24 @@ export async function listCustomerLedger(
   return data ?? []
 }
 
+/** Collection entries from customer_ledger. */
+export async function listCustomerCollections(
+  customerId?: string | null,
+  limit = 100,
+): Promise<CustomerLedgerRow[]> {
+  let builder = supabase
+    .from('customer_ledger')
+    .select('*')
+    .is('deleted_at', null)
+    .eq('entry_type', 'collection')
+    .order('occurred_at', { ascending: false })
+    .limit(limit)
+  if (customerId) builder = builder.eq('customer_id', customerId)
+  const { data, error } = await builder
+  if (error) throw error
+  return data ?? []
+}
+
 export const customersRepository = {
   listCustomers,
   searchCustomers,
@@ -171,4 +189,5 @@ export const customersRepository = {
   updateCustomer,
   softDeleteCustomer,
   listCustomerLedger,
+  listCustomerCollections,
 }

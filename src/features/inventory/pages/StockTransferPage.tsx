@@ -4,18 +4,32 @@ import { Link } from 'react-router-dom'
 import { Loader2, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
-import { dispatch, listTransfers, receive } from '../repositories/inventory.repository'
+import { dispatch, getTransfer, listTransfers, receive } from '../repositories/inventory.repository'
+
+type ReceiveLine = {
+  id: string
+  variant_id: string
+  quantity_sent: number
+  quantity_received: number
+  quantity_damaged: number
+  recvNow: number
+  damagedNow: number
+}
 
 export function StockTransferPage() {
   const { activeBranchId } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
+  const [receiveId, setReceiveId] = useState<string | null>(null)
+  const [receiveLines, setReceiveLines] = useState<ReceiveLine[]>([])
+  const [finalize, setFinalize] = useState(false)
 
   const filters = { branchId: activeBranchId, page, pageSize: 30 }
   const { data, isLoading, error } = useQuery({
@@ -35,13 +49,60 @@ export function StockTransferPage() {
   })
 
   const receiveMutation = useMutation({
-    mutationFn: (id: string) => receive(id),
-    onSuccess: () => {
-      toast('Transfer received')
+    mutationFn: async ({ id, lines, finalizeReceive }: { id: string; lines: ReceiveLine[]; finalizeReceive: boolean }) => {
+      const items = lines
+        .filter((l) => l.recvNow > 0 || l.damagedNow > 0)
+        .map((l) => ({
+          id: l.id,
+          variant_id: l.variant_id,
+          quantity_received: l.recvNow,
+          quantity_damaged: l.damagedNow,
+        }))
+      if (items.length === 0) {
+        const full = await getTransfer(id)
+        const fallback = (full?.stock_transfer_items ?? [])
+          .filter((i: { deleted_at: string | null }) => !i.deleted_at)
+          .map((i: { id: string; variant_id: string; quantity_sent: number; quantity_received: number | null }) => ({
+            id: i.id,
+            variant_id: i.variant_id,
+            quantity_received: Math.max(0, Number(i.quantity_sent) - Number(i.quantity_received ?? 0)),
+          }))
+        return receive(id, fallback, finalizeReceive)
+      }
+      return receive(id, items, finalizeReceive)
+    },
+    onSuccess: (res) => {
+      toast(`Transfer ${(res as { status?: string })?.status ?? 'updated'}`)
+      setReceiveId(null)
+      setReceiveLines([])
       invalidate()
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })
+
+  const openPartialReceive = async (id: string) => {
+    const tr = await getTransfer(id)
+    const lines: ReceiveLine[] = (tr?.stock_transfer_items ?? [])
+      .filter((i: { deleted_at: string | null }) => !i.deleted_at)
+      .map((i: {
+        id: string
+        variant_id: string
+        quantity_sent: number
+        quantity_received: number | null
+        quantity_damaged?: number | null
+      }) => ({
+        id: i.id,
+        variant_id: i.variant_id,
+        quantity_sent: Number(i.quantity_sent),
+        quantity_received: Number(i.quantity_received ?? 0),
+        quantity_damaged: Number(i.quantity_damaged ?? 0),
+        recvNow: 0,
+        damagedNow: 0,
+      }))
+    setReceiveLines(lines)
+    setReceiveId(id)
+    setFinalize(false)
+  }
 
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 30))
 
@@ -62,6 +123,61 @@ export function StockTransferPage() {
         </PermissionGate>
       </div>
 
+      {receiveId ? (
+        <div className="space-y-3 rounded-xl border border-border bg-white p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Partial receive</h2>
+            <Button size="sm" variant="ghost" onClick={() => setReceiveId(null)}>
+              Close
+            </Button>
+          </div>
+          {receiveLines.map((l) => (
+            <div key={l.id} className="grid gap-2 text-sm sm:grid-cols-[1fr_repeat(4,minmax(0,5rem))] sm:items-center">
+              <span>
+                Sent {l.quantity_sent} · recv {l.quantity_received} · dmg {l.quantity_damaged}
+              </span>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Recv"
+                value={l.recvNow || ''}
+                onChange={(e) => {
+                  const v = Math.max(0, Number(e.target.value) || 0)
+                  setReceiveLines((prev) =>
+                    prev.map((x) => (x.id === l.id ? { ...x, recvNow: v } : x)),
+                  )
+                }}
+              />
+              <Input
+                type="number"
+                min={0}
+                placeholder="Damaged"
+                value={l.damagedNow || ''}
+                onChange={(e) => {
+                  const v = Math.max(0, Number(e.target.value) || 0)
+                  setReceiveLines((prev) =>
+                    prev.map((x) => (x.id === l.id ? { ...x, damagedNow: v } : x)),
+                  )
+                }}
+              />
+            </div>
+          ))}
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={finalize} onChange={(e) => setFinalize(e.target.checked)} />
+            Finalize short receive (close transfer)
+          </label>
+          <Button
+            size="sm"
+            disabled={receiveMutation.isPending}
+            onClick={() =>
+              receiveMutation.mutate({ id: receiveId, lines: receiveLines, finalizeReceive: finalize })
+            }
+          >
+            Post receive
+          </Button>
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-[#6B7280]">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
@@ -76,7 +192,7 @@ export function StockTransferPage() {
               <TableHead>Transfer #</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created</TableHead>
-              <TableHead className="w-40" />
+              <TableHead className="w-48" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -101,14 +217,24 @@ export function StockTransferPage() {
                         Dispatch
                       </Button>
                     ) : null}
-                    {row.status === 'in_transit' ? (
-                      <Button
-                        size="sm"
-                        disabled={receiveMutation.isPending}
-                        onClick={() => receiveMutation.mutate(row.id)}
-                      >
-                        Receive
-                      </Button>
+                    {row.status === 'in_transit' || row.status === 'partially_received' ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={receiveMutation.isPending}
+                          onClick={() => openPartialReceive(row.id)}
+                        >
+                          Partial
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={receiveMutation.isPending}
+                          onClick={() => receiveMutation.mutate({ id: row.id, lines: [], finalizeReceive: true })}
+                        >
+                          Receive all
+                        </Button>
+                      </>
                     ) : null}
                   </div>
                 </TableCell>

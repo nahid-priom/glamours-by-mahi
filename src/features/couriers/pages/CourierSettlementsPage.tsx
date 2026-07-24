@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { courierRepository } from '../repositories/courier.repository'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
@@ -7,13 +8,21 @@ import { queryKeys } from '@/lib/query/keys'
 
 export function CourierSettlementsPage() {
   const qc = useQueryClient()
+  const [accountBySettlement, setAccountBySettlement] = useState<Record<string, string>>({})
+
   const { data = [], isLoading, error } = useQuery({
     queryKey: [...queryKeys.couriers, 'settlements'],
     queryFn: () => courierRepository.listSettlements(),
   })
 
+  const { data: accounts = [] } = useQuery({
+    queryKey: [...queryKeys.couriers, 'settlement-accounts'],
+    queryFn: () => courierRepository.listFinancialAccounts(),
+  })
+
   const settle = useMutation({
-    mutationFn: (id: string) => courierRepository.markSettlementSettled(id),
+    mutationFn: ({ id, accountId }: { id: string; accountId: string }) =>
+      courierRepository.markSettlementSettled(id, accountId),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: [...queryKeys.couriers, 'settlements'] })
     },
@@ -51,20 +60,45 @@ export function CourierSettlementsPage() {
             {data.map((row) => {
               const company = row.courier_companies as unknown as { name: string } | null
               const parcel = row.courier_parcels as unknown as { tracking_no: string | null } | null
+              const accountId = accountBySettlement[row.id] ?? accounts[0]?.id ?? ''
               return (
                 <tr key={row.id} className="border-b last:border-0">
                   <td className="px-3 py-2">{company?.name || '—'}</td>
                   <td className="px-3 py-2">{parcel?.tracking_no || '—'}</td>
                   <td className="px-3 py-2">{formatBDT(Number(row.cod_amount))}</td>
                   <td className="px-3 py-2">{formatBDT(Number(row.courier_charge))}</td>
-                  <td className="px-3 py-2">{formatBDT(Number(row.settlement_amount))}</td>
+                  <td className="px-3 py-2">
+                    {row.status === 'partially_settled' && row.settled_amount != null
+                      ? `${formatBDT(Number(row.settled_amount))} / ${formatBDT(Number(row.settlement_amount))}`
+                      : formatBDT(Number(row.settlement_amount))}
+                  </td>
                   <td className="px-3 py-2">{row.status}</td>
                   <td className="px-3 py-2">
-                    {row.status === 'pending' ? (
-                      <PermissionGate permission="courier.manage">
-                        <Button size="sm" variant="outline" onClick={() => settle.mutate(row.id)}>
-                          Mark settled
-                        </Button>
+                    {row.status === 'pending' || row.status === 'partially_settled' ? (
+                      <PermissionGate permission="courier.settle">
+                        <div className="flex items-center gap-2">
+                          <select
+                            className="h-8 rounded border border-border px-2 text-xs"
+                            value={accountId}
+                            onChange={(e) =>
+                              setAccountBySettlement((m) => ({ ...m, [row.id]: e.target.value }))
+                            }
+                          >
+                            {accounts.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.name}
+                              </option>
+                            ))}
+                          </select>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!accountId || settle.isPending}
+                            onClick={() => settle.mutate({ id: row.id, accountId })}
+                          >
+                            Settle
+                          </Button>
+                        </div>
                       </PermissionGate>
                     ) : null}
                   </td>

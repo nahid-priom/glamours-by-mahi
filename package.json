@@ -9,6 +9,13 @@
     "typecheck": "tsc -b --pretty false",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:routes": "vitest run src/app/routes/routes.smoke.test.ts",
+    "db:test:erp": "npx supabase db query --linked --file supabase/tests/erp_scenarios_outcome.sql && node scripts/test-concurrent-transfer.mjs",
+    "db:test:concurrent": "node scripts/test-concurrent-transfer.mjs",
+    "db:test:acceptance": "npx supabase db query --linked \"SELECT public.run_erp_acceptance_report() AS report;\"",
+    "db:test:recon": "npx supabase db query --linked --file supabase/tests/production_reconciliation.sql",
+    "db:types:linked": "powershell -ExecutionPolicy Bypass -File scripts/gen-types-linked.ps1",
+    "test:e2e": "playwright test",
     "preview": "vite preview",
     "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
     "seed:sales-demo": "node scripts/seed-sales-demo.mjs",
@@ -46,6 +53,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "^4.3.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

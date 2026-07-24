@@ -143,6 +143,21 @@ export function DashboardPage() {
               trendLabel="outstanding"
               to="/suppliers"
             />
+            {data.kpis.stockValuation != null ? (
+              <DashboardKpiCard
+                title="Stock Value"
+                value={data.kpis.stockValuation}
+                icon={Building2}
+                tone="green"
+                trend={0}
+                trendLabel={
+                  data.kpis.stockCost != null
+                    ? `cost ${formatBDT(data.kpis.stockCost)}`
+                    : 'valuation RPC'
+                }
+                to="/inventory"
+              />
+            ) : null}
           </div>
 
           <div className="grid gap-3 lg:grid-cols-12">

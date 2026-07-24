@@ -37,6 +37,7 @@ import { ProductStatusBadge } from './ProductStatusBadge'
 import { BranchPriceEditor } from './BranchPriceEditor'
 import { ProductActivityTimeline } from './ProductActivityTimeline'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { OpeningStockFields, type OpeningStockInput } from './OpeningStockFields'
 
 type Props = {
   open: boolean
@@ -114,6 +115,12 @@ export function ProductFormDialog({ open, onOpenChange, orgId, editing, onSaved,
   const [pendingCover, setPendingCover] = useState<File | null>(null)
   const [categoryCode, setCategoryCode] = useState<string | null>(null)
   const [brandCode, setBrandCode] = useState<string | null>(null)
+  const [openingStock, setOpeningStock] = useState<OpeningStockInput>({
+    branchId: '',
+    locationId: '',
+    quantity: 0,
+    unitCost: 0,
+  })
 
   useEffect(() => {
     if (open) {
@@ -122,6 +129,7 @@ export function ProductFormDialog({ open, onOpenChange, orgId, editing, onSaved,
       setSizes([])
       setColors([])
       setPendingCover(null)
+      setOpeningStock({ branchId: '', locationId: '', quantity: 0, unitCost: 0 })
     }
   }, [open, editing])
 
@@ -221,6 +229,24 @@ export function ProductFormDialog({ open, onOpenChange, orgId, editing, onSaved,
             wholesale_price: v.wholesale_price,
             is_active: v.is_active,
           }))
+        }
+
+        if (openingStock.quantity > 0) {
+          if (!openingStock.branchId || !openingStock.locationId) {
+            throw new Error('Select branch and location for opening stock.')
+          }
+          const unitCost = openingStock.unitCost || Number(form.purchase_price) || 0
+          if (unitCost <= 0) {
+            throw new Error('Opening stock requires a unit purchase cost.')
+          }
+          payload.opening_stock = [
+            {
+              branch_id: openingStock.branchId,
+              location_id: openingStock.locationId,
+              quantity: openingStock.quantity,
+              unit_cost: unitCost,
+            },
+          ]
         }
         const result = await createProductAtomic(payload)
         id = String(result.product_id)
@@ -412,6 +438,24 @@ export function ProductFormDialog({ open, onOpenChange, orgId, editing, onSaved,
             {formatBDT(Number(form.selling_price) || 0)} · Est. profit:{' '}
             {formatBDT(profit.profit)} ({profit.margin.toFixed(0)}% margin)
           </div>
+
+          {!editing ? (
+            <OpeningStockFields
+              value={{
+                ...openingStock,
+                unitCost: openingStock.unitCost || Number(form.purchase_price) || 0,
+              }}
+              onChange={(next) =>
+                setOpeningStock({
+                  ...next,
+                  unitCost: next.unitCost || Number(form.purchase_price) || 0,
+                })
+              }
+              purchasePrice={Number(form.purchase_price) || 0}
+              sellingPrice={Number(form.selling_price) || 0}
+              variantCount={isMatrix ? Math.max(variantDrafts.length, 1) : 1}
+            />
+          ) : null}
 
           <div className="space-y-1.5">
             <Label>Cover image</Label>

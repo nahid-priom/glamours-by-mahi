@@ -155,7 +155,7 @@ export async function listSupplierLedger(
   return data ?? []
 }
 
-/** Payment-like credit entries from supplier_ledger (payments / adjustments). */
+/** Payment entries from supplier_ledger. */
 export async function listSupplierPayments(
   supplierId?: string | null,
   limit = 100,
@@ -164,7 +164,7 @@ export async function listSupplierPayments(
     .from('supplier_ledger')
     .select('*')
     .is('deleted_at', null)
-    .gt('credit', 0)
+    .eq('entry_type', 'payment')
     .order('occurred_at', { ascending: false })
     .limit(limit)
   if (supplierId) builder = builder.eq('supplier_id', supplierId)

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -164,7 +165,14 @@ export function CustomersAdminPage() {
           <TableBody>
             {(data?.items ?? []).map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="font-medium">{row.name}</TableCell>
+                <TableCell>
+                  <Link
+                    to={`/customers/${row.id}`}
+                    className="font-medium text-[#E11D48] hover:underline"
+                  >
+                    {row.name}
+                  </Link>
+                </TableCell>
                 <TableCell className="text-[#6B7280]">{row.phone}</TableCell>
                 <TableCell className="text-[#6B7280]">{row.district || '—'}</TableCell>
                 <TableCell>

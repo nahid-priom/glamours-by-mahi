@@ -150,6 +150,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "account_transfers_from_account_id_fkey"
+            columns: ["from_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "account_transfers_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -162,6 +169,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "financial_accounts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_transfers_to_account_id_fkey"
+            columns: ["to_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
           },
           {
             foreignKeyName: "account_transfers_updated_by_fkey"
@@ -365,6 +379,270 @@ export type Database = {
           },
         ]
       }
+      attendance_devices: {
+        Row: {
+          base_url: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          is_active: boolean
+          last_error: string | null
+          last_sync_at: string | null
+          name: string
+          organization_id: string
+          provider: string
+          secret_ref: string | null
+          serial_number: string | null
+          timezone: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_url?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_sync_at?: string | null
+          name: string
+          organization_id: string
+          provider?: string
+          secret_ref?: string | null
+          serial_number?: string | null
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_url?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          last_error?: string | null
+          last_sync_at?: string | null
+          name?: string
+          organization_id?: string
+          provider?: string
+          secret_ref?: string | null
+          serial_number?: string | null
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_devices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_devices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_devices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_devices_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_raw_logs: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          device_user_id: string
+          employee_id: string | null
+          error_message: string | null
+          external_event_id: string | null
+          id: string
+          organization_id: string
+          processed_at: string | null
+          processing_status: string
+          punch_type: string
+          punched_at: string
+          raw_payload: Json
+          received_at: string
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          device_user_id: string
+          employee_id?: string | null
+          error_message?: string | null
+          external_event_id?: string | null
+          id?: string
+          organization_id: string
+          processed_at?: string | null
+          processing_status?: string
+          punch_type?: string
+          punched_at: string
+          raw_payload?: Json
+          received_at?: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          device_user_id?: string
+          employee_id?: string | null
+          error_message?: string | null
+          external_event_id?: string | null
+          id?: string
+          organization_id?: string
+          processed_at?: string | null
+          processing_status?: string
+          punch_type?: string
+          punched_at?: string
+          raw_payload?: Json
+          received_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_raw_logs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_raw_logs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_raw_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_records: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          early_leave_minutes: number
+          employee_id: string
+          first_in: string | null
+          id: string
+          is_approved: boolean
+          last_out: string | null
+          late_minutes: number
+          notes: string | null
+          organization_id: string
+          overtime_minutes: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+          work_date: string
+          working_minutes: number
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          early_leave_minutes?: number
+          employee_id: string
+          first_in?: string | null
+          id?: string
+          is_approved?: boolean
+          last_out?: string | null
+          late_minutes?: number
+          notes?: string | null
+          organization_id: string
+          overtime_minutes?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          work_date: string
+          working_minutes?: number
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          early_leave_minutes?: number
+          employee_id?: string
+          first_in?: string | null
+          id?: string
+          is_approved?: boolean
+          last_out?: string | null
+          late_minutes?: number
+          notes?: string | null
+          organization_id?: string
+          overtime_minutes?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          work_date?: string
+          working_minutes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -428,6 +706,106 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branch_product_prices: {
+        Row: {
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          discount_price: number | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_active: boolean
+          organization_id: string
+          product_id: string
+          retail_price: number | null
+          updated_at: string
+          updated_by: string | null
+          variant_id: string | null
+          wholesale_price: number | null
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          discount_price?: number | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          product_id: string
+          retail_price?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string | null
+          wholesale_price?: number | null
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          discount_price?: number | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          product_id?: string
+          retail_price?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string | null
+          wholesale_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_product_prices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_product_prices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_product_prices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_product_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_product_prices_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_product_prices_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -890,6 +1268,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "courier_events_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_courier_cod_pending"
+            referencedColumns: ["parcel_id"]
+          },
+          {
             foreignKeyName: "courier_events_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -1206,6 +1591,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "courier_return_requests_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_courier_cod_pending"
+            referencedColumns: ["parcel_id"]
+          },
+          {
             foreignKeyName: "courier_return_requests_reviewed_by_fkey"
             columns: ["reviewed_by"]
             isOneToOne: false
@@ -1231,6 +1623,7 @@ export type Database = {
       courier_settlements: {
         Row: {
           branch_id: string | null
+          client_txn_key: string | null
           cod_amount: number
           courier_charge: number
           courier_company_id: string
@@ -1244,6 +1637,7 @@ export type Database = {
           parcel_id: string | null
           return_charge: number
           sale_id: string | null
+          settled_amount: number
           settlement_amount: number
           settlement_date: string | null
           status: string
@@ -1252,6 +1646,7 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
+          client_txn_key?: string | null
           cod_amount?: number
           courier_charge?: number
           courier_company_id: string
@@ -1265,6 +1660,7 @@ export type Database = {
           parcel_id?: string | null
           return_charge?: number
           sale_id?: string | null
+          settled_amount?: number
           settlement_amount?: number
           settlement_date?: string | null
           status?: string
@@ -1273,6 +1669,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
+          client_txn_key?: string | null
           cod_amount?: number
           courier_charge?: number
           courier_company_id?: string
@@ -1286,6 +1683,7 @@ export type Database = {
           parcel_id?: string | null
           return_charge?: number
           sale_id?: string | null
+          settled_amount?: number
           settlement_amount?: number
           settlement_date?: string | null
           status?: string
@@ -1322,6 +1720,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "courier_settlements_financial_account_id_fkey"
+            columns: ["financial_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "courier_settlements_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -1334,6 +1739,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "courier_parcels"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_settlements_parcel_id_fkey"
+            columns: ["parcel_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_courier_cod_pending"
+            referencedColumns: ["parcel_id"]
           },
           {
             foreignKeyName: "courier_settlements_sale_id_fkey"
@@ -1417,6 +1829,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_addresses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_customer_due_vs_sales"
+            referencedColumns: ["customer_id"]
           },
           {
             foreignKeyName: "customer_addresses_organization_id_fkey"
@@ -1513,6 +1932,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_customer_due_vs_sales"
+            referencedColumns: ["customer_id"]
           },
           {
             foreignKeyName: "customer_ledger_organization_id_fkey"
@@ -1752,6 +2178,207 @@ export type Database = {
           },
         ]
       }
+      employee_device_mappings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          device_id: string
+          device_user_id: string
+          employee_id: string
+          id: string
+          is_active: boolean
+          organization_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          device_id: string
+          device_user_id: string
+          employee_id: string
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          device_id?: string
+          device_user_id?: string
+          employee_id?: string
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_device_mappings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_device_mappings_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_device_mappings_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_device_mappings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_device_mappings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          allowances: Json
+          bank_details: Json
+          basic_salary: number
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          department: string | null
+          designation: string | null
+          email: string | null
+          emergency_contact: Json
+          employee_code: string
+          employment_type: string
+          full_name: string
+          id: string
+          joining_date: string | null
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          photo_path: string | null
+          profile_id: string | null
+          salary_type: string
+          shift_name: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowances?: Json
+          bank_details?: Json
+          basic_salary?: number
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          emergency_contact?: Json
+          employee_code: string
+          employment_type?: string
+          full_name: string
+          id?: string
+          joining_date?: string | null
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          photo_path?: string | null
+          profile_id?: string | null
+          salary_type?: string
+          shift_name?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowances?: Json
+          bank_details?: Json
+          basic_salary?: number
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          emergency_contact?: Json
+          employee_code?: string
+          employment_type?: string
+          full_name?: string
+          id?: string
+          joining_date?: string | null
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          photo_path?: string | null
+          profile_id?: string | null
+          salary_type?: string
+          shift_name?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_categories: {
         Row: {
           created_at: string
@@ -1886,6 +2513,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "expense_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "expense_entries_approved_by_fkey"
             columns: ["approved_by"]
             isOneToOne: false
@@ -1925,6 +2559,87 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expiry_alerts: {
+        Row: {
+          batch_id: string
+          branch_id: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          is_read: boolean
+          message: string
+          organization_id: string
+          product_id: string
+          quantity_available: number
+          severity: string
+          variant_id: string
+        }
+        Insert: {
+          batch_id: string
+          branch_id?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          is_read?: boolean
+          message: string
+          organization_id: string
+          product_id: string
+          quantity_available?: number
+          severity?: string
+          variant_id: string
+        }
+        Update: {
+          batch_id?: string
+          branch_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          organization_id?: string
+          product_id?: string
+          quantity_available?: number
+          severity?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expiry_alerts_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expiry_alerts_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expiry_alerts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expiry_alerts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expiry_alerts_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -2096,6 +2811,7 @@ export type Database = {
           balance_after: number
           balance_before: number
           branch_id: string | null
+          client_txn_key: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -2104,7 +2820,10 @@ export type Database = {
           note: string | null
           organization_id: string
           reference: string | null
+          reversal_of: string | null
+          reversed_at: string | null
           source_id: string | null
+          source_number: string | null
           source_type: string | null
           status: string
           transaction_date: string
@@ -2120,6 +2839,7 @@ export type Database = {
           balance_after: number
           balance_before: number
           branch_id?: string | null
+          client_txn_key?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -2128,7 +2848,10 @@ export type Database = {
           note?: string | null
           organization_id: string
           reference?: string | null
+          reversal_of?: string | null
+          reversed_at?: string | null
           source_id?: string | null
+          source_number?: string | null
           source_type?: string | null
           status?: string
           transaction_date?: string
@@ -2144,6 +2867,7 @@ export type Database = {
           balance_after?: number
           balance_before?: number
           branch_id?: string | null
+          client_txn_key?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -2152,7 +2876,10 @@ export type Database = {
           note?: string | null
           organization_id?: string
           reference?: string | null
+          reversal_of?: string | null
+          reversed_at?: string | null
           source_id?: string | null
+          source_number?: string | null
           source_type?: string | null
           status?: string
           transaction_date?: string
@@ -2169,6 +2896,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "financial_accounts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
           },
           {
             foreignKeyName: "financial_transactions_branch_id_fkey"
@@ -2189,6 +2923,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_reversal_of_fkey"
+            columns: ["reversal_of"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
             referencedColumns: ["id"]
           },
           {
@@ -2368,6 +3109,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "held_sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_customer_due_vs_sales"
+            referencedColumns: ["customer_id"]
+          },
+          {
             foreignKeyName: "held_sales_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -2518,6 +3266,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "income_entries_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "income_entries_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
@@ -2563,36 +3318,45 @@ export type Database = {
       }
       inventory_balances: {
         Row: {
+          average_unit_cost: number
+          cost_is_fallback: boolean
           created_at: string
           created_by: string | null
           deleted_at: string | null
           id: string
           location_id: string
           organization_id: string
+          qty_reserved: number
           quantity: number
           updated_at: string
           updated_by: string | null
           variant_id: string
         }
         Insert: {
+          average_unit_cost?: number
+          cost_is_fallback?: boolean
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           id?: string
           location_id: string
           organization_id: string
+          qty_reserved?: number
           quantity?: number
           updated_at?: string
           updated_by?: string | null
           variant_id: string
         }
         Update: {
+          average_unit_cost?: number
+          cost_is_fallback?: boolean
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           id?: string
           location_id?: string
           organization_id?: string
+          qty_reserved?: number
           quantity?: number
           updated_at?: string
           updated_by?: string | null
@@ -2629,6 +3393,239 @@ export type Database = {
           },
           {
             foreignKeyName: "inventory_balances_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_batches: {
+        Row: {
+          batch_number: string
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          expires_at: string | null
+          id: string
+          location_id: string | null
+          manufactured_at: string | null
+          organization_id: string
+          product_id: string
+          purchase_item_id: string | null
+          quantity_available: number
+          quantity_received: number
+          received_at: string
+          status: string
+          unit_cost: number
+          updated_at: string
+          updated_by: string | null
+          variant_id: string
+        }
+        Insert: {
+          batch_number: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          expires_at?: string | null
+          id?: string
+          location_id?: string | null
+          manufactured_at?: string | null
+          organization_id: string
+          product_id: string
+          purchase_item_id?: string | null
+          quantity_available?: number
+          quantity_received?: number
+          received_at?: string
+          status?: string
+          unit_cost?: number
+          updated_at?: string
+          updated_by?: string | null
+          variant_id: string
+        }
+        Update: {
+          batch_number?: string
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          expires_at?: string | null
+          id?: string
+          location_id?: string | null
+          manufactured_at?: string | null
+          organization_id?: string
+          product_id?: string
+          purchase_item_id?: string | null
+          quantity_available?: number
+          quantity_received?: number
+          received_at?: string
+          status?: string
+          unit_cost?: number
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_batches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_reservations: {
+        Row: {
+          branch_id: string
+          client_txn_key: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          expires_at: string | null
+          id: string
+          location_id: string
+          organization_id: string
+          qty: number
+          sale_id: string
+          sale_item_id: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          variant_id: string
+        }
+        Insert: {
+          branch_id: string
+          client_txn_key?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          expires_at?: string | null
+          id?: string
+          location_id: string
+          organization_id: string
+          qty: number
+          sale_id: string
+          sale_item_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_id: string
+        }
+        Update: {
+          branch_id?: string
+          client_txn_key?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          expires_at?: string | null
+          id?: string
+          location_id?: string
+          organization_id?: string
+          qty?: number
+          sale_id?: string
+          sale_item_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_reservations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_sale_item_id_fkey"
+            columns: ["sale_item_id"]
+            isOneToOne: false
+            referencedRelation: "sale_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_reservations_variant_id_fkey"
             columns: ["variant_id"]
             isOneToOne: false
             referencedRelation: "product_variants"
@@ -2731,6 +3728,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "journal_entries_reversed_entry_id_fkey"
+            columns: ["reversed_entry_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_unbalanced_journals"
+            referencedColumns: ["journal_entry_id"]
+          },
+          {
             foreignKeyName: "journal_entries_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -2811,11 +3815,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "journal_lines_financial_account_id_fkey"
+            columns: ["financial_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "journal_lines_journal_entry_id_fkey"
             columns: ["journal_entry_id"]
             isOneToOne: false
             referencedRelation: "journal_entries"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_unbalanced_journals"
+            referencedColumns: ["journal_entry_id"]
           },
           {
             foreignKeyName: "journal_lines_organization_id_fkey"
@@ -2826,6 +3844,99 @@ export type Database = {
           },
           {
             foreignKeyName: "journal_lines_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_requests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          days: number
+          deleted_at: string | null
+          employee_id: string
+          end_date: string
+          id: string
+          leave_type: string
+          organization_id: string
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          days?: number
+          deleted_at?: string | null
+          employee_id: string
+          end_date: string
+          id?: string
+          leave_type?: string
+          organization_id: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          days?: number
+          deleted_at?: string | null
+          employee_id?: string
+          end_date?: string
+          id?: string
+          leave_type?: string
+          organization_id?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -2929,6 +4040,115 @@ export type Database = {
           },
         ]
       }
+      opening_balance_documents: {
+        Row: {
+          amount: number | null
+          branch_id: string | null
+          client_txn_key: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          document_no: string
+          document_type: string
+          id: string
+          journal_entry_id: string | null
+          location_id: string | null
+          notes: string | null
+          organization_id: string
+          party_id: string | null
+          quantity: number | null
+          source_metadata: Json
+          updated_at: string
+          updated_by: string | null
+          variant_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          branch_id?: string | null
+          client_txn_key: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          document_no: string
+          document_type: string
+          id?: string
+          journal_entry_id?: string | null
+          location_id?: string | null
+          notes?: string | null
+          organization_id: string
+          party_id?: string | null
+          quantity?: number | null
+          source_metadata?: Json
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          branch_id?: string | null
+          client_txn_key?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          document_no?: string
+          document_type?: string
+          id?: string
+          journal_entry_id?: string | null
+          location_id?: string | null
+          notes?: string | null
+          organization_id?: string
+          party_id?: string | null
+          quantity?: number | null
+          source_metadata?: Json
+          updated_at?: string
+          updated_by?: string | null
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opening_balance_documents_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_balance_documents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_balance_documents_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_balance_documents_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_unbalanced_journals"
+            referencedColumns: ["journal_entry_id"]
+          },
+          {
+            foreignKeyName: "opening_balance_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opening_balance_documents_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -2936,6 +4156,7 @@ export type Database = {
           currency: string
           deleted_at: string | null
           id: string
+          is_sandbox: boolean
           name: string
           settings: Json
           slug: string
@@ -2948,6 +4169,7 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           id?: string
+          is_sandbox?: boolean
           name: string
           settings?: Json
           slug: string
@@ -2960,6 +4182,7 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           id?: string
+          is_sandbox?: boolean
           name?: string
           settings?: Json
           slug?: string
@@ -2976,6 +4199,98 @@ export type Database = {
           },
           {
             foreignKeyName: "organizations_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_allocations: {
+        Row: {
+          amount: number
+          branch_id: string | null
+          client_txn_key: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          direction: string
+          document_id: string
+          document_type: string
+          id: string
+          notes: string | null
+          organization_id: string
+          party_id: string
+          party_type: string
+          source_id: string
+          source_type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount: number
+          branch_id?: string | null
+          client_txn_key?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          direction: string
+          document_id: string
+          document_type: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          party_id: string
+          party_type: string
+          source_id: string
+          source_type: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          branch_id?: string | null
+          client_txn_key?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          direction?: string
+          document_id?: string
+          document_type?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          party_id?: string
+          party_type?: string
+          source_id?: string
+          source_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -3048,6 +4363,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payment_methods_financial_account_id_fkey"
+            columns: ["financial_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "payment_methods_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -3056,6 +4378,180 @@ export type Database = {
           },
           {
             foreignKeyName: "payment_methods_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_items: {
+        Row: {
+          allowances: number
+          attendance_deduction: number
+          basic_salary: number
+          bonus: number
+          breakdown: Json
+          created_at: string
+          deleted_at: string | null
+          employee_id: string
+          id: string
+          leave_deduction: number
+          net_salary: number
+          organization_id: string
+          other_deductions: number
+          overtime: number
+          payroll_run_id: string
+          updated_at: string
+        }
+        Insert: {
+          allowances?: number
+          attendance_deduction?: number
+          basic_salary?: number
+          bonus?: number
+          breakdown?: Json
+          created_at?: string
+          deleted_at?: string | null
+          employee_id: string
+          id?: string
+          leave_deduction?: number
+          net_salary?: number
+          organization_id: string
+          other_deductions?: number
+          overtime?: number
+          payroll_run_id: string
+          updated_at?: string
+        }
+        Update: {
+          allowances?: number
+          attendance_deduction?: number
+          basic_salary?: number
+          bonus?: number
+          breakdown?: Json
+          created_at?: string
+          deleted_at?: string | null
+          employee_id?: string
+          id?: string
+          leave_deduction?: number
+          net_salary?: number
+          organization_id?: string
+          other_deductions?: number
+          overtime?: number
+          payroll_run_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_items_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_items_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_runs: {
+        Row: {
+          approved_at: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          journal_entry_id: string | null
+          notes: string | null
+          organization_id: string
+          paid_at: string | null
+          period_end: string
+          period_label: string
+          period_start: string
+          status: string
+          total_deductions: number
+          total_gross: number
+          total_net: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          organization_id: string
+          paid_at?: string | null
+          period_end: string
+          period_label: string
+          period_start: string
+          status?: string
+          total_deductions?: number
+          total_gross?: number
+          total_net?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string | null
+          period_end?: string
+          period_label?: string
+          period_start?: string
+          status?: string
+          total_deductions?: number
+          total_gross?: number
+          total_net?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_runs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -3191,6 +4687,130 @@ export type Database = {
             columns: ["variant_id"]
             isOneToOne: false
             referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_import_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_count: number
+          file_name: string | null
+          id: string
+          mode: string
+          organization_id: string
+          skipped_count: number
+          status: string
+          success_count: number
+          summary: Json
+          total_rows: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_count?: number
+          file_name?: string | null
+          id?: string
+          mode?: string
+          organization_id: string
+          skipped_count?: number
+          status?: string
+          success_count?: number
+          summary?: Json
+          total_rows?: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_count?: number
+          file_name?: string | null
+          id?: string
+          mode?: string
+          organization_id?: string
+          skipped_count?: number
+          status?: string
+          success_count?: number
+          summary?: Json
+          total_rows?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_import_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_import_jobs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_import_rows: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          job_id: string
+          organization_id: string
+          product_id: string | null
+          raw_data: Json
+          row_number: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id: string
+          organization_id: string
+          product_id?: string | null
+          raw_data?: Json
+          row_number: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id?: string
+          organization_id?: string
+          product_id?: string | null
+          raw_data?: Json
+          row_number?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_import_rows_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "product_import_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_import_rows_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_import_rows_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -3419,45 +5039,45 @@ export type Database = {
       }
       products: {
         Row: {
+          allocation_strategy: string
+          approved_at: string | null
+          approved_by: string | null
           base_barcode: string | null
           base_sku: string | null
+          batch_tracking_enabled: boolean
           brand_id: string | null
           category_id: string | null
+          country_of_origin: string | null
           created_at: string
           created_by: string | null
+          default_expiry_alert_days: number
           deleted_at: string | null
           description: string | null
+          expiry_tracking_enabled: boolean
+          gender_target: string | null
           has_variants: boolean
           id: string
+          importer: string | null
+          ingredients: string | null
           is_active: boolean
+          manufacturer: string | null
           name: string
           organization_id: string
           product_type: string
           published_at: string | null
-          status: string
-          approved_at: string | null
-          approved_by: string | null
+          purchase_price: number
+          regulatory_notes: string | null
           rejected_at: string | null
           rejected_by: string | null
           rejection_reason: string | null
-          submitted_at: string | null
-          submitted_by: string | null
-          batch_tracking_enabled: boolean
-          expiry_tracking_enabled: boolean
-          allocation_strategy: string
-          ingredients: string | null
-          skin_type: string | null
-          gender_target: string | null
-          country_of_origin: string | null
-          manufacturer: string | null
-          importer: string | null
-          regulatory_notes: string | null
-          default_expiry_alert_days: number
-          tags: string[]
-          purchase_price: number
           reorder_level: number
           selling_price: number
+          skin_type: string | null
+          status: string
           subcategory_id: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          tags: string[]
           tax_rate: number
           track_inventory: boolean
           unit: string
@@ -3466,45 +5086,45 @@ export type Database = {
           wholesale_price: number | null
         }
         Insert: {
+          allocation_strategy?: string
+          approved_at?: string | null
+          approved_by?: string | null
           base_barcode?: string | null
           base_sku?: string | null
+          batch_tracking_enabled?: boolean
           brand_id?: string | null
           category_id?: string | null
+          country_of_origin?: string | null
           created_at?: string
           created_by?: string | null
+          default_expiry_alert_days?: number
           deleted_at?: string | null
           description?: string | null
+          expiry_tracking_enabled?: boolean
+          gender_target?: string | null
           has_variants?: boolean
           id?: string
+          importer?: string | null
+          ingredients?: string | null
           is_active?: boolean
+          manufacturer?: string | null
           name: string
           organization_id: string
           product_type?: string
           published_at?: string | null
-          status?: string
-          approved_at?: string | null
-          approved_by?: string | null
+          purchase_price?: number
+          regulatory_notes?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
-          submitted_at?: string | null
-          submitted_by?: string | null
-          batch_tracking_enabled?: boolean
-          expiry_tracking_enabled?: boolean
-          allocation_strategy?: string
-          ingredients?: string | null
-          skin_type?: string | null
-          gender_target?: string | null
-          country_of_origin?: string | null
-          manufacturer?: string | null
-          importer?: string | null
-          regulatory_notes?: string | null
-          default_expiry_alert_days?: number
-          tags?: string[]
-          purchase_price?: number
           reorder_level?: number
           selling_price?: number
+          skin_type?: string | null
+          status?: string
           subcategory_id?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tags?: string[]
           tax_rate?: number
           track_inventory?: boolean
           unit?: string
@@ -3513,45 +5133,45 @@ export type Database = {
           wholesale_price?: number | null
         }
         Update: {
+          allocation_strategy?: string
+          approved_at?: string | null
+          approved_by?: string | null
           base_barcode?: string | null
           base_sku?: string | null
+          batch_tracking_enabled?: boolean
           brand_id?: string | null
           category_id?: string | null
+          country_of_origin?: string | null
           created_at?: string
           created_by?: string | null
+          default_expiry_alert_days?: number
           deleted_at?: string | null
           description?: string | null
+          expiry_tracking_enabled?: boolean
+          gender_target?: string | null
           has_variants?: boolean
           id?: string
+          importer?: string | null
+          ingredients?: string | null
           is_active?: boolean
+          manufacturer?: string | null
           name?: string
           organization_id?: string
           product_type?: string
           published_at?: string | null
-          status?: string
-          approved_at?: string | null
-          approved_by?: string | null
+          purchase_price?: number
+          regulatory_notes?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
-          submitted_at?: string | null
-          submitted_by?: string | null
-          batch_tracking_enabled?: boolean
-          expiry_tracking_enabled?: boolean
-          allocation_strategy?: string
-          ingredients?: string | null
-          skin_type?: string | null
-          gender_target?: string | null
-          country_of_origin?: string | null
-          manufacturer?: string | null
-          importer?: string | null
-          regulatory_notes?: string | null
-          default_expiry_alert_days?: number
-          tags?: string[]
-          purchase_price?: number
           reorder_level?: number
           selling_price?: number
+          skin_type?: string | null
+          status?: string
           subcategory_id?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          tags?: string[]
           tax_rate?: number
           track_inventory?: boolean
           unit?: string
@@ -3560,6 +5180,13 @@ export type Database = {
           wholesale_price?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "products_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_brand_id_fkey"
             columns: ["brand_id"]
@@ -3589,10 +5216,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "products_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "products_subcategory_id_fkey"
             columns: ["subcategory_id"]
             isOneToOne: false
             referencedRelation: "subcategories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -3831,6 +5472,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "purchase_payments_financial_account_id_fkey"
+            columns: ["financial_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
             foreignKeyName: "purchase_payments_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -3950,6 +5598,7 @@ export type Database = {
       purchase_returns: {
         Row: {
           branch_id: string
+          client_txn_key: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -3966,6 +5615,7 @@ export type Database = {
         }
         Insert: {
           branch_id: string
+          client_txn_key?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -3982,6 +5632,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string
+          client_txn_key?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -4031,6 +5682,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_returns_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_supplier_due_vs_purchases"
+            referencedColumns: ["supplier_id"]
           },
           {
             foreignKeyName: "purchase_returns_updated_by_fkey"
@@ -4144,10 +5802,134 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_supplier_due_vs_purchases"
+            referencedColumns: ["supplier_id"]
+          },
+          {
             foreignKeyName: "purchases_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_batches: {
+        Row: {
+          batch_type: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          mode: string
+          organization_id: string
+          started_at: string
+          status: string
+          summary: Json
+          updated_at: string
+        }
+        Insert: {
+          batch_type: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          mode: string
+          organization_id: string
+          started_at?: string
+          status?: string
+          summary?: Json
+          updated_at?: string
+        }
+        Update: {
+          batch_type?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          mode?: string
+          organization_id?: string
+          started_at?: string
+          status?: string
+          summary?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_batches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reconciliation_results: {
+        Row: {
+          after_value: Json | null
+          batch_id: string
+          before_value: Json | null
+          check_key: string
+          created_at: string
+          difference: Json | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          message: string | null
+          organization_id: string
+        }
+        Insert: {
+          after_value?: Json | null
+          batch_id: string
+          before_value?: Json | null
+          check_key: string
+          created_at?: string
+          difference?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          message?: string | null
+          organization_id: string
+        }
+        Update: {
+          after_value?: Json | null
+          batch_id?: string
+          before_value?: Json | null
+          check_key?: string
+          created_at?: string
+          difference?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          message?: string | null
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_results_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliation_results_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -4453,8 +6235,68 @@ export type Database = {
           },
         ]
       }
+      sale_item_batches: {
+        Row: {
+          batch_id: string
+          created_at: string
+          id: string
+          organization_id: string
+          quantity: number
+          sale_id: string
+          sale_item_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          quantity: number
+          sale_id: string
+          sale_item_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          quantity?: number
+          sale_id?: string
+          sale_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_item_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_item_batches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_item_batches_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_item_batches_sale_item_id_fkey"
+            columns: ["sale_item_id"]
+            isOneToOne: false
+            referencedRelation: "sale_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sale_items: {
         Row: {
+          batch_id: string | null
           cost_price: number
           created_at: string
           created_by: string | null
@@ -4471,6 +6313,7 @@ export type Database = {
           variant_id: string
         }
         Insert: {
+          batch_id?: string | null
           cost_price?: number
           created_at?: string
           created_by?: string | null
@@ -4487,6 +6330,7 @@ export type Database = {
           variant_id: string
         }
         Update: {
+          batch_id?: string | null
           cost_price?: number
           created_at?: string
           created_by?: string | null
@@ -4503,6 +6347,13 @@ export type Database = {
           variant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sale_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sale_items_created_by_fkey"
             columns: ["created_by"]
@@ -4551,8 +6402,8 @@ export type Database = {
           method: string
           organization_id: string
           reference: string | null
-          reversed_at: string | null
           reversal_note: string | null
+          reversed_at: string | null
           sale_id: string
           updated_at: string
           updated_by: string | null
@@ -4567,8 +6418,8 @@ export type Database = {
           method: string
           organization_id: string
           reference?: string | null
-          reversed_at?: string | null
           reversal_note?: string | null
+          reversed_at?: string | null
           sale_id: string
           updated_at?: string
           updated_by?: string | null
@@ -4583,8 +6434,8 @@ export type Database = {
           method?: string
           organization_id?: string
           reference?: string | null
-          reversed_at?: string | null
           reversal_note?: string | null
+          reversed_at?: string | null
           sale_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -4603,6 +6454,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "financial_accounts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_payments_financial_account_id_fkey"
+            columns: ["financial_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
           },
           {
             foreignKeyName: "sale_payments_organization_id_fkey"
@@ -4726,6 +6584,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           branch_id: string
+          client_txn_key: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -4743,6 +6602,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           branch_id: string
+          client_txn_key?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -4760,6 +6620,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           branch_id?: string
+          client_txn_key?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -4897,12 +6758,18 @@ export type Database = {
           client_txn_key: string | null
           completed_at: string | null
           corrected_from_id: string | null
+          coupon_code: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
           deleted_at: string | null
+          delivery_address: string | null
+          delivery_area: string | null
+          delivery_district: string | null
           discount: number
           due_total: number
+          fulfilled_sale_posted_at: string | null
+          fulfilment_status: string | null
           grand_total: number
           id: string
           invoice_no: string
@@ -4911,6 +6778,8 @@ export type Database = {
           paid_total: number
           payment_status: string
           previous_sale_id: string | null
+          public_share_token: string | null
+          reservation_expires_at: string | null
           salesperson_id: string | null
           shipping: number
           status: string
@@ -4929,12 +6798,18 @@ export type Database = {
           client_txn_key?: string | null
           completed_at?: string | null
           corrected_from_id?: string | null
+          coupon_code?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           deleted_at?: string | null
+          delivery_address?: string | null
+          delivery_area?: string | null
+          delivery_district?: string | null
           discount?: number
           due_total?: number
+          fulfilled_sale_posted_at?: string | null
+          fulfilment_status?: string | null
           grand_total?: number
           id?: string
           invoice_no: string
@@ -4943,6 +6818,8 @@ export type Database = {
           paid_total?: number
           payment_status?: string
           previous_sale_id?: string | null
+          public_share_token?: string | null
+          reservation_expires_at?: string | null
           salesperson_id?: string | null
           shipping?: number
           status?: string
@@ -4961,12 +6838,18 @@ export type Database = {
           client_txn_key?: string | null
           completed_at?: string | null
           corrected_from_id?: string | null
+          coupon_code?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           deleted_at?: string | null
+          delivery_address?: string | null
+          delivery_area?: string | null
+          delivery_district?: string | null
           discount?: number
           due_total?: number
+          fulfilled_sale_posted_at?: string | null
+          fulfilment_status?: string | null
           grand_total?: number
           id?: string
           invoice_no?: string
@@ -4975,6 +6858,8 @@ export type Database = {
           paid_total?: number
           payment_status?: string
           previous_sale_id?: string | null
+          public_share_token?: string | null
+          reservation_expires_at?: string | null
           salesperson_id?: string | null
           shipping?: number
           status?: string
@@ -5016,6 +6901,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_customer_due_vs_sales"
+            referencedColumns: ["customer_id"]
+          },
+          {
             foreignKeyName: "sales_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -5038,6 +6930,242 @@ export type Database = {
           },
           {
             foreignKeyName: "sales_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salesman_commission_rules: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          organization_id: string
+          profile_id: string
+          rate: number
+          rule_type: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          organization_id: string
+          profile_id: string
+          rate?: number
+          rule_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          organization_id?: string
+          profile_id?: string
+          rate?: number
+          rule_type?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salesman_commission_rules_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commission_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commission_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commission_rules_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commission_rules_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salesman_commissions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          base_amount: number
+          branch_id: string | null
+          client_txn_key: string | null
+          cogs_amount: number
+          commission_amount: number
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          financial_account_id: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          paid_at: string | null
+          profile_id: string
+          rule_snapshot: Json | null
+          sale_id: string | null
+          sale_return_id: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          base_amount?: number
+          branch_id?: string | null
+          client_txn_key?: string | null
+          cogs_amount?: number
+          commission_amount?: number
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          financial_account_id?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          paid_at?: string | null
+          profile_id: string
+          rule_snapshot?: Json | null
+          sale_id?: string | null
+          sale_return_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          base_amount?: number
+          branch_id?: string | null
+          client_txn_key?: string | null
+          cogs_amount?: number
+          commission_amount?: number
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          financial_account_id?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string | null
+          profile_id?: string
+          rule_snapshot?: Json | null
+          sale_id?: string | null
+          sale_return_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salesman_commissions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commissions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commissions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commissions_financial_account_id_fkey"
+            columns: ["financial_account_id"]
+            isOneToOne: false
+            referencedRelation: "financial_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commissions_financial_account_id_fkey"
+            columns: ["financial_account_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_financial_running_balance"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "salesman_commissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commissions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commissions_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commissions_sale_return_id_fkey"
+            columns: ["sale_return_id"]
+            isOneToOne: false
+            referencedRelation: "sale_returns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salesman_commissions_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -5236,6 +7364,7 @@ export type Database = {
           quantity_delta: number
           reference_id: string | null
           reference_type: string | null
+          total_cost: number | null
           unit_cost: number | null
           updated_at: string
           updated_by: string | null
@@ -5257,6 +7386,7 @@ export type Database = {
           quantity_delta: number
           reference_id?: string | null
           reference_type?: string | null
+          total_cost?: number | null
           unit_cost?: number | null
           updated_at?: string
           updated_by?: string | null
@@ -5278,6 +7408,7 @@ export type Database = {
           quantity_delta?: number
           reference_id?: string | null
           reference_type?: string | null
+          total_cost?: number | null
           unit_cost?: number | null
           updated_at?: string
           updated_by?: string | null
@@ -5410,6 +7541,7 @@ export type Database = {
           id: string
           notes: string | null
           organization_id: string
+          quantity_damaged: number
           quantity_received: number | null
           quantity_sent: number
           transfer_id: string
@@ -5425,6 +7557,7 @@ export type Database = {
           id?: string
           notes?: string | null
           organization_id: string
+          quantity_damaged?: number
           quantity_received?: number | null
           quantity_sent: number
           transfer_id: string
@@ -5440,6 +7573,7 @@ export type Database = {
           id?: string
           notes?: string | null
           organization_id?: string
+          quantity_damaged?: number
           quantity_received?: number | null
           quantity_sent?: number
           transfer_id?: string
@@ -5754,6 +7888,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "supplier_addresses_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_supplier_due_vs_purchases"
+            referencedColumns: ["supplier_id"]
+          },
+          {
             foreignKeyName: "supplier_addresses_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -5848,6 +7989,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_ledger_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "v_recon_supplier_due_vs_purchases"
+            referencedColumns: ["supplier_id"]
           },
           {
             foreignKeyName: "supplier_ledger_updated_by_fkey"
@@ -6098,11 +8246,487 @@ export type Database = {
           },
         ]
       }
+      website_hero_slides: {
+        Row: {
+          coupon_code: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          desktop_image_path: string
+          discount_text: string | null
+          ends_at: string | null
+          eyebrow: string | null
+          floating_badges: Json
+          heading: string
+          highlight_text: string | null
+          id: string
+          image_alt: string | null
+          image_focal_x: number | null
+          image_focal_y: number | null
+          image_object_position: string
+          internal_name: string
+          layout_direction: string
+          mobile_image_path: string | null
+          offer_subtitle: string | null
+          offer_title: string | null
+          organization_id: string
+          overlay_opacity: number
+          primary_cta_config: Json
+          primary_cta_label: string
+          primary_cta_new_tab: boolean
+          primary_cta_type: string
+          primary_cta_url: string | null
+          secondary_cta_config: Json
+          secondary_cta_enabled: boolean
+          secondary_cta_label: string | null
+          secondary_cta_new_tab: boolean
+          secondary_cta_type: string | null
+          secondary_cta_url: string | null
+          show_floating_badges: boolean
+          show_trending_products: boolean
+          show_trust_points: boolean
+          sort_order: number
+          starts_at: string | null
+          status: string
+          tablet_image_path: string | null
+          text_alignment: string
+          theme_variant: string
+          trust_points: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          coupon_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          desktop_image_path?: string
+          discount_text?: string | null
+          ends_at?: string | null
+          eyebrow?: string | null
+          floating_badges?: Json
+          heading: string
+          highlight_text?: string | null
+          id?: string
+          image_alt?: string | null
+          image_focal_x?: number | null
+          image_focal_y?: number | null
+          image_object_position?: string
+          internal_name: string
+          layout_direction?: string
+          mobile_image_path?: string | null
+          offer_subtitle?: string | null
+          offer_title?: string | null
+          organization_id: string
+          overlay_opacity?: number
+          primary_cta_config?: Json
+          primary_cta_label?: string
+          primary_cta_new_tab?: boolean
+          primary_cta_type?: string
+          primary_cta_url?: string | null
+          secondary_cta_config?: Json
+          secondary_cta_enabled?: boolean
+          secondary_cta_label?: string | null
+          secondary_cta_new_tab?: boolean
+          secondary_cta_type?: string | null
+          secondary_cta_url?: string | null
+          show_floating_badges?: boolean
+          show_trending_products?: boolean
+          show_trust_points?: boolean
+          sort_order?: number
+          starts_at?: string | null
+          status?: string
+          tablet_image_path?: string | null
+          text_alignment?: string
+          theme_variant?: string
+          trust_points?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          coupon_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          desktop_image_path?: string
+          discount_text?: string | null
+          ends_at?: string | null
+          eyebrow?: string | null
+          floating_badges?: Json
+          heading?: string
+          highlight_text?: string | null
+          id?: string
+          image_alt?: string | null
+          image_focal_x?: number | null
+          image_focal_y?: number | null
+          image_object_position?: string
+          internal_name?: string
+          layout_direction?: string
+          mobile_image_path?: string | null
+          offer_subtitle?: string | null
+          offer_title?: string | null
+          organization_id?: string
+          overlay_opacity?: number
+          primary_cta_config?: Json
+          primary_cta_label?: string
+          primary_cta_new_tab?: boolean
+          primary_cta_type?: string
+          primary_cta_url?: string | null
+          secondary_cta_config?: Json
+          secondary_cta_enabled?: boolean
+          secondary_cta_label?: string | null
+          secondary_cta_new_tab?: boolean
+          secondary_cta_type?: string | null
+          secondary_cta_url?: string | null
+          show_floating_badges?: boolean
+          show_trending_products?: boolean
+          show_trust_points?: boolean
+          sort_order?: number
+          starts_at?: string | null
+          status?: string
+          tablet_image_path?: string | null
+          text_alignment?: string
+          theme_variant?: string
+          trust_points?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "website_hero_slides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_hero_slides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "website_hero_slides_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      v_inventory_valuation_balances: {
+        Row: {
+          available_quantity: number | null
+          average_unit_cost: number | null
+          balance_id: string | null
+          barcode: string | null
+          branch_code: string | null
+          branch_id: string | null
+          branch_name: string | null
+          brand_id: string | null
+          brand_name: string | null
+          category_id: string | null
+          category_name: string | null
+          cost_is_fallback: boolean | null
+          is_head_office: boolean | null
+          location_id: string | null
+          location_name: string | null
+          location_type: string | null
+          organization_id: string | null
+          product_code: string | null
+          product_id: string | null
+          product_name: string | null
+          product_reorder_level: number | null
+          product_type: string | null
+          qty_reserved: number | null
+          quantity: number | null
+          sku: string | null
+          track_inventory: boolean | null
+          variant_id: string | null
+          variant_name: string | null
+          variant_selling_price: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_balances_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_balances_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_balances_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_locations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_recon_courier_cod_pending: {
+        Row: {
+          cod_amount: number | null
+          cod_journal_posted: boolean | null
+          organization_id: string | null
+          parcel_id: string | null
+          settlement_id: string | null
+          settlement_status: string | null
+          tracking_no: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_parcels_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_recon_customer_due_vs_sales: {
+        Row: {
+          customer_due: number | null
+          customer_id: string | null
+          delta: number | null
+          name: string | null
+          open_sale_due: number | null
+          organization_id: string | null
+        }
+        Insert: {
+          customer_due?: number | null
+          customer_id?: string | null
+          delta?: never
+          name?: string | null
+          open_sale_due?: never
+          organization_id?: string | null
+        }
+        Update: {
+          customer_due?: number | null
+          customer_id?: string | null
+          delta?: never
+          name?: string | null
+          open_sale_due?: never
+          organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_recon_financial_running_balance: {
+        Row: {
+          account_id: string | null
+          current_balance: number | null
+          delta: number | null
+          last_txn_balance_after: number | null
+          name: string | null
+          organization_id: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          current_balance?: number | null
+          delta?: never
+          last_txn_balance_after?: never
+          name?: string | null
+          organization_id?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          current_balance?: number | null
+          delta?: never
+          last_txn_balance_after?: never
+          name?: string | null
+          organization_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_recon_inventory_ledger_qty: {
+        Row: {
+          balance_qty: number | null
+          delta: number | null
+          ledger_net_qty: number | null
+          location_id: string | null
+          organization_id: string | null
+          variant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_balances_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_balances_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_balances_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_recon_inventory_without_ledger: {
+        Row: {
+          branch_id: string | null
+          inventory_balance_id: string | null
+          location_id: string | null
+          organization_id: string | null
+          qty_reserved: number | null
+          quantity: number | null
+          variant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_balances_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "stock_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_balances_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_balances_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_locations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_recon_supplier_due_vs_purchases: {
+        Row: {
+          delta: number | null
+          name: string | null
+          open_purchase_due: number | null
+          organization_id: string | null
+          supplier_due: number | null
+          supplier_id: string | null
+        }
+        Insert: {
+          delta?: never
+          name?: string | null
+          open_purchase_due?: never
+          organization_id?: string | null
+          supplier_due?: number | null
+          supplier_id?: string | null
+        }
+        Update: {
+          delta?: never
+          name?: string | null
+          open_purchase_due?: never
+          organization_id?: string | null
+          supplier_due?: number | null
+          supplier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_recon_unbalanced_journals: {
+        Row: {
+          delta: number | null
+          entry_no: string | null
+          journal_entry_id: string | null
+          organization_id: string | null
+          source_id: string | null
+          source_type: string | null
+          total_credit: number | null
+          total_debit: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      _accrue_sale_commission: { Args: { p_sale_id: string }; Returns: string }
       _adjust_inventory: {
         Args: {
           p_actor: string
@@ -6119,12 +8743,46 @@ export type Database = {
         }
         Returns: undefined
       }
+      _allocate_customer_collection: {
+        Args: {
+          p_actor: string
+          p_allocations?: Json
+          p_amount: number
+          p_branch_id: string
+          p_collection_id: string
+          p_customer_id: string
+          p_org_id: string
+        }
+        Returns: number
+      }
+      _allocate_supplier_payment: {
+        Args: {
+          p_actor: string
+          p_allocations?: Json
+          p_amount: number
+          p_branch_id: string
+          p_org_id: string
+          p_payment_id: string
+          p_purchase_id?: string
+          p_supplier_id: string
+        }
+        Returns: number
+      }
+      _apply_courier_cod_accounting: {
+        Args: { p_actor?: string; p_parcel_id: string }
+        Returns: Json
+      }
+      _assert_sale_period_open: {
+        Args: { p_org_id: string; p_sale_date: string }
+        Returns: undefined
+      }
       _auth_ctx: { Args: never; Returns: Record<string, unknown> }
       _coa_by_role: {
         Args: { p_org_id: string; p_role: string }
         Returns: string
       }
       _complete_pos_sale_core: { Args: { payload: Json }; Returns: Json }
+      _complete_purchase_core: { Args: { payload: Json }; Returns: Json }
       _ensure_inventory_balance: {
         Args: {
           p_actor: string
@@ -6133,12 +8791,15 @@ export type Database = {
           p_variant_id: string
         }
         Returns: {
+          average_unit_cost: number
+          cost_is_fallback: boolean
           created_at: string
           created_by: string | null
           deleted_at: string | null
           id: string
           location_id: string
           organization_id: string
+          qty_reserved: number
           quantity: number
           updated_at: string
           updated_by: string | null
@@ -6150,6 +8811,27 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      _erp_acceptance_report_base: { Args: never; Returns: Json }
+      _erp_assert: {
+        Args: { p_condition: boolean; p_message: string }
+        Returns: undefined
+      }
+      _erp_qa_cleanup_tracking: {
+        Args: { p_tracking_prefix: string }
+        Returns: undefined
+      }
+      _erp_qa_context: { Args: never; Returns: Json }
+      _erp_qa_extended_scenarios: { Args: never; Returns: Json }
+      _erp_qa_reconcile_sandbox: { Args: never; Returns: Json }
+      _erp_qa_require_service: { Args: never; Returns: undefined }
+      _erp_qa_set_sandbox_auth: { Args: never; Returns: undefined }
+      _erp_security_probe_branch_isolation: { Args: never; Returns: Json }
+      _erp_security_probe_parcel_status: { Args: never; Returns: Json }
+      _erp_test_set_auth: { Args: { p_user_id: string }; Returns: undefined }
+      _inventory_stock_status: {
+        Args: { p_available: number; p_reorder: number }
+        Returns: string
       }
       _location_by_type: {
         Args: { p_branch_id: string; p_org_id: string; p_type: string }
@@ -6173,6 +8855,74 @@ export type Database = {
         }
         Returns: string
       }
+      _post_journal: {
+        Args: {
+          p_actor: string
+          p_branch_id: string
+          p_entry_no: string
+          p_lines: Json
+          p_memo: string
+          p_org_id: string
+          p_source_id: string
+          p_source_type: string
+        }
+        Returns: string
+      }
+      _recon_add_result: {
+        Args: {
+          p_after: Json
+          p_batch_id: string
+          p_before: Json
+          p_check_key: string
+          p_difference?: Json
+          p_entity_id: string
+          p_entity_type: string
+          p_message: string
+          p_org_id: string
+        }
+        Returns: undefined
+      }
+      _recon_finish_batch: {
+        Args: { p_batch_id: string; p_ok: boolean; p_summary: Json }
+        Returns: undefined
+      }
+      _recon_start_batch: {
+        Args: {
+          p_actor: string
+          p_batch_type: string
+          p_mode: string
+          p_org_id: string
+        }
+        Returns: string
+      }
+      _release_sale_reservations: {
+        Args: {
+          p_actor: string
+          p_new_status?: string
+          p_org_id: string
+          p_sale_id: string
+        }
+        Returns: number
+      }
+      _reserve_inventory: {
+        Args: {
+          p_actor: string
+          p_branch_id: string
+          p_client_txn_key: string
+          p_expires_at: string
+          p_location_id: string
+          p_org_id: string
+          p_qty: number
+          p_sale_id: string
+          p_sale_item_id: string
+          p_variant_id: string
+        }
+        Returns: string
+      }
+      _reverse_courier_cod_accounting: {
+        Args: { p_actor?: string; p_parcel_id: string; p_reason?: string }
+        Returns: Json
+      }
       _reverse_journal_for_source: {
         Args: {
           p_actor: string
@@ -6184,10 +8934,22 @@ export type Database = {
         }
         Returns: string
       }
+      _reverse_sale_commissions: {
+        Args: { p_return_id: string; p_return_total: number; p_sale_id: string }
+        Returns: undefined
+      }
+      _sale_category_summary: { Args: { p_sale_id: string }; Returns: Json }
       _saleable_location: {
         Args: { p_branch_id: string; p_org_id: string }
         Returns: string
       }
+      _sales_history_match_ids: {
+        Args: { p_filters: Json }
+        Returns: {
+          sale_id: string
+        }[]
+      }
+      _user_can_view_inventory_cost: { Args: never; Returns: boolean }
       adjust_financial_account_balance: {
         Args: { p_account_id: string; p_delta: number }
         Returns: number
@@ -6196,27 +8958,152 @@ export type Database = {
         Args: { items: Json; request_id: string }
         Returns: Json
       }
+      approve_purchase_return: { Args: { payload: Json }; Returns: Json }
       approve_sale_correction: {
         Args: { approval_id: string; corrected_payload: Json }
         Returns: Json
       }
-      edit_sale: { Args: { payload: Json }; Returns: Json }
-      sales_history_export: { Args: { p_filters?: Json }; Returns: Json }
-      sales_history_kpis: { Args: { p_filters?: Json }; Returns: Json }
-      sales_history_list: { Args: { p_filters?: Json }; Returns: Json }
+      approve_sales_commission: {
+        Args: { p_commission_id: string }
+        Returns: Json
+      }
       approve_sales_return: { Args: { payload: Json }; Returns: Json }
-      approve_purchase_return: { Args: { payload: Json }; Returns: Json }
-      place_online_order: { Args: { payload: Json }; Returns: Json }
-      fulfil_online_order: { Args: { payload: Json }; Returns: Json }
+      backfill_inventory_average_costs: { Args: never; Returns: number }
+      backfill_party_opening_ledgers: { Args: never; Returns: Json }
       cancel_online_order: { Args: { payload: Json }; Returns: Json }
+      close_business_day: { Args: { payload: Json }; Returns: string }
+      collect_customer_due: { Args: { payload: Json }; Returns: Json }
+      complete_accounting_setup: { Args: { payload: Json }; Returns: Json }
+      complete_pos_sale: { Args: { payload: Json }; Returns: Json }
+      complete_purchase: { Args: { payload: Json }; Returns: Json }
+      create_expense: { Args: { payload: Json }; Returns: string }
+      create_income: { Args: { payload: Json }; Returns: string }
+      create_opening_stock: { Args: { payload: Json }; Returns: Json }
+      create_product_with_variants: { Args: { payload: Json }; Returns: Json }
+      create_stock_adjustment: { Args: { payload: Json }; Returns: Json }
+      current_organization_id: { Args: never; Returns: string }
+      current_profile_id: { Args: never; Returns: string }
+      deactivate_commission_rule: { Args: { p_rule_id: string }; Returns: Json }
+      dispatch_stock_transfer: { Args: { transfer_id: string }; Returns: Json }
+      duplicate_product: { Args: { payload: Json }; Returns: Json }
+      edit_sale: { Args: { payload: Json }; Returns: Json }
       expire_online_reservations: {
         Args: { p_organization_id?: string }
         Returns: Json
       }
-      list_online_orders: { Args: { payload?: Json }; Returns: Json }
+      fulfil_online_order: { Args: { payload: Json }; Returns: Json }
+      generate_expiry_alerts: { Args: { p_org_id?: string }; Returns: number }
+      get_active_hero_slides: {
+        Args: { p_organization_slug: string }
+        Returns: Json
+      }
+      get_erp_reconciliation_summary: {
+        Args: { p_branch_id?: string }
+        Returns: Json
+      }
+      get_inventory_branch_summary: {
+        Args: { p_include_non_saleable?: boolean }
+        Returns: {
+          branch_code: string
+          branch_id: string
+          branch_name: string
+          is_head_office: boolean
+          last_movement_at: string
+          low_stock_count: number
+          out_of_stock_count: number
+          potential_gross_profit: number
+          total_products: number
+          total_stock_purchase_cost: number
+          total_stock_quantity: number
+          total_stock_value: number
+          total_variants: number
+        }[]
+      }
+      get_inventory_stock_breakdown: {
+        Args: {
+          p_branch_id?: string
+          p_brand_id?: string
+          p_category_id?: string
+          p_include_non_saleable?: boolean
+          p_location_id?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_sort_by?: string
+          p_sort_direction?: string
+          p_stock_status?: string
+        }
+        Returns: Json
+      }
+      get_inventory_valuation_summary: {
+        Args: {
+          p_branch_id?: string
+          p_brand_id?: string
+          p_category_id?: string
+          p_include_non_saleable?: boolean
+          p_location_id?: string
+          p_search?: string
+          p_stock_status?: string
+        }
+        Returns: {
+          last_movement_at: string
+          low_stock_variants: number
+          out_of_stock_variants: number
+          potential_gross_profit: number
+          total_products: number
+          total_stock_purchase_cost: number
+          total_stock_quantity: number
+          total_stock_value: number
+          total_variants: number
+          valuation_fallback_count: number
+        }[]
+      }
       get_reconciliation_report: { Args: { payload?: Json }; Returns: Json }
-      recon_opening_stock_ledger: { Args: { payload: Json }; Returns: Json }
+      list_commission_rules: {
+        Args: { p_branch_id?: string }
+        Returns: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          organization_id: string
+          profile_id: string
+          rate: number
+          rule_type: string
+          updated_at: string
+          updated_by: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "salesman_commission_rules"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      list_online_orders: { Args: { payload?: Json }; Returns: Json }
+      normalize_barcode: { Args: { p_code: string }; Returns: string }
+      pay_sales_commission: { Args: { payload: Json }; Returns: Json }
+      pay_supplier: { Args: { payload: Json }; Returns: Json }
+      place_online_order: { Args: { payload: Json }; Returns: Json }
+      pos_lookup_variant_by_barcode: {
+        Args: { p_barcode: string; p_branch_id: string }
+        Returns: Json
+      }
+      post_manual_journal: { Args: { payload: Json }; Returns: Json }
+      post_sale: { Args: { payload: Json }; Returns: Json }
+      receive_stock_transfer:
+        | { Args: { items: Json; transfer_id: string }; Returns: Json }
+        | {
+            Args: { finalize?: boolean; items: Json; transfer_id: string }
+            Returns: Json
+          }
       recon_opening_party_balances: { Args: { payload: Json }; Returns: Json }
+      recon_opening_stock_ledger: { Args: { payload: Json }; Returns: Json }
       recon_rebuild_financial_running_balances: {
         Args: { payload: Json }
         Returns: Json
@@ -6225,38 +9112,53 @@ export type Database = {
         Args: { payload: Json }
         Returns: Json
       }
-      close_business_day: { Args: { payload: Json }; Returns: string }
-      collect_customer_due: { Args: { payload: Json }; Returns: Json }
-      complete_accounting_setup: { Args: { payload: Json }; Returns: Json }
-      complete_pos_sale: { Args: { payload: Json }; Returns: Json }
-      normalize_barcode: { Args: { p_code: string }; Returns: string | null }
-      pos_lookup_variant_by_barcode: {
-        Args: { p_barcode: string; p_branch_id: string }
+      record_courier_cod_receivable: {
+        Args: { p_parcel_id: string }
         Returns: Json
       }
-      complete_purchase: { Args: { payload: Json }; Returns: Json }
-      create_expense: { Args: { payload: Json }; Returns: string }
-      create_income: { Args: { payload: Json }; Returns: string }
-      create_stock_adjustment: { Args: { payload: Json }; Returns: Json }
-      current_organization_id: { Args: never; Returns: string }
-      current_profile_id: { Args: never; Returns: string }
-      dispatch_stock_transfer: { Args: { transfer_id: string }; Returns: Json }
-      pay_supplier: { Args: { payload: Json }; Returns: Json }
-      post_manual_journal: { Args: { payload: Json }; Returns: Json }
-      receive_stock_transfer: {
-        Args: { items: Json; transfer_id: string }
-        Returns: Json
-      }
+      refresh_batch_status: { Args: { p_batch_id: string }; Returns: undefined }
       reject_courier_return: {
         Args: { reason: string; request_id: string }
+        Returns: Json
+      }
+      reject_sales_commission: {
+        Args: { p_commission_id: string; p_reason?: string }
         Returns: Json
       }
       request_sale_correction: {
         Args: { items: Json; reason: string; sale_id: string }
         Returns: Json
       }
+      resolve_effective_price: {
+        Args: {
+          p_branch_id: string
+          p_org_id: string
+          p_product_id: string
+          p_variant_id: string
+        }
+        Returns: number
+      }
+      reverse_courier_settlement: { Args: { payload: Json }; Returns: Json }
+      run_erp_acceptance_report: { Args: never; Returns: Json }
+      run_erp_production_reconciliation_report: { Args: never; Returns: Json }
+      run_erp_qa_cod_delivery: { Args: never; Returns: Json }
+      run_erp_qa_non_cod_delivery: { Args: never; Returns: Json }
+      sales_history_export: { Args: { p_filters?: Json }; Returns: Json }
+      sales_history_kpis: { Args: { p_filters?: Json }; Returns: Json }
+      sales_history_list: { Args: { p_filters?: Json }; Returns: Json }
+      settle_courier_settlement: { Args: { payload: Json }; Returns: Json }
       soft_deleted: { Args: { p_deleted_at: string }; Returns: boolean }
+      sync_purchase_financial_transactions: {
+        Args: { p_purchase_id: string }
+        Returns: number
+      }
       transfer_account_balance: { Args: { payload: Json }; Returns: string }
+      transition_product_status: { Args: { payload: Json }; Returns: Json }
+      update_courier_parcel_status: {
+        Args: { p_notes?: string; p_parcel_id: string; p_status: string }
+        Returns: Json
+      }
+      upsert_commission_rule: { Args: { payload: Json }; Returns: Json }
       user_has_branch_access: {
         Args: { p_branch_id: string }
         Returns: boolean

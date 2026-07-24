@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import { lowStock } from '@/features/inventory/repositories/inventory.repository'
+import { getInventoryValuationSummary } from '@/features/inventory/repositories/inventory-valuation.repository'
 
 export type DashboardBranch = { id: string; name: string; code: string }
 
@@ -12,6 +13,8 @@ export type DashboardOverview = {
     customerDue: number
     supplierDue: number
     lowStockCount: number
+    stockValuation: number | null
+    stockCost: number | null
     trends: {
       sales: number
       collection: number
@@ -180,6 +183,7 @@ export async function getDashboardOverview(branchId?: string | null): Promise<Da
     recentSalesRes,
     accountsRes,
     lowStockRes,
+    valuationRes,
   ] = await Promise.all([
     salesTotals(todayStart, todayEnd, branchId),
     salesTotals(yesterdayStart, yesterdayEnd, branchId),
@@ -209,6 +213,7 @@ export async function getDashboardOverview(branchId?: string | null): Promise<Da
       items: [] as Awaited<ReturnType<typeof lowStock>>['items'],
       total: 0,
     })),
+    getInventoryValuationSummary({ branchId: branchId ?? undefined }).catch(() => null),
   ])
 
   if (recentSalesRes.error) throw recentSalesRes.error
@@ -241,6 +246,8 @@ export async function getDashboardOverview(branchId?: string | null): Promise<Da
       customerDue,
       supplierDue,
       lowStockCount: lowStockRes.total,
+      stockValuation: valuationRes?.total_stock_value ?? null,
+      stockCost: valuationRes?.total_stock_purchase_cost ?? null,
       trends: {
         sales: pctChange(today.sales, yesterday.sales),
         collection: pctChange(today.collection, yesterday.collection),

@@ -282,7 +282,15 @@ export async function dispatch(transferId: string) {
 
 export async function receive(
   transferId: string,
-  items?: Array<{ variant_id: string; quantity_received: number; id?: string }>,
+  items?: Array<{
+    variant_id: string
+    quantity_received: number
+    quantity_damaged?: number
+    id?: string
+    condition?: string
+    notes?: string
+  }>,
+  finalize = false,
 ) {
   let receiveItems: Array<{ variant_id: string; quantity_received: number; id?: string }> =
     items ?? []
@@ -303,6 +311,7 @@ export async function receive(
   const { data, error } = await supabase.rpc('receive_stock_transfer', {
     transfer_id: transferId,
     items: receiveItems as unknown as Json,
+    finalize,
   })
   if (error) throw error
   return data
@@ -322,7 +331,9 @@ export async function listTransfers(
     .order('created_at', { ascending: false })
     .range(from, to)
 
-  if (filters.status) q = q.eq('status', filters.status as 'draft' | 'in_transit' | 'received' | 'cancelled')
+  if (filters.status) {
+    q = q.eq('status', filters.status as 'draft' | 'in_transit' | 'partially_received' | 'received' | 'cancelled')
+  }
   if (filters.branchId) {
     q = q.or(`from_branch_id.eq.${filters.branchId},to_branch_id.eq.${filters.branchId}`)
   }
