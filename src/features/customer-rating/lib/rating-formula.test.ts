@@ -41,6 +41,57 @@ describe('splitCustomerBalance', () => {
   })
 })
 
+/**
+ * Documents approve_sales_return money path (00085):
+ * always post full return_credit, then refund debit for cash excess.
+ * Net after both = settled when cash matches excess over open due.
+ */
+describe('return_credit + refund debit nets (Phase A)', () => {
+  it('return ≤ open due: credit only reduces due', () => {
+    const dueBefore = 1000
+    const returnTotal = 400
+    expect(splitCustomerBalance(dueBefore - returnTotal)).toEqual({
+      due: 600,
+      advance: 0,
+      financialStatus: 'due',
+    })
+  })
+
+  it('return on fully paid sale + cash refund: settles (no phantom advance)', () => {
+    const paidSaleNet = 0
+    const returnTotal = 500
+    const afterCredit = splitCustomerBalance(paidSaleNet - returnTotal)
+    expect(afterCredit).toEqual({
+      due: 0,
+      advance: 500,
+      financialStatus: 'advance',
+    })
+    const cashRefund = returnTotal // entire return is cash
+    expect(splitCustomerBalance(paidSaleNet - returnTotal + cashRefund)).toEqual({
+      due: 0,
+      advance: 0,
+      financialStatus: 'settled',
+    })
+  })
+
+  it('partial due + excess return: due cleared; refund clears advance', () => {
+    const dueBefore = 300
+    const returnTotal = 500
+    const cashRefund = Math.max(returnTotal - dueBefore, 0) // 200
+    expect(cashRefund).toBe(200)
+    expect(splitCustomerBalance(dueBefore - returnTotal)).toEqual({
+      due: 0,
+      advance: 200,
+      financialStatus: 'advance',
+    })
+    expect(splitCustomerBalance(dueBefore - returnTotal + cashRefund)).toEqual({
+      due: 0,
+      advance: 0,
+      financialStatus: 'settled',
+    })
+  })
+})
+
 describe('ratingStatusFromOrders', () => {
   it('unrated with zero orders', () => {
     expect(ratingStatusFromOrders(0)).toBe('unrated')

@@ -73,6 +73,10 @@ export type ListTopCustomersArgs = {
   sort?: 'rating' | 'spent' | 'orders' | 'recent'
   search?: string
   branchId?: string | null
+  /** Inclusive period start (YYYY-MM-DD or ISO). When set with `to`, ranks by period metrics. */
+  from?: string | null
+  /** Inclusive period end (YYYY-MM-DD or ISO). */
+  to?: string | null
 }
 
 export async function listTopCustomers(
@@ -91,6 +95,8 @@ export async function listTopCustomers(
       sort: args.sort ?? 'spent',
       search: args.search ?? null,
       branch_id: args.branchId ?? null,
+      from: args.from ?? null,
+      to: args.to ?? null,
     },
   })
   if (error) throw new Error(error.message)

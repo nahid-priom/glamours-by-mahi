@@ -3,33 +3,42 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { CustomerRatingStars, listTopCustomers } from '@/features/customer-rating'
 import { formatBDT } from '@/lib/format'
-import { ReportShell } from '../components/ReportShell'
+import { ReportShell, useReportRange } from '../components/ReportShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 type SortKey = 'rating' | 'spent' | 'orders' | 'recent'
 
 export function TopCustomersReportPage() {
+  const { range, setRange } = useReportRange()
   const [sort, setSort] = useState<SortKey>('spent')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const pageSize = 25
 
   const { data = [], isLoading, error } = useQuery({
-    queryKey: ['report-top-customers', sort, search, page],
+    queryKey: ['report-top-customers', sort, search, page, range.from, range.to],
     queryFn: () =>
       listTopCustomers({
         limit: pageSize,
         offset: page * pageSize,
         sort,
         search: search.trim() || undefined,
+        from: range.from,
+        to: range.to,
       }),
   })
 
   return (
     <ReportShell
       title="Top customers"
-      showRange={false}
+      subtitle="Period ranking by spend/orders; rating is lifetime auto-score."
+      range={range}
+      onRangeChange={(r) => {
+        setRange(r)
+        setPage(0)
+      }}
+      showRange
       onExport={() => {
         const rows = data.map((r) => [
           r.rank ?? '',
@@ -64,14 +73,14 @@ export function TopCustomersReportPage() {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `top-customers-${sort}.csv`
+        a.download = `top-customers-${range.from}_${range.to}-${sort}.csv`
         a.click()
         URL.revokeObjectURL(url)
       }}
     >
       <p className="mb-3 text-xs text-[#6B7280]">
-        Ranking by <strong>{sort}</strong>. Cancelled/draft sales excluded. Unrated customers are not
-        shown as 3.0 stars.
+        Ranking by <strong>{sort}</strong> for {range.from} → {range.to}. Cancelled/draft sales
+        excluded. Unrated customers are not shown as 3.0 stars.
       </p>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Input
