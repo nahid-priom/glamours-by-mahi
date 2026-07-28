@@ -70,7 +70,7 @@ function toCartItem(
     sku: options?.sku ?? variant?.sku ?? product.sku,
     price: options?.price ?? variant?.sellingPrice ?? product.displayPrice,
     quantity,
-    image: resolveProductImage(product),
+    image: variant?.image || resolveProductImage(product),
     alt: product.alt || safeName,
     maxStock: options?.maxStock ?? variant?.stock ?? product.stock,
     size: options?.size,

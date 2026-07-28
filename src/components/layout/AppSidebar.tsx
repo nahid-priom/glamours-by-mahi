@@ -50,10 +50,30 @@ const groups: NavGroup[] = [
     children: [
       { to: '/sales/pos', label: 'POS', permission: 'pos.create' },
       { to: '/sales', label: 'Sales History', end: true, permission: 'sales.read' },
-      { to: '/sales/online-orders', label: 'Online Orders', permission: ['orders.read', 'sales.read'] },
+      { to: '/sales/online-orders', label: 'Online Orders', permission: 'orders.read' },
+      { to: '/sales/exchanges', label: 'Exchanges', permission: ['exchange.read', 'exchange.create'] },
       { to: '/sales/returns', label: 'Sales Returns', permission: ['sales.read', 'sales.return.review'] },
       { to: '/sales/collections', label: 'Due Collection', permission: 'sales.read' },
       { to: '/sales/held', label: 'Held Sales', permission: 'pos.create' },
+    ],
+  },
+  {
+    id: 'moderator',
+    label: 'Moderator',
+    icon: Sparkles,
+    module: 'moderator',
+    children: [
+      {
+        to: '/moderator',
+        label: 'Dashboard',
+        end: true,
+        permission: 'moderator.dashboard.read',
+      },
+      {
+        to: '/moderator/orders/new',
+        label: 'New Order',
+        permission: 'moderator.order.create',
+      },
     ],
   },
   {

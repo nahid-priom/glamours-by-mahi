@@ -1,9 +1,14 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ImagePlus, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppImage } from '@/components/common/AppImage'
 import { cn } from '@/lib/utils'
-import { uploadProductImage } from '../repositories/catalog.repository'
+import { invalidateStorefrontCache } from '@/features/storefront/storefront.service'
+import {
+  PRODUCT_IMAGE_ACCEPT,
+  uploadProductImage,
+  validateProductImageFile,
+} from '../repositories/catalog.repository'
 
 type Props = {
   orgId: string
@@ -27,15 +32,27 @@ export function ProductImageUploader({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    setPreview(currentUrl ?? null)
+  }, [currentUrl])
+
   async function onFile(file: File | null) {
     if (!file || disabled) return
     setError(null)
+
+    const validationError = validateProductImageFile(file)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
     setBusy(true)
     const local = URL.createObjectURL(file)
     setPreview(local)
     try {
       const row = await uploadProductImage(orgId, productId, file, { isCover: true })
       setPreview(row.url)
+      invalidateStorefrontCache()
       onUploaded?.(row.url)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed')
@@ -43,6 +60,7 @@ export function ProductImageUploader({
     } finally {
       setBusy(false)
       URL.revokeObjectURL(local)
+      if (inputRef.current) inputRef.current.value = ''
     }
   }
 
@@ -90,7 +108,7 @@ export function ProductImageUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={PRODUCT_IMAGE_ACCEPT}
         className="hidden"
         onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
       />

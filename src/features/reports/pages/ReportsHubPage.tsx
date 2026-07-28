@@ -5,6 +5,7 @@ const LINKS = [
   { to: '/reports/purchases', title: 'Purchases', desc: 'Purchase invoices & totals' },
   { to: '/reports/inventory', title: 'Inventory', desc: 'On-hand balances by location' },
   { to: '/reports/customer-due', title: 'Customer due', desc: 'Outstanding receivables' },
+  { to: '/reports/top-customers', title: 'Top customers', desc: 'Ranked by rating and spend' },
   { to: '/reports/supplier-due', title: 'Supplier due', desc: 'Outstanding payables' },
   { to: '/reports/profit', title: 'Profit', desc: 'Revenue vs COGS' },
   { to: '/reports/branch', title: 'Branch', desc: 'Sales by branch' },

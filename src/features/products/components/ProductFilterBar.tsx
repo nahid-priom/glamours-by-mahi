@@ -33,16 +33,19 @@ type Props = {
   value: ProductCatalogFilters
   onChange: (next: ProductCatalogFilters) => void
   className?: string
+  hideCategoryFilter?: boolean
 }
 
 function AdvancedFilters({
   value,
   onChange,
   layout,
+  hideCategoryFilter,
 }: {
   value: ProductCatalogFilters
   onChange: (next: ProductCatalogFilters) => void
   layout: 'inline' | 'sheet'
+  hideCategoryFilter?: boolean
 }) {
   const set = (patch: Partial<ProductCatalogFilters>) => {
     onChange({ ...value, ...patch, page: patch.page ?? 1 })
@@ -52,14 +55,16 @@ function AdvancedFilters({
 
   return (
     <div className={cn('flex flex-col gap-3', layout === 'inline' && 'sm:flex-row sm:flex-wrap')}>
-      <EntityCombobox
-        value={value.category ?? null}
-        onChange={(id) => set({ category: id, page: 1 })}
-        onSearch={searchCategories}
-        placeholder="Category"
-        aria-label="Category filter"
-        className={fieldClass}
-      />
+      {!hideCategoryFilter ? (
+        <EntityCombobox
+          value={value.category ?? null}
+          onChange={(id) => set({ category: id, page: 1 })}
+          onSearch={searchCategories}
+          placeholder="Category"
+          aria-label="Category filter"
+          className={fieldClass}
+        />
+      ) : null}
       <EntityCombobox
         value={value.brand ?? null}
         onChange={(id) => set({ brand: id, page: 1 })}
@@ -102,7 +107,7 @@ function AdvancedFilters({
   )
 }
 
-export function ProductFilterBar({ value, onChange, className }: Props) {
+export function ProductFilterBar({ value, onChange, className, hideCategoryFilter }: Props) {
   const [searchDraft, setSearchDraft] = useState(value.q ?? '')
   const [sheetOpen, setSheetOpen] = useState(false)
   const activeFilters = countActiveFilters(value)
@@ -142,7 +147,7 @@ export function ProductFilterBar({ value, onChange, className }: Props) {
         </div>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <AdvancedFilters value={value} onChange={onChange} layout="inline" />
+          <AdvancedFilters value={value} onChange={onChange} layout="inline" hideCategoryFilter={hideCategoryFilter} />
           {activeFilters > 0 ? (
             <Button size="sm" variant="ghost" onClick={clearFilters}>
               <X className="mr-1 h-4 w-4" />
@@ -169,7 +174,7 @@ export function ProductFilterBar({ value, onChange, className }: Props) {
                 <SheetTitle>Filter products</SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-4">
-                <AdvancedFilters value={value} onChange={onChange} layout="sheet" />
+                <AdvancedFilters value={value} onChange={onChange} layout="sheet" hideCategoryFilter={hideCategoryFilter} />
                 <div className="flex flex-wrap gap-2">
                   {STOCK_CHIP_OPTIONS.map((chip) => {
                     const active = (value.stock ?? 'all') === chip.value

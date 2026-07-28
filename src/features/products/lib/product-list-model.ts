@@ -5,6 +5,18 @@ import type { ProductCatalogSort } from './product-filters'
 
 export const UNCATEGORIZED_CATEGORY_ID = '__uncategorized__'
 
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  simple: 'Simple',
+  variable: 'Variable',
+  bundle: 'Bundle',
+  service: 'Service',
+}
+
+export function formatProductTypeLabel(productType: string | null | undefined): string {
+  if (!productType) return 'Simple'
+  return PRODUCT_TYPE_LABELS[productType] ?? productType
+}
+
 export type ProductInventoryViewModel = {
   id: string
   raw: ProductListItem
@@ -14,6 +26,8 @@ export type ProductInventoryViewModel = {
   coverUrl: string | null
   categoryId: string
   categoryName: string
+  productType: string
+  productTypeLabel: string
   variantCount: number
   unit: string
   priceLabel: string
@@ -97,6 +111,8 @@ export function normalizeProductInventoryItem(
     coverUrl: product.coverUrl ?? null,
     categoryId,
     categoryName,
+    productType: product.product_type ?? 'simple',
+    productTypeLabel: formatProductTypeLabel(product.product_type),
     variantCount: product.variantCount ?? 0,
     unit: product.unit?.trim() || 'pcs',
     priceLabel: formatProductPriceLabel(product),

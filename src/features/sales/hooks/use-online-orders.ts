@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
 import {
+  approveOnlineOrder,
   cancelOnlineOrder,
   fulfilOnlineOrder,
   listOnlineOrders,
@@ -30,6 +31,16 @@ export function useCancelOnlineOrder() {
   return useMutation({
     mutationFn: ({ saleId, reason }: { saleId: string; reason?: string }) =>
       cancelOnlineOrder(saleId, reason),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['online-orders'] })
+    },
+  })
+}
+
+export function useApproveOnlineOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (saleId: string) => approveOnlineOrder(saleId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['online-orders'] })
     },

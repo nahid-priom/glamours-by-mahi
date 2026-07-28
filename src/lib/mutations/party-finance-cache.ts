@@ -22,6 +22,9 @@ export async function invalidateCustomerCollectionCaches(
   if (opts.customerId) {
     tasks.push(qc.invalidateQueries({ queryKey: queryKeys.customer(opts.customerId) }))
     tasks.push(qc.invalidateQueries({ queryKey: queryKeys.customersLedger(opts.customerId) }))
+    tasks.push(qc.invalidateQueries({ queryKey: ['pos-customer-summary'] }))
+    tasks.push(qc.invalidateQueries({ queryKey: ['customer-ratings-batch'] }))
+    tasks.push(qc.invalidateQueries({ queryKey: ['report-top-customers'] }))
   }
 
   if (opts.saleId) {
@@ -83,6 +86,9 @@ export async function invalidateSaleCompletionCaches(
     tasks.push(qc.invalidateQueries({ queryKey: queryKeys.customer(opts.customerId) }))
     tasks.push(qc.invalidateQueries({ queryKey: queryKeys.customersLedger(opts.customerId) }))
     tasks.push(qc.invalidateQueries({ queryKey: queryKeys.customers('') }))
+    tasks.push(qc.invalidateQueries({ queryKey: ['pos-customer-summary'] }))
+    tasks.push(qc.invalidateQueries({ queryKey: ['customer-ratings-batch'] }))
+    tasks.push(qc.invalidateQueries({ queryKey: ['report-top-customers'] }))
   }
 
   if (opts.branchId) {

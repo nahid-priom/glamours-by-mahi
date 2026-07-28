@@ -1964,6 +1964,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           current_due: number
+          current_advance: number
           deleted_at: string | null
           district: string | null
           email: string | null
@@ -1986,6 +1987,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_due?: number
+          current_advance?: number
           deleted_at?: string | null
           district?: string | null
           email?: string | null
@@ -2008,6 +2010,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_due?: number
+          current_advance?: number
           deleted_at?: string | null
           district?: string | null
           email?: string | null

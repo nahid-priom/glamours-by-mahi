@@ -10,6 +10,7 @@ export type CatalogVariantRow = {
   selling_price: number
   purchase_price: number
   is_active: boolean
+  imagePath: string | null
   optionValues: Array<{ option: string; value: string }>
   stockQty: number
 }
@@ -35,6 +36,8 @@ export type CatalogProductRow = {
   subcategory: { id: string; name: string } | null
   coverPath: string | null
   galleryPaths: string[]
+  /** Product-level images only (variant_id is null) */
+  productImagePaths: string[]
   variants: CatalogVariantRow[]
   totalStock: number
 }
@@ -79,6 +82,7 @@ type RawProduct = {
     is_cover: boolean
     deleted_at: string | null
     sort_order: number
+    variant_id: string | null
   }> | null
   product_variants: Array<{
     id: string
@@ -89,6 +93,7 @@ type RawProduct = {
     purchase_price: number
     is_active: boolean
     deleted_at: string | null
+    image_path: string | null
     variant_option_values: Array<{
       deleted_at: string | null
       product_options: { name: string; deleted_at: string | null } | null
@@ -117,9 +122,9 @@ const PRODUCT_SELECT = `
   categories(id, name, code),
   brands(id, name, code),
   subcategories(id, name),
-  product_images(storage_path, is_cover, deleted_at, sort_order),
+  product_images(storage_path, is_cover, deleted_at, sort_order, variant_id),
   product_variants(
-    id, sku, barcode, name, selling_price, purchase_price, is_active, deleted_at,
+    id, sku, barcode, name, selling_price, purchase_price, is_active, deleted_at, image_path,
     variant_option_values(
       deleted_at,
       product_options(name, deleted_at),
@@ -130,12 +135,20 @@ const PRODUCT_SELECT = `
 `
 
 async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
-  const images = (row.product_images ?? []).filter((i) => !i.deleted_at).sort((a, b) => {
+  const allImages = (row.product_images ?? []).filter((i) => !i.deleted_at).sort((a, b) => {
     if (a.is_cover && !b.is_cover) return -1
     if (!a.is_cover && b.is_cover) return 1
     return a.sort_order - b.sort_order
   })
-  const cover = images.find((i) => i.is_cover) ?? images[0]
+  const productImages = allImages.filter((i) => !i.variant_id)
+  const imagesByVariant = new Map<string, string>()
+  for (const image of allImages) {
+    if (!image.variant_id) continue
+    if (!imagesByVariant.has(image.variant_id)) {
+      imagesByVariant.set(image.variant_id, image.storage_path)
+    }
+  }
+  const cover = productImages.find((i) => i.is_cover) ?? productImages[0] ?? allImages[0]
 
   const variants = (row.product_variants ?? [])
     .filter((v) => !v.deleted_at && v.is_active)
@@ -158,12 +171,14 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
         selling_price: Number(v.selling_price),
         purchase_price: Number(v.purchase_price),
         is_active: v.is_active,
+        imagePath: v.image_path ?? imagesByVariant.get(v.id) ?? null,
         optionValues,
         stockQty,
       }
     })
 
   const totalStock = variants.reduce((sum, v) => sum + v.stockQty, 0)
+  const productImagePaths = productImages.map((i) => i.storage_path)
 
   return {
     id: row.id,
@@ -185,7 +200,12 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
     brand: row.brands,
     subcategory: row.subcategories,
     coverPath: cover?.storage_path ?? null,
-    galleryPaths: images.map((i) => i.storage_path),
+    galleryPaths: productImagePaths.length
+      ? productImagePaths
+      : cover?.storage_path
+        ? [cover.storage_path]
+        : [],
+    productImagePaths,
     variants,
     totalStock,
   }

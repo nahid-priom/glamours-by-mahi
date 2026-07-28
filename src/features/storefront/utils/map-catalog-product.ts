@@ -36,7 +36,10 @@ function resolveCategorySlug(row: CatalogProductRow): StorefrontCategorySlug {
   return 'new-arrival'
 }
 
-function buildVariantOptions(row: CatalogProductRow) {
+function buildVariantOptions(
+  row: CatalogProductRow,
+  imageUrlByPath: Map<string, string>,
+) {
   const sizes = new Set<string>()
   const colors = new Set<string>()
   for (const v of row.variants) {
@@ -56,6 +59,7 @@ function buildVariantOptions(row: CatalogProductRow) {
       sellingPrice: v.selling_price,
       stock: v.stockQty,
       optionValues: v.optionValues,
+      image: v.imagePath ? imageUrlByPath.get(v.imagePath) ?? null : null,
     })),
   }
 }
@@ -78,15 +82,35 @@ export async function mapCatalogToStorefront(row: CatalogProductRow): Promise<St
     ? row.variants[0]?.selling_price ?? row.selling_price
     : row.selling_price
 
-  let imageUrls = await resolveCatalogImageUrls(
-    row.galleryPaths.length ? row.galleryPaths : row.coverPath ? [row.coverPath] : [],
+  const productPaths = row.productImagePaths.length
+    ? row.productImagePaths
+    : row.galleryPaths.length
+      ? row.galleryPaths
+      : row.coverPath
+        ? [row.coverPath]
+        : []
+  const variantPaths = row.variants.map((v) => v.imagePath).filter((p): p is string => Boolean(p))
+  const uniquePaths = [...new Set([...productPaths, ...variantPaths])]
+  const resolvedPairs = await Promise.all(
+    uniquePaths.map(async (path) => {
+      const [url] = await resolveCatalogImageUrls([path])
+      return [path, url] as const
+    }),
   )
+  const imageUrlByPath = new Map<string, string>()
+  for (const [path, url] of resolvedPairs) {
+    if (url) imageUrlByPath.set(path, url)
+  }
+
+  let imageUrls = productPaths
+    .map((path) => imageUrlByPath.get(path))
+    .filter((url): url is string => Boolean(url))
 
   if (imageUrls.length === 0) {
     imageUrls = [getStableDemoProductImage(row.id)]
   }
 
-  const variantMeta = buildVariantOptions(row)
+  const variantMeta = buildVariantOptions(row, imageUrlByPath)
   const createdAt = row.created_at
   const isRecent = Date.now() - new Date(createdAt).getTime() < 1000 * 60 * 60 * 24 * 30
 

@@ -109,6 +109,57 @@ export async function searchCategories(query: string): Promise<EntityOption[]> {
   return items.map((c) => ({ id: c.id, label: c.name, description: c.code ?? undefined }))
 }
 
+export type CategoryProductCount = {
+  categoryId: string
+  categoryName: string
+  productCount: number
+}
+
+export async function getCategoryProductCounts(): Promise<{
+  total: number
+  uncategorized: number
+  categories: CategoryProductCount[]
+}> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, category_id, categories(id, name)')
+    .is('deleted_at', null)
+
+  if (error) throw error
+
+  const rows = (data ?? []) as Array<{
+    id: string
+    category_id: string | null
+    categories: { id: string; name: string } | null
+  }>
+
+  let uncategorized = 0
+  const counts = new Map<string, CategoryProductCount>()
+
+  for (const row of rows) {
+    if (!row.category_id) {
+      uncategorized += 1
+      continue
+    }
+    const existing = counts.get(row.category_id)
+    if (existing) {
+      existing.productCount += 1
+    } else {
+      counts.set(row.category_id, {
+        categoryId: row.category_id,
+        categoryName: row.categories?.name ?? 'Category',
+        productCount: 1,
+      })
+    }
+  }
+
+  const categories = [...counts.values()].sort((a, b) =>
+    a.categoryName.localeCompare(b.categoryName, undefined, { sensitivity: 'base' }),
+  )
+
+  return { total: rows.length, uncategorized, categories }
+}
+
 export async function createCategory(
   orgId: string,
   input: Pick<TablesInsert<'categories'>, 'name' | 'code' | 'description' | 'sort_order' | 'is_active'>,
@@ -159,7 +210,11 @@ export async function listSubcategories(
     .order('name', { ascending: true })
     .range(from, to)
 
-  if (params.categoryId) q = q.eq('category_id', params.categoryId)
+  if (params.categoryId === '__uncategorized__') {
+    q = q.is('category_id', null)
+  } else if (params.categoryId) {
+    q = q.eq('category_id', params.categoryId)
+  }
   if (params.search?.trim()) {
     const s = params.search.trim()
     q = q.or(`name.ilike.%${s}%,code.ilike.%${s}%`)
@@ -382,7 +437,11 @@ export async function listProducts(params: PageParams = {}): Promise<PagedResult
     const s = params.search.trim()
     q = q.or(`name.ilike.%${s}%,base_sku.ilike.%${s}%,base_barcode.ilike.%${s}%`)
   }
-  if (params.categoryId) q = q.eq('category_id', params.categoryId)
+  if (params.categoryId === '__uncategorized__') {
+    q = q.is('category_id', null)
+  } else if (params.categoryId) {
+    q = q.eq('category_id', params.categoryId)
+  }
   if (params.brandId) q = q.eq('brand_id', params.brandId)
   if (params.activeOnly) q = q.eq('is_active', true)
   if (params.status) q = q.eq('status' as never, params.status)
@@ -797,6 +856,7 @@ export async function updateVariant(
     | 'selling_price'
     | 'wholesale_price'
     | 'is_active'
+    | 'image_path'
   >,
 ) {
   const { data, error } = await supabase
@@ -851,15 +911,36 @@ export async function softDeleteVariant(id: string) {
 
 /* ── Product images ─────────────────────────────────────────── */
 
+export const PRODUCT_IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp'
+export const PRODUCT_IMAGE_MAX_BYTES = 2 * 1024 * 1024
+const PRODUCT_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+
+export function validateProductImageFile(file: File): string | null {
+  if (!PRODUCT_IMAGE_TYPES.has(file.type)) {
+    return 'Use a JPEG, PNG, or WebP image.'
+  }
+  if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
+    return 'Image must be 2 MB or smaller.'
+  }
+  return null
+}
+
 export async function uploadProductImage(
   orgId: string,
   productId: string,
   file: File,
   options?: { isCover?: boolean; variantId?: string | null },
 ) {
+  const validationError = validateProductImageFile(file)
+  if (validationError) throw new Error(validationError)
+
   const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
   const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-  const storagePath = `${orgId}/${productId}/${safeName}`
+  const variantId = options?.variantId ?? null
+  const storagePath = variantId
+    ? `${orgId}/products/${productId}/variants/${variantId}/${safeName}`
+    : `${orgId}/products/${productId}/${safeName}`
+  const isCover = variantId ? false : options?.isCover !== false
 
   const { error: uploadError } = await supabase.storage.from(BUCKET).upload(storagePath, file, {
     cacheControl: '3600',
@@ -868,7 +949,7 @@ export async function uploadProductImage(
   })
   if (uploadError) throw uploadError
 
-  if (options?.isCover !== false) {
+  if (isCover) {
     await supabase
       .from('product_images')
       .update({ is_cover: false })
@@ -877,29 +958,67 @@ export async function uploadProductImage(
       .is('variant_id', null)
   }
 
+  if (variantId) {
+    await supabase
+      .from('product_images')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('product_id', productId)
+      .eq('variant_id', variantId)
+      .is('deleted_at', null)
+  }
+
   const { data, error } = await supabase
     .from('product_images')
     .insert({
       organization_id: orgId,
       product_id: productId,
-      variant_id: options?.variantId ?? null,
+      variant_id: variantId,
       storage_path: storagePath,
-      is_cover: options?.isCover !== false,
+      is_cover: isCover,
       metadata: { original_name: file.name, size: file.size, type: file.type },
     })
     .select()
     .single()
   if (error) throw error
 
+  if (variantId) {
+    await supabase
+      .from('product_variants')
+      .update({ image_path: storagePath })
+      .eq('id', variantId)
+  }
+
   const url = await resolveStorageUrl(storagePath)
   return { ...data, url }
 }
 
 export async function softDeleteProductImage(id: string) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('product_images')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
+    .select('variant_id')
+    .maybeSingle()
+  if (error) throw error
+  if (data?.variant_id) {
+    await supabase
+      .from('product_variants')
+      .update({ image_path: null })
+      .eq('id', data.variant_id)
+  }
+}
+
+export async function clearVariantImage(variantId: string) {
+  const now = new Date().toISOString()
+  await supabase
+    .from('product_images')
+    .update({ deleted_at: now })
+    .eq('variant_id', variantId)
+    .is('deleted_at', null)
+  const { error } = await supabase
+    .from('product_variants')
+    .update({ image_path: null })
+    .eq('id', variantId)
   if (error) throw error
 }
 
@@ -1058,6 +1177,7 @@ export const catalogRepository = {
   softDeleteBrand,
   listProducts,
   getProduct,
+  getCategoryProductCounts,
   searchProducts,
   createProduct,
   createProductWithMatrix,
@@ -1069,6 +1189,8 @@ export const catalogRepository = {
   softDeleteVariant,
   uploadProductImage,
   softDeleteProductImage,
+  clearVariantImage,
+  validateProductImageFile,
   resolveStorageUrl,
   createProductAtomic,
   duplicateProduct,

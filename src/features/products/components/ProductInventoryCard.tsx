@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+import { Badge } from '@/components/ui/badge'
 import { AppImage } from '@/components/common/AppImage'
 import { StockStatusBadge } from '@/features/inventory/components/StockStatusBadge'
 import { formatNumber } from '@/lib/format'
@@ -9,6 +11,7 @@ import type { ProductListItem } from '../repositories/catalog.repository'
 
 type Props = {
   item: ProductInventoryViewModel
+  showCategoryBadge?: boolean
   onEdit: (product: ProductListItem) => void
   onDuplicate: (product: ProductListItem) => void
   onPrintBarcode: (product: ProductListItem) => void
@@ -17,11 +20,14 @@ type Props = {
 
 export function ProductInventoryCard({
   item,
-  onEdit,
+  showCategoryBadge = false,
+  onEdit: _onEdit,
   onDuplicate,
   onPrintBarcode,
   onDelete,
 }: Props) {
+  void _onEdit
+
   return (
     <article className="rounded-xl border border-border bg-white p-3 shadow-sm">
       <div className="flex gap-3">
@@ -33,7 +39,12 @@ export function ProductInventoryCard({
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 text-sm font-semibold text-[#111111]">{item.name}</h3>
+            <Link
+              to={`/products/${item.id}/edit`}
+              className="line-clamp-2 text-sm font-semibold text-[#111111] hover:underline"
+            >
+              {item.name}
+            </Link>
             <ProductCombinedStatusBadge
               lifecycleStatus={item.lifecycleStatus}
               stockStatus={item.stockStatus}
@@ -41,6 +52,16 @@ export function ProductInventoryCard({
             />
           </div>
           <p className="truncate text-xs text-[#6B7280]">{item.sku ?? '—'}</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            <Badge variant="info" className="text-[10px]">
+              {item.productTypeLabel}
+            </Badge>
+            {showCategoryBadge ? (
+              <Badge variant="default" className="text-[10px]">
+                {item.categoryName}
+              </Badge>
+            ) : null}
+          </div>
           {item.brandName ? (
             <p className="truncate text-xs text-[#9CA3AF]">{item.brandName}</p>
           ) : null}
@@ -70,7 +91,6 @@ export function ProductInventoryCard({
       <div className="mt-3">
         <ProductActionsMenu
           product={item.raw}
-          onEdit={onEdit}
           onDuplicate={onDuplicate}
           onPrintBarcode={onPrintBarcode}
           onDelete={onDelete}

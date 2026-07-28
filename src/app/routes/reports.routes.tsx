@@ -13,6 +13,7 @@ import {
   SalespersonReportPage,
   SalesReportPage,
   SupplierDueReportPage,
+  TopCustomersReportPage,
   withSuspense,
 } from './lazy'
 
@@ -24,6 +25,7 @@ export const reportsRoutes: RouteObject = {
     { path: '/reports/purchases', element: withSuspense(PurchasesReportPage) },
     { path: '/reports/inventory', element: withSuspense(InventoryReportPage) },
     { path: '/reports/customer-due', element: withSuspense(CustomerDueReportPage) },
+    { path: '/reports/top-customers', element: withSuspense(TopCustomersReportPage) },
     { path: '/reports/supplier-due', element: withSuspense(SupplierDueReportPage) },
     { path: '/reports/profit', element: withSuspense(ProfitReportPage) },
     { path: '/reports/branch', element: withSuspense(BranchReportPage) },

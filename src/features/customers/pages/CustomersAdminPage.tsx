@@ -13,6 +13,7 @@ import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { CustomerRatingStars } from '@/features/customer-rating'
 import {
   createCustomer,
   listCustomers,
@@ -20,6 +21,7 @@ import {
   updateCustomer,
   type Customer,
 } from '../repositories/customers.repository'
+import { supabase } from '@/lib/supabase/client'
 
 type FormState = {
   name: string
@@ -55,6 +57,58 @@ export function CustomersAdminPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.customersAdmin(filters),
     queryFn: () => listCustomers(filters),
+  })
+
+  const customerIds = (data?.items ?? []).map((r) => r.id)
+  const { data: ratingMap = {} } = useQuery({
+    queryKey: ['customer-ratings-batch', customerIds],
+    queryFn: async () => {
+      if (customerIds.length === 0) {
+        return {} as Record<string, { score: number | null; status: 'unrated' | 'provisional' | 'rated' }>
+      }
+      const client = supabase as unknown as {
+        from: (t: string) => {
+          select: (cols: string) => {
+            in: (col: string, vals: string[]) => {
+              is: (
+                col: string,
+                val: null,
+              ) => PromiseLike<{
+                data: Array<{
+                  customer_id: string
+                  score: number | null
+                  rating_status: string | null
+                }> | null
+                error: { message: string } | null
+              }>
+            }
+          }
+        }
+      }
+      const { data: rows, error: ratingError } = await client
+        .from('customer_rating_summaries')
+        .select('customer_id, score, rating_status')
+        .in('customer_id', customerIds)
+        .is('deleted_at', null)
+      if (ratingError) {
+        return {} as Record<string, { score: number | null; status: 'unrated' | 'provisional' | 'rated' }>
+      }
+      const map: Record<string, { score: number | null; status: 'unrated' | 'provisional' | 'rated' }> =
+        {}
+      for (const row of rows ?? []) {
+        const status =
+          row.rating_status === 'provisional' || row.rating_status === 'rated'
+            ? row.rating_status
+            : 'unrated'
+        map[row.customer_id] = {
+          score: row.score == null ? null : Number(row.score),
+          status,
+        }
+      }
+      return map
+    },
+    enabled: customerIds.length > 0,
+    staleTime: 60_000,
   })
 
   const saveMutation = useMutation({
@@ -157,6 +211,7 @@ export function CustomersAdminPage() {
               <TableHead>Phone</TableHead>
               <TableHead>District</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Rating</TableHead>
               <TableHead className="text-right">Due</TableHead>
               <TableHead className="text-right">Spent</TableHead>
               <TableHead className="w-24" />
@@ -187,6 +242,16 @@ export function CustomersAdminPage() {
                   >
                     {row.status}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  {ratingMap[row.id] ? (
+                    <CustomerRatingStars
+                      score={ratingMap[row.id].score}
+                      status={ratingMap[row.id].status}
+                    />
+                  ) : (
+                    <span className="text-xs text-[#9CA3AF]">Unrated</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-right text-[#E11D48]">
                   {Number(row.current_due) > 0 ? formatBDT(Number(row.current_due)) : '—'}

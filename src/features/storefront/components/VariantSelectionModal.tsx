@@ -93,11 +93,13 @@ function ModalBody({
     onDone()
   }
 
+  const previewImage = selectedVariant?.image || product.image
+
   return (
     <div className="grid sm:grid-cols-[240px_1fr]">
       <div className="relative hidden bg-pink-50 sm:block">
         <ProductImage
-          product={product}
+          product={{ id: product.id, name: product.name, imageUrl: previewImage }}
           alt={getDisplayName(product)}
           className="h-full w-full"
           objectFit="cover"
@@ -109,7 +111,7 @@ function ModalBody({
         <div className="flex items-start gap-3">
           <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-pink-50 sm:hidden">
             <ProductImage
-              product={product}
+              product={{ id: product.id, name: product.name, imageUrl: previewImage }}
               alt={getDisplayName(product)}
               className="h-full w-full"
               objectFit="cover"
@@ -123,6 +125,9 @@ function ModalBody({
             <h2 className="mt-0.5 line-clamp-2 text-base font-semibold text-[#22171C]">
               {getDisplayName(product)}
             </h2>
+            {selectedVariant?.sku ? (
+              <p className="mt-0.5 text-[11px] text-[#6B7280]">SKU: {selectedVariant.sku}</p>
+            ) : null}
             <p className="mt-1 text-lg font-bold text-[#FF3F7F]">{formatBDT(price)}</p>
           </div>
         </div>

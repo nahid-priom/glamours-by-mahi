@@ -11,6 +11,8 @@ export type OpeningStockInput = {
   locationId: string
   quantity: number
   unitCost: number
+  batchNumber?: string
+  expiresAt?: string
 }
 
 type Props = {
@@ -19,6 +21,7 @@ type Props = {
   purchasePrice: number
   sellingPrice: number
   variantCount?: number
+  requiresExpiry?: boolean
   disabled?: boolean
 }
 
@@ -28,6 +31,7 @@ export function OpeningStockFields({
   purchasePrice,
   sellingPrice,
   variantCount = 1,
+  requiresExpiry = false,
   disabled,
 }: Props) {
   const { data: branches = [] } = useQuery({
@@ -55,6 +59,7 @@ export function OpeningStockFields({
         <p className="text-sm font-semibold text-[#111827]">Opening stock</p>
         <p className="text-xs text-[#6B7280]">
           Branch, location, quantity and unit purchase cost are required when adding stock.
+          {requiresExpiry ? ' Cosmetics products also require batch and expiry date.' : ''}
         </p>
       </div>
 
@@ -95,7 +100,9 @@ export function OpeningStockFields({
           </select>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="opening-qty">Quantity per variant</Label>
+          <Label htmlFor="opening-qty">
+            {variantCount > 1 ? 'Quantity per variant' : 'Quantity'}
+          </Label>
           <Input
             id="opening-qty"
             type="number"
@@ -122,6 +129,30 @@ export function OpeningStockFields({
             }
           />
         </div>
+        {requiresExpiry ? (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="opening-batch">Batch number</Label>
+              <Input
+                id="opening-batch"
+                disabled={disabled}
+                value={value.batchNumber ?? ''}
+                onChange={(e) => onChange({ ...value, batchNumber: e.target.value })}
+                placeholder="e.g. BATCH-001"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="opening-expiry">Expiry date</Label>
+              <Input
+                id="opening-expiry"
+                type="date"
+                disabled={disabled}
+                value={value.expiresAt ?? ''}
+                onChange={(e) => onChange({ ...value, expiresAt: e.target.value })}
+              />
+            </div>
+          </>
+        ) : null}
       </div>
 
       {value.quantity > 0 ? (

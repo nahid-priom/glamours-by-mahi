@@ -8,7 +8,6 @@ type Props = {
   group: CategoryProductGroupModel
   expanded: boolean
   onToggle: () => void
-  onEdit: (product: ProductListItem) => void
   onDuplicate: (product: ProductListItem) => void
   onPrintBarcode: (product: ProductListItem) => void
   onDelete: (product: ProductListItem) => void
@@ -18,7 +17,6 @@ export function CategoryProductGroup({
   group,
   expanded,
   onToggle,
-  onEdit,
   onDuplicate,
   onPrintBarcode,
   onDelete,
@@ -54,7 +52,7 @@ export function CategoryProductGroup({
                   <ProductInventoryRow
                     key={item.id}
                     item={item}
-                    onEdit={onEdit}
+                    onEdit={() => {}}
                     onDuplicate={onDuplicate}
                     onPrintBarcode={onPrintBarcode}
                     onDelete={onDelete}

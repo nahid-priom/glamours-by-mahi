@@ -99,7 +99,7 @@ function ProductDetailsContent({ product }: { product: StorefrontProduct }) {
     <div className="min-w-0 overflow-x-hidden bg-[#FFF9FB] pb-28 lg:pb-20">
       <div className="mx-auto max-w-[1440px] px-4 pt-6 sm:px-6 lg:pt-10 xl:px-10">
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-          <ProductGallery product={product} />
+          <ProductGallery product={product} activeVariantImage={resolved?.image} />
 
           <div className="lg:sticky lg:top-28 lg:self-start">
             <ProductInfoPanel

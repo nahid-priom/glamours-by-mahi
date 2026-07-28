@@ -156,6 +156,17 @@ export const DueCollectionPage = lazy(() =>
 export const SalesReturnsPage = lazy(() =>
   import('@/features/sales/pages/SalesReturnsPage').then((m) => ({ default: m.SalesReturnsPage })),
 )
+export const SaleReturnPage = lazy(() =>
+  import('@/features/sales/SaleReturnPage').then((m) => ({ default: m.SaleReturnPage })),
+)
+export const ExchangesPage = lazy(() =>
+  import('@/features/exchanges/pages/ExchangesPage').then((m) => ({ default: m.ExchangesPage })),
+)
+export const ExchangeCreatePage = lazy(() =>
+  import('@/features/exchanges/pages/ExchangeCreatePage').then((m) => ({
+    default: m.ExchangeCreatePage,
+  })),
+)
 export const SalesCommissionsPage = lazy(() =>
   import('@/features/sales/pages/SalesCommissionsPage').then((m) => ({ default: m.SalesCommissionsPage })),
 )
@@ -183,6 +194,17 @@ export const VariantsPage = lazy(() =>
 )
 export const ProductImportPage = lazy(() =>
   import('@/features/products/pages/ProductImportPage').then((m) => ({ default: m.ProductImportPage })),
+)
+export const ProductNewPage = lazy(() =>
+  import('@/features/products/pages/ProductNewPage').then((m) => ({ default: m.ProductNewPage })),
+)
+export const ProductEditPage = lazy(() =>
+  import('@/features/products/pages/ProductEditPage').then((m) => ({ default: m.ProductEditPage })),
+)
+export const ProductDetailRedirectPage = lazy(() =>
+  import('@/features/products/pages/ProductDetailRedirectPage').then((m) => ({
+    default: m.ProductDetailRedirectPage,
+  })),
 )
 
 export const StockOverviewPage = lazy(() =>
@@ -291,6 +313,11 @@ export const CustomerDueReportPage = lazy(() =>
     default: m.CustomerDueReportPage,
   })),
 )
+export const TopCustomersReportPage = lazy(() =>
+  import('@/features/reports/pages/TopCustomersReportPage').then((m) => ({
+    default: m.TopCustomersReportPage,
+  })),
+)
 export const SupplierDueReportPage = lazy(() =>
   import('@/features/reports/pages/OperationsReportsPages').then((m) => ({
     default: m.SupplierDueReportPage,
@@ -319,6 +346,17 @@ export const ProductPerformanceReportPage = lazy(() =>
 export const CourierReturnsReportPage = lazy(() =>
   import('@/features/reports/pages/AnalyticsReportsPages').then((m) => ({
     default: m.CourierReturnsReportPage,
+  })),
+)
+
+export const ModeratorDashboardPage = lazy(() =>
+  import('@/features/moderator/pages/ModeratorDashboardPage').then((m) => ({
+    default: m.ModeratorDashboardPage,
+  })),
+)
+export const ModeratorOrderWorkspacePage = lazy(() =>
+  import('@/features/moderator/pages/ModeratorOrderWorkspacePage').then((m) => ({
+    default: m.ModeratorOrderWorkspacePage,
   })),
 )
 

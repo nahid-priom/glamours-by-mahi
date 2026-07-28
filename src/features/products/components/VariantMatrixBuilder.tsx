@@ -80,6 +80,11 @@ export const VariantMatrixBuilder = memo(function VariantMatrixBuilder({
         <p className="text-xs text-[#6B7280]">
           Select options — {variantCount} variant{variantCount === 1 ? '' : 's'} will be created.
         </p>
+        {variantCount === 0 ? (
+          <p className="mt-1 text-xs font-medium text-[#E11D48]">
+            Select at least one size/volume and one color/shade to generate variants.
+          </p>
+        ) : null}
       </div>
 
       <div>
@@ -127,10 +132,6 @@ export const VariantMatrixBuilder = memo(function VariantMatrixBuilder({
           ))}
         </div>
       </div>
-
-      {variantCount === 0 ? (
-        <p className="text-xs text-[#E11D48]">Select at least one size and one color to create variants.</p>
-      ) : null}
     </div>
   )
 })

@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { formatBDT } from '@/lib/format'
 import { partyLedgerEntryLabel } from '@/lib/party-ledger'
 import { queryKeys } from '@/lib/query/keys'
+import { CustomerRatingStars, getPosCustomerSummary } from '@/features/customer-rating'
 import {
   getCustomer,
   listCustomerCollections,
@@ -36,6 +37,13 @@ export function CustomerDetailPage() {
     queryKey: [...queryKeys.customer(id), 'collections'],
     queryFn: () => listCustomerCollections(id),
     enabled: Boolean(id),
+  })
+
+  const { data: summary } = useQuery({
+    queryKey: ['pos-customer-summary', id],
+    queryFn: () => getPosCustomerSummary(id),
+    enabled: Boolean(id),
+    staleTime: 30_000,
   })
 
   if (isLoading) {
@@ -87,27 +95,40 @@ export function CustomerDetailPage() {
               .join(' · ') || 'No contact details'}
           </p>
         </div>
-        <Badge
-          variant={
-            customer.status === 'active'
-              ? 'success'
-              : customer.status === 'blocked'
-                ? 'danger'
-                : 'default'
-          }
-        >
-          {customer.status}
-        </Badge>
+        <div className="flex flex-col items-end gap-2">
+          <Badge
+            variant={
+              customer.status === 'active'
+                ? 'success'
+                : customer.status === 'blocked'
+                  ? 'danger'
+                  : 'default'
+            }
+          >
+            {customer.status}
+          </Badge>
+          {summary ? (
+            <CustomerRatingStars
+              score={summary.rating}
+              status={summary.rating_status}
+              size="md"
+            />
+          ) : null}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Current due" value={formatBDT(Number(customer.current_due))} accent />
+        <Kpi
+          label="Advance"
+          value={formatBDT(Number(summary?.current_advance ?? (customer as { current_advance?: number }).current_advance ?? 0))}
+        />
         <Kpi label="Ledger entries" value={String(ledger.length)} />
         <Kpi label="Collections" value={String(collections.length)} />
-        <Kpi label="Collected total" value={formatBDT(collectionTotal)} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi label="Collected total" value={formatBDT(collectionTotal)} />
         <Kpi label="Total spent" value={formatBDT(Number(customer.total_spent))} />
         <Kpi label="Invoiced (ledger)" value={formatBDT(invoicedTotal)} />
         <Kpi label="Credits (ledger)" value={formatBDT(paidLedgerTotal)} />

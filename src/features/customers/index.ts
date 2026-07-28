@@ -1,3 +1,4 @@
+export { CustomerSummaryCard } from './components/CustomerSummaryCard'
 export { CustomersAdminPage } from './pages/CustomersAdminPage'
 export { CustomerDetailPage } from './pages/CustomerDetailPage'
 export { CustomersPage } from './CustomersPage'

@@ -1,16 +1,21 @@
 import { useCallback, useMemo, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
-import { CategoryProductGroup } from '../components/CategoryProductGroup'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { BarcodePrintDialog, type BarcodePrintItem } from '../components/BarcodePrintDialog'
+import { CategorySidebar } from '../components/CategorySidebar'
 import { ProductDuplicateDialog } from '../components/ProductDuplicateDialog'
 import { ProductEmptyState } from '../components/ProductEmptyState'
 import { ProductFilterBar } from '../components/ProductFilterBar'
-import { ProductFormDialog } from '../components/ProductFormDialog'
-import { ProductInventoryCard } from '../components/ProductInventoryCard'
+import { ProductListPanel } from '../components/ProductListPanel'
 import { ProductListSkeleton } from '../components/ProductListSkeleton'
 import { ProductsPageHeader } from '../components/ProductsPageHeader'
-import { CategoryCollapseButton } from '../components/AvailableStockDetails'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   catalogFiltersToListParams,
   clearProductCatalogFilters,
@@ -18,8 +23,9 @@ import {
   filtersToSearchParams,
   type ProductCatalogFilters,
 } from '../lib/product-filters'
-import { buildProductInventoryViewModels } from '../lib/product-list-model'
+import { buildProductInventoryViewModels, UNCATEGORIZED_CATEGORY_ID } from '../lib/product-list-model'
 import {
+  getCategoryProductCounts,
   listProducts,
   softDeleteProduct,
   type ProductListItem,
@@ -28,7 +34,6 @@ import { invalidateStorefrontCache } from '@/features/storefront/storefront.serv
 import { getInventoryStockBreakdown, type InventoryProductStockRow } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { useToast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import { formatNumber } from '@/lib/format'
 
@@ -54,9 +59,9 @@ function productToBarcodeItems(product: ProductListItem): BarcodePrintItem[] {
 }
 
 export function AdminProductsPage() {
-  const { profile } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const filters: ProductCatalogFilters = useMemo(
@@ -75,6 +80,11 @@ export function AdminProductsPage() {
     () => ({ ...catalogFiltersToListParams(filters), pageSize: 24 }),
     [filters],
   )
+
+  const { data: categoryCounts } = useQuery({
+    queryKey: ['category-product-counts'],
+    queryFn: getCategoryProductCounts,
+  })
 
   const {
     data,
@@ -126,15 +136,12 @@ export function AdminProductsPage() {
     return map
   }, [valuation])
 
-  const { items: viewItems, groups } = useMemo(
+  const { items: viewItems } = useMemo(
     () =>
       buildProductInventoryViewModels(data?.items ?? [], valuationByProduct, filters.sort),
     [data?.items, valuationByProduct, filters.sort],
   )
 
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<ProductListItem | null>(null)
   const [duplicateTarget, setDuplicateTarget] = useState<ProductListItem | null>(null)
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [barcodeItems, setBarcodeItems] = useState<BarcodePrintItem[]>([])
@@ -144,6 +151,7 @@ export function AdminProductsPage() {
     mutationFn: softDeleteProduct,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['products'] })
+      void qc.invalidateQueries({ queryKey: ['category-product-counts'] })
       invalidateStorefrontCache()
       toast('Product deleted')
     },
@@ -152,10 +160,14 @@ export function AdminProductsPage() {
 
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 24))
   const page = filters.page ?? 1
+  const showCategoryBadge = !filters.category
 
-  const openEdit = (row: ProductListItem) => {
-    setEditing(row)
-    setOpen(true)
+  const handleCategorySelect = (categoryId: string | null) => {
+    setFilters({
+      ...filters,
+      category: categoryId,
+      page: 1,
+    })
   }
 
   const openDuplicate = (row: ProductListItem) => {
@@ -172,159 +184,113 @@ export function AdminProductsPage() {
     if (confirm(`Delete “${row.name}”?`)) deleteMutation.mutate(row.id)
   }
 
-  const toggleCategory = (categoryId: string) => {
-    setCollapsedCategories((prev) => ({
-      ...prev,
-      [categoryId]: !(prev[categoryId] ?? true),
-    }))
-  }
-
-  const isCategoryExpanded = (categoryId: string) => collapsedCategories[categoryId] ?? true
   const showInitialLoading = isLoading && !data
   const isEmpty = !showInitialLoading && !error && viewItems.length === 0
 
+  const sidebarSelected = filters.category ?? null
+
   return (
-    <div className="mx-auto w-full max-w-6xl min-w-0 space-y-4 px-3 sm:px-4 lg:px-0">
+    <div className="mx-auto w-full max-w-7xl min-w-0 space-y-4 px-3 sm:px-4 lg:px-0">
       <ProductsPageHeader
         totalCount={data?.total ?? 0}
         pageCount={viewItems.length}
         isFetching={isFetching && !isLoading}
-        onAddProduct={() => {
-          setEditing(null)
-          setOpen(true)
-        }}
       />
 
-      <ProductFilterBar value={filters} onChange={setFilters} />
-
-      {showInitialLoading ? <ProductListSkeleton /> : null}
-
-      {error ? (
-        <ProductEmptyState
-          filters={filters}
-          variant="error"
-          onRetry={() => void refetch()}
-        />
-      ) : null}
-
-      {!showInitialLoading && !error ? (
-        <>
-          <div className="space-y-4 lg:hidden">
-            {isFetching && data ? (
-              <p className="text-xs text-[#9CA3AF]">Refreshing products…</p>
-            ) : null}
-            {groups.map((group) => (
-              <section key={group.categoryId} className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <CategoryCollapseButton
-                      expanded={isCategoryExpanded(group.categoryId)}
-                      onToggle={() => toggleCategory(group.categoryId)}
-                    />
-                    <div className="min-w-0">
-                      <h2 className="truncate text-sm font-semibold text-[#111111]">
-                        {group.categoryName}
-                      </h2>
-                      <p className="text-xs text-[#6B7280]">
-                        {formatNumber(group.productCount)} products
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                {isCategoryExpanded(group.categoryId) ? (
-                  <div className="space-y-3">
-                    {group.products.map((item) => (
-                      <ProductInventoryCard
-                        key={item.id}
-                        item={item}
-                        onEdit={openEdit}
-                        onDuplicate={openDuplicate}
-                        onPrintBarcode={openBarcode}
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </section>
-            ))}
-            {isEmpty ? (
-              <ProductEmptyState
-                filters={filters}
-                variant={filters.category ? 'category' : 'filtered'}
-                onClearFilters={() => setFilters(clearProductCatalogFilters())}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <aside className="hidden w-60 shrink-0 lg:block">
+          <div className="sticky top-4 rounded-xl border border-border bg-white p-3">
+            {categoryCounts ? (
+              <CategorySidebar
+                totalCount={categoryCounts.total}
+                uncategorizedCount={categoryCounts.uncategorized}
+                categories={categoryCounts.categories}
+                selected={sidebarSelected}
+                onSelect={handleCategorySelect}
               />
-            ) : null}
+            ) : (
+              <p className="px-3 text-xs text-[#9CA3AF]">Loading categories…</p>
+            )}
+          </div>
+        </aside>
+
+        <div className="min-w-0 flex-1 space-y-4">
+          <div className="lg:hidden">
+            <LabelledMobileCategory
+              categories={categoryCounts?.categories ?? []}
+              uncategorizedCount={categoryCounts?.uncategorized ?? 0}
+              totalCount={categoryCounts?.total ?? 0}
+              selected={sidebarSelected}
+              onSelect={handleCategorySelect}
+            />
           </div>
 
-          <div className="hidden space-y-4 lg:block">
-            {isFetching && data ? (
-              <p className="text-xs text-[#9CA3AF]">Refreshing products…</p>
-            ) : null}
-            {groups.map((group) => (
-              <CategoryProductGroup
-                key={group.categoryId}
-                group={group}
-                expanded={isCategoryExpanded(group.categoryId)}
-                onToggle={() => toggleCategory(group.categoryId)}
-                onEdit={openEdit}
-                onDuplicate={openDuplicate}
-                onPrintBarcode={openBarcode}
-                onDelete={handleDelete}
-              />
-            ))}
-            {isEmpty ? (
-              <ProductEmptyState
-                filters={filters}
-                variant={filters.category ? 'category' : 'filtered'}
-                onClearFilters={() => setFilters(clearProductCatalogFilters())}
-              />
-            ) : null}
-          </div>
-        </>
-      ) : null}
+          <ProductFilterBar value={filters} onChange={setFilters} hideCategoryFilter />
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <p className="text-[#6B7280]">
-          Page {page}/{totalPages} · showing {formatNumber(viewItems.length)} of{' '}
-          {formatNumber(data?.total ?? 0)} products
-        </p>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page <= 1}
-            onClick={() => setFilters({ ...filters, page: page - 1 })}
-          >
-            Prev
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page >= totalPages}
-            onClick={() => setFilters({ ...filters, page: page + 1 })}
-          >
-            Next
-          </Button>
-          <Button size="sm" variant="ghost" asChild>
-            <Link to="/products/variants">Variants</Link>
-          </Button>
+          {showInitialLoading ? <ProductListSkeleton /> : null}
+
+          {error ? (
+            <ProductEmptyState
+              filters={filters}
+              variant="error"
+              onRetry={() => void refetch()}
+            />
+          ) : null}
+
+          {!showInitialLoading && !error ? (
+            <>
+              {isFetching && data ? (
+                <p className="text-xs text-[#9CA3AF]">Refreshing products…</p>
+              ) : null}
+
+              {isEmpty ? (
+                <ProductEmptyState
+                  filters={filters}
+                  variant={filters.category ? 'category' : 'filtered'}
+                  onClearFilters={() => setFilters(clearProductCatalogFilters())}
+                />
+              ) : (
+                <ProductListPanel
+                  items={viewItems}
+                  showCategoryBadge={showCategoryBadge}
+                  onEdit={(row) => navigate(`/products/${row.id}/edit`)}
+                  onDuplicate={openDuplicate}
+                  onPrintBarcode={openBarcode}
+                  onDelete={handleDelete}
+                />
+              )}
+            </>
+          ) : null}
+
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <p className="text-[#6B7280]">
+              Page {page}/{totalPages} · showing {formatNumber(viewItems.length)} of{' '}
+              {formatNumber(data?.total ?? 0)} products
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => setFilters({ ...filters, page: page - 1 })}
+              >
+                Prev
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page >= totalPages}
+                onClick={() => setFilters({ ...filters, page: page + 1 })}
+              >
+                Next
+              </Button>
+              <Button size="sm" variant="ghost" asChild>
+                <Link to="/products/variants">Variants</Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
-
-      {profile?.organization_id ? (
-        <ProductFormDialog
-          open={open}
-          onOpenChange={setOpen}
-          orgId={profile.organization_id}
-          editing={editing}
-          onSaved={() => {
-            void qc.invalidateQueries({ queryKey: ['products'] })
-            invalidateStorefrontCache()
-            toast(editing ? 'Product updated' : 'Product created')
-          }}
-          onError={(m) => toast(m, 'error')}
-        />
-      ) : null}
 
       <ProductDuplicateDialog
         open={duplicateOpen}
@@ -332,12 +298,59 @@ export function AdminProductsPage() {
         product={duplicateTarget}
         onDuplicated={() => {
           void qc.invalidateQueries({ queryKey: ['products'] })
+          void qc.invalidateQueries({ queryKey: ['category-product-counts'] })
           toast('Product duplicated')
         }}
         onError={(m) => toast(m, 'error')}
       />
 
       <BarcodePrintDialog open={barcodeOpen} onOpenChange={setBarcodeOpen} items={barcodeItems} />
+    </div>
+  )
+}
+
+function LabelledMobileCategory({
+  categories,
+  uncategorizedCount,
+  totalCount,
+  selected,
+  onSelect,
+}: {
+  categories: Array<{ categoryId: string; categoryName: string; productCount: number }>
+  uncategorizedCount: number
+  totalCount: number
+  selected: string | null
+  onSelect: (id: string | null) => void
+}) {
+  const value = selected ?? '__all__'
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[#9CA3AF]">Category</p>
+      <Select
+        value={value}
+        onValueChange={(v) => {
+          if (v === '__all__') onSelect(null)
+          else onSelect(v)
+        }}
+      >
+        <SelectTrigger className="h-11 w-full">
+          <SelectValue placeholder="All products" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__all__">All products ({formatNumber(totalCount)})</SelectItem>
+          {categories.map((cat) => (
+            <SelectItem key={cat.categoryId} value={cat.categoryId}>
+              {cat.categoryName} ({formatNumber(cat.productCount)})
+            </SelectItem>
+          ))}
+          {uncategorizedCount > 0 ? (
+            <SelectItem value={UNCATEGORIZED_CATEGORY_ID}>
+              Uncategorized ({formatNumber(uncategorizedCount)})
+            </SelectItem>
+          ) : null}
+        </SelectContent>
+      </Select>
     </div>
   )
 }

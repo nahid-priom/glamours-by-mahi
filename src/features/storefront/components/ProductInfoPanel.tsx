@@ -72,6 +72,10 @@ export function ProductInfoPanel({
           {getDisplayName(product)}
         </h1>
 
+        <p className="mt-2 text-xs font-medium tracking-wide text-[#6B7280]">
+          SKU: {variant?.sku ?? product.sku}
+        </p>
+
         {getDisplayReviewCount(product) > 0 && getDisplayRating(product) > 0 ? (
           <div className="mt-4 flex items-center gap-2 text-sm text-[var(--sf-muted)]">
             <div className="flex items-center gap-0.5" aria-hidden>

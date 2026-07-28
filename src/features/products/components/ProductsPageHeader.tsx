@@ -8,10 +8,9 @@ type Props = {
   totalCount: number
   pageCount: number
   isFetching?: boolean
-  onAddProduct: () => void
 }
 
-export function ProductsPageHeader({ totalCount, pageCount, isFetching, onAddProduct }: Props) {
+export function ProductsPageHeader({ totalCount, pageCount, isFetching }: Props) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
@@ -32,9 +31,11 @@ export function ProductsPageHeader({ totalCount, pageCount, isFetching, onAddPro
           </Button>
         </PermissionGate>
         <PermissionGate permission="products.create">
-          <Button size="sm" onClick={onAddProduct}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add product
+          <Button size="sm" asChild>
+            <Link to="/products/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add product
+            </Link>
           </Button>
         </PermissionGate>
       </div>

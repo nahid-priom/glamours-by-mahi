@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+import { Badge } from '@/components/ui/badge'
 import { AppImage } from '@/components/common/AppImage'
 import { formatVariantCountLabel } from '../lib/product-list-model'
 import type { ProductInventoryViewModel } from '../lib/product-list-model'
@@ -8,6 +10,7 @@ import type { ProductListItem } from '../repositories/catalog.repository'
 
 type Props = {
   item: ProductInventoryViewModel
+  showCategoryBadge?: boolean
   onEdit: (product: ProductListItem) => void
   onDuplicate: (product: ProductListItem) => void
   onPrintBarcode: (product: ProductListItem) => void
@@ -16,11 +19,14 @@ type Props = {
 
 export function ProductInventoryRow({
   item,
-  onEdit,
+  showCategoryBadge = false,
+  onEdit: _onEdit,
   onDuplicate,
   onPrintBarcode,
   onDelete,
 }: Props) {
+  void _onEdit
+
   return (
     <tr className="border-b border-border last:border-b-0">
       <td className="px-3 py-3 align-middle">
@@ -32,8 +38,18 @@ export function ProductInventoryRow({
             aspectRatio="square"
           />
           <div className="min-w-0">
-            <p className="line-clamp-2 text-sm font-medium text-[#111111]">{item.name}</p>
+            <Link
+              to={`/products/${item.id}/edit`}
+              className="line-clamp-2 text-sm font-medium text-[#111111] hover:underline"
+            >
+              {item.name}
+            </Link>
             <p className="truncate text-xs text-[#9CA3AF]">{item.sku ?? '—'}</p>
+            {showCategoryBadge ? (
+              <Badge variant="default" className="mt-1 text-[10px] font-normal">
+                {item.categoryName}
+              </Badge>
+            ) : null}
             {item.brandName ? (
               <p className="truncate text-[11px] font-medium uppercase tracking-wide text-[#9CA3AF]">
                 {item.brandName}
@@ -41,6 +57,11 @@ export function ProductInventoryRow({
             ) : null}
           </div>
         </div>
+      </td>
+      <td className="px-3 py-3 align-middle">
+        <Badge variant="info" className="text-[10px] font-medium">
+          {item.productTypeLabel}
+        </Badge>
       </td>
       <td className="px-3 py-3 align-middle">
         <p className="text-sm text-[#111111]">{formatVariantCountLabel(item.variantCount)}</p>
@@ -58,7 +79,6 @@ export function ProductInventoryRow({
       <td className="px-3 py-3 align-middle">
         <ProductActionsMenu
           product={item.raw}
-          onEdit={onEdit}
           onDuplicate={onDuplicate}
           onPrintBarcode={onPrintBarcode}
           onDelete={onDelete}
@@ -68,11 +88,16 @@ export function ProductInventoryRow({
   )
 }
 
-export function ProductInventoryTableHeader() {
+export function ProductInventoryTableHeader({
+  showCategory = false,
+}: {
+  showCategory?: boolean
+}) {
   return (
     <thead className="bg-slate-50/80">
       <tr className="text-left text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
-        <th className="px-3 py-2.5">Product</th>
+        <th className="px-3 py-2.5">Product{showCategory ? '' : ''}</th>
+        <th className="px-3 py-2.5">Type</th>
         <th className="px-3 py-2.5">Variants &amp; Price</th>
         <th className="px-3 py-2.5 text-right">Available Stock</th>
         <th className="px-3 py-2.5">Status</th>

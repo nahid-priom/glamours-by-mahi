@@ -35,6 +35,21 @@ export function buildAutoSku(parts: {
   return `${cat}-${brand}-${color}-${size}-${seq}`
 }
 
+/** Strict matrix: returns [] when sizes or colors are empty (no fallback combos). */
+export function generateVariantMatrixStrict(input: {
+  sizes: string[]
+  colors: string[]
+  purchasePrice: number
+  sellingPrice: number
+  wholesalePrice?: number | null
+  categoryCode?: string | null
+  brandCode?: string | null
+  openingStock?: number
+}): VariantDraft[] {
+  if (!input.sizes.length || !input.colors.length) return []
+  return generateVariantMatrix(input)
+}
+
 export function generateVariantMatrix(input: {
   sizes: string[]
   colors: string[]

@@ -36,6 +36,8 @@ export interface StorefrontProduct extends Product {
     sellingPrice: number
     stock: number
     optionValues: Array<{ option: string; value: string }>
+    /** Resolved variant-specific image URL when available */
+    image?: string | null
   }>
 }
 

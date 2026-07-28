@@ -13,6 +13,7 @@ import { dashboardRoutes } from './dashboard.routes'
 import { hrRoutes } from './hr.routes'
 import { inventoryRoutes } from './inventory.routes'
 import { AdminLoginPage, NotFoundPage, PageLoader, withSuspense } from './lazy'
+import { moderatorRoutes } from './moderator.routes'
 import { printRoutes, publicInvoiceRoute } from './print.routes'
 import { productsRoutes } from './products.routes'
 import { purchasesRoutes } from './purchases.routes'
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
             children: [
               dashboardRoutes,
               ...salesRoutes,
+              moderatorRoutes,
               productsRoutes,
               ...inventoryRoutes,
               ...purchasesRoutes,

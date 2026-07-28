@@ -16,3 +16,4 @@ export {
   ProductPerformanceReportPage,
   CourierReturnsReportPage,
 } from './pages/AnalyticsReportsPages'
+export { TopCustomersReportPage } from './pages/TopCustomersReportPage'

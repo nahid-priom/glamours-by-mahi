@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
+import { CustomerSummaryCard } from '@/features/customers/components/CustomerSummaryCard'
 import { cn } from '@/lib/utils'
 import {
   searchCustomers,
@@ -45,7 +46,7 @@ export function PosCustomerSelect({
   }
 
   return (
-    <div className={cn('shrink-0', className)}>
+    <div className={cn('shrink-0 space-y-2', className)}>
       <div
         className={cn(
           'grid gap-2',
@@ -75,6 +76,16 @@ export function PosCustomerSelect({
           </Button>
         ) : null}
       </div>
+
+      {value ? (
+        <CustomerSummaryCard
+          customerId={value}
+          onClear={() => {
+            onChange(null, null)
+            onAfterResolve?.()
+          }}
+        />
+      ) : null}
 
       {canCreate ? (
         <PosQuickAddCustomerDialog

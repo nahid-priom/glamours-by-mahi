@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ProductImage } from '@/components/common/ProductImage'
 import { getStableAdditionalImages } from '@/lib/images/product-image-utils'
@@ -7,6 +7,8 @@ import { getDisplayAlt, getDisplayGallery, getDisplayImage } from '../utils/prod
 
 interface ProductGalleryProps {
   product: StorefrontProduct
+  /** When a variant is selected, prefer its image as the active cover */
+  activeVariantImage?: string | null
   className?: string
 }
 
@@ -22,6 +24,12 @@ function MobileGallery({
   onIndexChange: (index: number) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ left: el.clientWidth * activeIndex, behavior: 'smooth' })
+  }, [activeIndex])
 
   const handleScroll = () => {
     const el = scrollRef.current
@@ -77,11 +85,18 @@ function MobileGallery({
 
 const MIN_GALLERY_IMAGES = 4
 
-export function ProductGallery({ product, className }: ProductGalleryProps) {
+export function ProductGallery({ product, activeVariantImage, className }: ProductGalleryProps) {
   const cover = getDisplayImage(product)
   const gallery = getDisplayGallery(product)
+  const variantCover = activeVariantImage?.trim() || null
   // Exact cover always first, then the product's own remaining unique images.
-  const ownImages = [cover, ...gallery.filter((url) => url !== cover)].slice(0, 5)
+  const ownImages = [
+    ...(variantCover ? [variantCover] : []),
+    cover,
+    ...gallery.filter((url) => url !== cover && url !== variantCover),
+  ]
+    .filter((url, index, arr) => url && arr.indexOf(url) === index)
+    .slice(0, 5)
   // Pad thin galleries with stable per-product extras so thumbnails never look empty.
   const images = [
     ...ownImages,
@@ -90,6 +105,10 @@ export function ProductGallery({ product, className }: ProductGalleryProps) {
   const alt = getDisplayAlt(product)
   const [activeIndex, setActiveIndex] = useState(0)
   const [zoomed, setZoomed] = useState(false)
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [variantCover, product.id])
 
   const activeImage = images[activeIndex] ?? cover
 

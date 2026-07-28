@@ -1,3 +1,4 @@
+import { Link, useNavigate } from 'react-router-dom'
 import { Copy, MoreHorizontal, Pencil, Printer, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,7 +13,6 @@ import type { ProductListItem } from '../repositories/catalog.repository'
 
 type Props = {
   product: ProductListItem
-  onEdit: (product: ProductListItem) => void
   onDuplicate: (product: ProductListItem) => void
   onPrintBarcode: (product: ProductListItem) => void
   onDelete: (product: ProductListItem) => void
@@ -21,23 +21,26 @@ type Props = {
 
 export function ProductActionsMenu({
   product,
-  onEdit,
   onDuplicate,
   onPrintBarcode,
   onDelete,
   compact = false,
 }: Props) {
+  const navigate = useNavigate()
+
   return (
     <div className="flex items-center justify-end gap-1">
       <PermissionGate permission="products.update">
         <Button
-          size={compact ? 'sm' : 'sm'}
+          size="sm"
           variant="outline"
           className={compact ? 'h-9 min-w-[44px] px-3' : undefined}
-          onClick={() => onEdit(product)}
+          asChild
         >
-          <Pencil className={compact ? 'mr-1.5 h-3.5 w-3.5' : 'mr-1 h-3.5 w-3.5'} />
-          Edit
+          <Link to={`/products/${product.id}/edit`}>
+            <Pencil className={compact ? 'mr-1.5 h-3.5 w-3.5' : 'mr-1 h-3.5 w-3.5'} />
+            Edit
+          </Link>
         </Button>
       </PermissionGate>
       <DropdownMenu>
@@ -61,6 +64,10 @@ export function ProductActionsMenu({
           <DropdownMenuItem onClick={() => onPrintBarcode(product)}>
             <Printer className="mr-2 h-4 w-4" />
             Print barcode
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate(`/products/${product.id}/edit`)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Open editor
           </DropdownMenuItem>
           <PermissionGate permission="products.update">
             <DropdownMenuSeparator />
