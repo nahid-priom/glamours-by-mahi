@@ -257,7 +257,7 @@ export async function ledger(
     variantIds = [filters.variantId]
   } else if (filters.productId || filters.search?.trim()) {
     variantIds = await resolveLedgerVariantIds(filters)
-    if (variantIds.length === 0) return { items: [], total: 0 }
+    if (variantIds?.length === 0) return { items: [], total: 0 }
   }
 
   let q = supabase
