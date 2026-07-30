@@ -15,18 +15,65 @@ export type CommissionEmployeeOption = {
   profileId: string | null
 }
 
+export type CommissionSubjectOption = {
+  id: string
+  kind: 'employee' | 'profile'
+  label: string
+  description: string
+  profileId: string | null
+}
+
+export type CommissionTier = {
+  min_amount: number
+  max_amount: number | null
+  rate_type: 'percent' | 'fixed'
+  rate: number
+}
+
+export type CommissionStructureMode = 'per_sale' | 'sale_amount_tiers' | 'period_volume_tiers'
+export type CommissionSubjectType = 'employee' | 'profile'
+export type CommissionOrderSource =
+  | 'pos'
+  | 'moderator'
+  | 'tele_sales'
+  | 'ecommerce'
+  | 'manual'
+  | 'other'
+
 export type CommissionRuleRow = {
   id: string
   profile_id: string | null
   employee_id: string | null
+  subject_type: CommissionSubjectType | string | null
   branch_id: string | null
   rule_type: string
   rate: number
+  structure_mode: CommissionStructureMode | string | null
+  base_metric: string | null
+  tiers: CommissionTier[] | null
+  period_unit: string | null
+  applies_to_sources: string[] | null
   is_active: boolean
   effective_from: string
   effective_to: string | null
   notes: string | null
   created_at: string
+}
+
+export type UpsertCommissionRuleInput = {
+  subject_type: CommissionSubjectType
+  employee_id?: string | null
+  profile_id?: string | null
+  branch_id?: string | null
+  structure_mode: CommissionStructureMode
+  rule_type?: 'fixed' | 'percent_sale' | 'percent_profit' | 'none'
+  rate?: number
+  base_metric?: 'sale_total' | 'profit'
+  tiers?: CommissionTier[]
+  period_unit?: 'month'
+  applies_to_sources?: CommissionOrderSource[]
+  effective_from?: string
+  notes?: string
 }
 
 export type CommissionFilters = {
@@ -49,22 +96,52 @@ export type SalesCommissionRow = {
   sales?: { invoice_no: string } | null
 }
 
+function normalizeTiers(raw: unknown): CommissionTier[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((t) => {
+    const row = t as Record<string, unknown>
+    return {
+      min_amount: Number(row.min_amount ?? 0),
+      max_amount: row.max_amount == null || row.max_amount === '' ? null : Number(row.max_amount),
+      rate_type: row.rate_type === 'fixed' ? 'fixed' : 'percent',
+      rate: Number(row.rate ?? 0),
+    }
+  })
+}
+
+function mapRule(row: Record<string, unknown>): CommissionRuleRow {
+  return {
+    id: String(row.id),
+    profile_id: (row.profile_id as string | null) ?? null,
+    employee_id: (row.employee_id as string | null) ?? null,
+    subject_type: (row.subject_type as string | null) ?? null,
+    branch_id: (row.branch_id as string | null) ?? null,
+    rule_type: String(row.rule_type ?? 'none'),
+    rate: Number(row.rate ?? 0),
+    structure_mode: (row.structure_mode as string | null) ?? 'per_sale',
+    base_metric: (row.base_metric as string | null) ?? 'sale_total',
+    tiers: normalizeTiers(row.tiers),
+    period_unit: (row.period_unit as string | null) ?? 'month',
+    applies_to_sources: Array.isArray(row.applies_to_sources)
+      ? (row.applies_to_sources as string[])
+      : null,
+    is_active: Boolean(row.is_active),
+    effective_from: String(row.effective_from ?? ''),
+    effective_to: (row.effective_to as string | null) ?? null,
+    notes: (row.notes as string | null) ?? null,
+    created_at: String(row.created_at ?? ''),
+  }
+}
+
 async function listCommissionRules(branchId?: string | null) {
   const { data, error } = await supabase.rpc('list_commission_rules', {
     p_branch_id: branchId ?? undefined,
   })
   if (error) throw error
-  return (data ?? []) as unknown as CommissionRuleRow[]
+  return ((data ?? []) as unknown as Record<string, unknown>[]).map(mapRule)
 }
 
-async function upsertCommissionRule(input: {
-  employee_id: string
-  branch_id?: string | null
-  rule_type: 'fixed' | 'percent_sale' | 'percent_profit' | 'none'
-  rate: number
-  effective_from?: string
-  notes?: string
-}) {
+async function upsertCommissionRule(input: UpsertCommissionRuleInput) {
   const { data, error } = await supabase.rpc('upsert_commission_rule', {
     payload: input as unknown as Json,
   })
@@ -106,6 +183,43 @@ async function searchCommissionEmployees(
     description: [row.designation, row.branch_name].filter(Boolean).join(' · '),
     profileId: row.profile_id,
   }))
+}
+
+async function searchCommissionSubjects(
+  query: string,
+  kind: 'all' | 'employee' | 'profile' = 'all',
+  branchId?: string | null,
+): Promise<CommissionSubjectOption[]> {
+  const { data, error } = await untypedRpc('search_commission_subjects', {
+    p_query: query.trim() || null,
+    p_kind: kind,
+    p_branch_id: branchId ?? null,
+  })
+  if (error) throw error
+
+  const payload = (data ?? {}) as {
+    employees?: Array<Record<string, unknown>>
+    profiles?: Array<Record<string, unknown>>
+  }
+
+  const employees = (payload.employees ?? []).map((row) => ({
+    id: String(row.id),
+    kind: 'employee' as const,
+    label: String(row.label ?? ''),
+    description: String(row.description ?? ''),
+    profileId: (row.profile_id as string | null) ?? null,
+  }))
+  const profiles = (payload.profiles ?? []).map((row) => ({
+    id: String(row.id),
+    kind: 'profile' as const,
+    label: String(row.label ?? ''),
+    description: String(row.description ?? ''),
+    profileId: (row.profile_id as string | null) ?? String(row.id),
+  }))
+
+  if (kind === 'employee') return employees
+  if (kind === 'profile') return profiles
+  return [...employees, ...profiles]
 }
 
 /** @deprecated Use searchCommissionEmployees — profile-only search retained for legacy rows */
@@ -192,6 +306,7 @@ export const commissionsRepository = {
   upsertCommissionRule,
   deactivateCommissionRule,
   searchCommissionEmployees,
+  searchCommissionSubjects,
   searchSalespeople,
   approveCommission,
   payCommission,

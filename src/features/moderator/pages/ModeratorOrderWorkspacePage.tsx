@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import { Minus, Plus, Search, Trash2 } from 'lucide-react'
@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
+import { CustomerRecentOrders } from '@/features/customers/components/CustomerRecentOrders'
 import { CustomerSummaryCard } from '@/features/customers/components/CustomerSummaryCard'
+import { getPosCustomerSummary } from '@/features/customer-rating'
 import { PosCustomerSelect } from '@/features/pos/components/PosCustomerSelect'
 import { listPosCatalogue } from '@/features/pos/repositories/pos.repository'
 import type { PosVariant } from '@/features/pos/types'
@@ -48,6 +50,21 @@ export function ModeratorOrderWorkspacePage() {
     staleTime: 60_000,
   })
 
+  const { data: customerSummary } = useQuery({
+    queryKey: ['pos-customer-summary', profile?.organization_id, customerId],
+    queryFn: () => getPosCustomerSummary(customerId!),
+    enabled: Boolean(customerId) && Boolean(profile?.organization_id),
+    staleTime: 30_000,
+  })
+
+  useEffect(() => {
+    if (!customerSummary) return
+    setCustomerName(customerSummary.name || '')
+    setPhone(customerSummary.phone || '')
+    if (customerSummary.address) setAddress(customerSummary.address)
+    if (customerSummary.district) setDistrict(customerSummary.district)
+  }, [customerSummary])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     const items = catalogue?.items ?? []
@@ -67,34 +84,37 @@ export function ModeratorOrderWorkspacePage() {
   const grandTotal = Math.max(0, subtotal - discount + shipping)
 
   function addVariant(v: PosVariant) {
-    setLines((prev) => {
-      const existing = prev.find((l) => l.variantId === v.variantId)
-      if (existing) {
-        if (existing.qty + 1 > v.availableStock) {
-          toast('Not enough stock', 'error')
-          return prev
-        }
-        return prev.map((l) =>
-          l.variantId === v.variantId ? { ...l, qty: l.qty + 1 } : l,
-        )
+    const label = `${v.productName}${v.variantLabel ? ` · ${v.variantLabel}` : ''}`
+    const existing = lines.find((l) => l.variantId === v.variantId)
+    if (existing) {
+      if (existing.qty + 1 > v.availableStock) {
+        toast('Not enough stock', 'error')
+        return
       }
-      if (v.availableStock < 1) {
-        toast('Out of stock', 'error')
-        return prev
-      }
-      return [
-        ...prev,
-        {
-          variantId: v.variantId,
-          label: `${v.productName}${v.variantLabel ? ` · ${v.variantLabel}` : ''}`,
-          sku: v.sku,
-          unitPrice: v.unitPrice,
-          qty: 1,
-          stock: v.availableStock,
-          imageUrl: v.thumbnailUrl ?? null,
-        },
-      ]
-    })
+      const nextQty = existing.qty + 1
+      setLines((prev) =>
+        prev.map((l) => (l.variantId === v.variantId ? { ...l, qty: nextQty } : l)),
+      )
+      toast(`${label} · qty ${nextQty}`)
+      return
+    }
+    if (v.availableStock < 1) {
+      toast('Out of stock', 'error')
+      return
+    }
+    setLines((prev) => [
+      ...prev,
+      {
+        variantId: v.variantId,
+        label,
+        sku: v.sku,
+        unitPrice: v.unitPrice,
+        qty: 1,
+        stock: v.availableStock,
+        imageUrl: v.thumbnailUrl ?? null,
+      },
+    ])
+    toast(`${label} · qty 1`)
   }
 
   const submit = useMutation({
@@ -199,6 +219,13 @@ export function ModeratorOrderWorkspacePage() {
               onChange={(id, label) => {
                 setCustomerId(id)
                 setCustomerLabel(label)
+                if (!id) {
+                  setCustomerName('')
+                  setPhone('')
+                  setAddress('')
+                  setDistrict('')
+                  return
+                }
                 if (label) {
                   const [n, p] = label.split('·').map((s) => s.trim())
                   if (n) setCustomerName(n)
@@ -209,9 +236,26 @@ export function ModeratorOrderWorkspacePage() {
               branchId={branchId}
               createdBy={profile?.id ?? null}
               canCreate={can('customers.manage')}
+              showSummary={false}
             />
           ) : null}
-          {customerId ? <CustomerSummaryCard customerId={customerId} compact /> : null}
+          {customerId ? (
+            <>
+              <CustomerSummaryCard
+                customerId={customerId}
+                compact
+                onClear={() => {
+                  setCustomerId(null)
+                  setCustomerLabel(null)
+                  setCustomerName('')
+                  setPhone('')
+                  setAddress('')
+                  setDistrict('')
+                }}
+              />
+              <CustomerRecentOrders customerId={customerId} />
+            </>
+          ) : null}
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
               <Label>Name</Label>
@@ -299,11 +343,13 @@ export function ModeratorOrderWorkspacePage() {
                           toast('Not enough stock', 'error')
                           return
                         }
+                        const nextQty = l.qty + 1
                         setLines((prev) =>
                           prev.map((x) =>
-                            x.variantId === l.variantId ? { ...x, qty: x.qty + 1 } : x,
+                            x.variantId === l.variantId ? { ...x, qty: nextQty } : x,
                           ),
                         )
+                        toast(`${l.label} · qty ${nextQty}`)
                       }}
                     >
                       <Plus className="h-3 w-3" />

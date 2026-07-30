@@ -1,6 +1,7 @@
 import type { RouteObject } from 'react-router-dom'
 import { PermissionRoute } from '@/app/guards/PermissionRoute'
 import {
+  ActivityLogsPage,
   HeroSlideEditorPage,
   HeroSlidePreviewPage,
   SettingsPage,
@@ -17,6 +18,10 @@ export const settingsRoutes: RouteObject[] = [
   {
     element: <PermissionRoute permission="settings.manage" />,
     children: [{ path: '/settings', element: withSuspense(SettingsPage) }],
+  },
+  {
+    element: <PermissionRoute permission="audit.read" />,
+    children: [{ path: '/activity-logs', element: withSuspense(ActivityLogsPage) }],
   },
   {
     element: (

@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase/client'
-import type { CustomerRatingStatus, PosCustomerSummary, TopCustomerRow } from '../types'
+import type {
+  CustomerRatingStatus,
+  CustomerRecentOrder,
+  PosCustomerSummary,
+  TopCustomerRow,
+} from '../types'
 
 type UntypedRpc = (
   fn: string,
@@ -50,6 +55,33 @@ export async function getPosCustomerSummary(customerId: string): Promise<PosCust
   if (error) throw new Error(error.message)
   if (!data || typeof data !== 'object') throw new Error('Customer summary unavailable')
   return mapSummary(data as Record<string, unknown>)
+}
+
+export async function listCustomerRecentOrders(
+  customerId: string,
+  limit = 10,
+): Promise<CustomerRecentOrder[]> {
+  const { data, error } = await untypedRpc('list_customer_recent_orders', {
+    p_customer_id: customerId,
+    p_limit: limit,
+  })
+  if (error) throw new Error(error.message)
+  const rows = Array.isArray(data) ? data : []
+  return rows.map((r) => {
+    const row = r as Record<string, unknown>
+    return {
+      id: String(row.id),
+      invoice_no: String(row.invoice_no ?? ''),
+      status: String(row.status ?? ''),
+      fulfilment_status: (row.fulfilment_status as string | null) ?? null,
+      channel: (row.channel as string | null) ?? null,
+      order_source: (row.order_source as string | null) ?? null,
+      grand_total: asNumber(row.grand_total),
+      due_total: asNumber(row.due_total),
+      created_at: String(row.created_at ?? ''),
+      completed_at: (row.completed_at as string | null) ?? null,
+    }
+  })
 }
 
 export async function refreshCustomerRating(customerId: string): Promise<{

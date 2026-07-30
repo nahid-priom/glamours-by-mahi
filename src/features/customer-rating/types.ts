@@ -22,6 +22,19 @@ export type PosCustomerSummary = {
   financial_status: CustomerFinancialStatus
 }
 
+export type CustomerRecentOrder = {
+  id: string
+  invoice_no: string
+  status: string
+  fulfilment_status: string | null
+  channel: string | null
+  order_source: string | null
+  grand_total: number
+  due_total: number
+  created_at: string
+  completed_at: string | null
+}
+
 export type TopCustomerRow = {
   id: string
   name: string

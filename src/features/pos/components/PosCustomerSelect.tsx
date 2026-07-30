@@ -22,6 +22,8 @@ export type PosCustomerSelectProps = {
   /** Called after a customer is selected/created (e.g. to refocus the scanner). */
   onAfterResolve?: () => void
   className?: string
+  /** When false, parent owns the summary card (default true). */
+  showSummary?: boolean
 }
 
 export function PosCustomerSelect({
@@ -33,6 +35,7 @@ export function PosCustomerSelect({
   canCreate,
   onAfterResolve,
   className,
+  showSummary = true,
 }: PosCustomerSelectProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -72,12 +75,12 @@ export function PosCustomerSelect({
             onClick={() => setDialogOpen(true)}
           >
             <UserPlus className="h-4 w-4" />
-            Customer
+            New customer
           </Button>
         ) : null}
       </div>
 
-      {value ? (
+      {showSummary && value ? (
         <CustomerSummaryCard
           customerId={value}
           onClear={() => {

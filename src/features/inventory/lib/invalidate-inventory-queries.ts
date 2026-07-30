@@ -8,5 +8,6 @@ export function invalidateInventoryQueries(qc: QueryClient) {
   void qc.invalidateQueries({ queryKey: ['low-stock'] })
   void qc.invalidateQueries({ queryKey: ['inventory-balances'] })
   void qc.invalidateQueries({ queryKey: ['stock-overview'] })
+  void qc.invalidateQueries({ queryKey: ['stock-ledger'] })
   void invalidateDashboardCaches(qc)
 }

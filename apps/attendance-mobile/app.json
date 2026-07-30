@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Glamours Attendance",
+    "slug": "glamours-attendance",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "glamours-attendance",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Glamours Attendance to use Face ID for check-in."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Glamours Attendance to verify you are at the branch."
+        }
+      ]
+    ],
+    "android": {
+      "package": "com.glamours.attendance",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "INTERNET"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.glamours.attendance",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Biometric verification for attendance",
+        "NSLocationWhenInUseUsageDescription": "Branch geo-fence verification"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "replace-with-eas-project-id"
+      }
+    }
+  }
+}

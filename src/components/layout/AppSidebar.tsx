@@ -194,6 +194,11 @@ const groups: NavGroup[] = [
     children: [
       { to: '/settings', label: 'General', end: true, permission: 'settings.manage' },
       {
+        to: '/activity-logs',
+        label: 'Activity logs',
+        permission: 'audit.read',
+      },
+      {
         to: '/settings/website',
         label: 'Website',
         permission: ['website.hero.read', 'website.manage', 'settings.manage'],

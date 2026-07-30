@@ -25,14 +25,43 @@ export type BranchStockRow = {
 
 export type LowStockRow = BranchStockRow & { shortage: number }
 
+export const STOCK_MOVEMENT_TYPES = [
+  'opening',
+  'purchase',
+  'purchase_return',
+  'sale',
+  'sale_return',
+  'adjustment',
+  'transfer_out',
+  'transfer_in',
+  'damage',
+  'quarantine',
+  'correction',
+] as const
+
+export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]
+
 export type LedgerFilters = {
   branchId?: string | null
   variantId?: string | null
+  productId?: string | null
+  locationId?: string | null
+  movementTypes?: string[]
   search?: string
   page?: number
   pageSize?: number
   fromDate?: string | null
   toDate?: string | null
+  /** Default: asc when variantId set (birth-to-date), else desc */
+  sortDir?: 'asc' | 'desc'
+}
+
+export type LedgerListItem = StockLedgerRow & {
+  sku?: string
+  productName?: string
+  variantName?: string | null
+  productId?: string
+  locationName?: string
 }
 
 export type StockFilters = {
@@ -167,43 +196,129 @@ export async function lowStock(
   return { items: low.slice(start, start + pageSize), total: low.length }
 }
 
+async function resolveLedgerVariantIds(filters: LedgerFilters): Promise<string[] | null> {
+  const search = filters.search?.trim()
+  const productId = filters.productId?.trim() || null
+  if (!search && !productId) return null
+
+  let builder = supabase
+    .from('product_variants')
+    .select('id, products!inner(name)')
+    .is('deleted_at', null)
+    .limit(500)
+
+  if (productId) builder = builder.eq('product_id', productId)
+  if (search) {
+    const s = search.replace(/%/g, '')
+    builder = builder.or(`sku.ilike.%${s}%,barcode.ilike.%${s}%,name.ilike.%${s}%`)
+  }
+
+  const { data, error } = await builder
+  if (error) throw error
+
+  const ids = (data ?? []).map((row) => row.id as string)
+  if (ids.length === 0 && search) {
+    const s = search.replace(/%/g, '')
+    let productsQ = supabase
+      .from('products')
+      .select('id')
+      .is('deleted_at', null)
+      .ilike('name', `%${s}%`)
+      .limit(100)
+    if (productId) productsQ = productsQ.eq('id', productId)
+    const { data: products, error: prodErr } = await productsQ
+    if (prodErr) throw prodErr
+    const productIds = (products ?? []).map((p) => p.id as string)
+    if (productIds.length === 0) return []
+    const { data: byName, error: nameErr } = await supabase
+      .from('product_variants')
+      .select('id')
+      .is('deleted_at', null)
+      .in('product_id', productIds)
+      .limit(500)
+    if (nameErr) throw nameErr
+    return (byName ?? []).map((row) => row.id as string)
+  }
+  return ids
+}
+
 export async function ledger(
   filters: LedgerFilters = {},
-): Promise<{ items: Array<StockLedgerRow & { sku?: string; productName?: string }>; total: number }> {
+): Promise<{ items: LedgerListItem[]; total: number }> {
   const page = filters.page ?? 1
   const pageSize = filters.pageSize ?? 50
   const { from, to } = range(page, pageSize)
+  const sortAsc =
+    filters.sortDir === 'asc' ||
+    (filters.sortDir !== 'desc' && Boolean(filters.variantId))
+
+  let variantIds: string[] | null = null
+  if (filters.variantId) {
+    variantIds = [filters.variantId]
+  } else if (filters.productId || filters.search?.trim()) {
+    variantIds = await resolveLedgerVariantIds(filters)
+    if (variantIds.length === 0) return { items: [], total: 0 }
+  }
 
   let q = supabase
     .from('stock_ledger')
     .select(
       `
       *,
-      product_variants!inner ( sku, name, products!inner ( name ) )
+      product_variants!inner ( id, sku, name, product_id, products!inner ( id, name ) ),
+      stock_locations!inner ( id, name )
     `,
       { count: 'exact' },
     )
     .is('deleted_at', null)
-    .order('occurred_at', { ascending: false })
+    .order('occurred_at', { ascending: sortAsc })
+    .order('id', { ascending: sortAsc })
     .range(from, to)
 
   if (filters.branchId) q = q.eq('branch_id', filters.branchId)
-  if (filters.variantId) q = q.eq('variant_id', filters.variantId)
-  if (filters.fromDate) q = q.gte('occurred_at', filters.fromDate)
-  if (filters.toDate) q = q.lte('occurred_at', filters.toDate)
+  if (variantIds) q = q.in('variant_id', variantIds)
+  if (filters.locationId) q = q.eq('location_id', filters.locationId)
+  if (filters.movementTypes && filters.movementTypes.length > 0) {
+    q = q.in('movement_type', filters.movementTypes)
+  }
+  if (filters.fromDate) {
+    const fromIso = filters.fromDate.includes('T')
+      ? filters.fromDate
+      : `${filters.fromDate}T00:00:00.000Z`
+    q = q.gte('occurred_at', fromIso)
+  }
+  if (filters.toDate) {
+    const toIso = filters.toDate.includes('T')
+      ? filters.toDate
+      : `${filters.toDate}T23:59:59.999Z`
+    q = q.lte('occurred_at', toIso)
+  }
 
   const { data, error, count } = await q
   if (error) throw error
 
   const items = ((data ?? []) as unknown as Array<
     StockLedgerRow & {
-      product_variants?: { sku: string; name: string | null; products?: { name: string } }
+      product_variants?: {
+        id: string
+        sku: string
+        name: string | null
+        product_id: string
+        products?: { id: string; name: string }
+      }
+      stock_locations?: { id: string; name: string }
     }
-  >).map((row) => ({
-    ...row,
-    sku: row.product_variants?.sku,
-    productName: row.product_variants?.products?.name,
-  }))
+  >).map((row) => {
+    const { product_variants: pv, stock_locations: loc, ...rest } = row
+    return {
+      ...rest,
+      sku: pv?.sku,
+      productName: pv?.products?.name,
+      variantName: pv?.name ?? null,
+      productId: pv?.product_id ?? pv?.products?.id,
+      locationName: loc?.name,
+    }
+  })
 
   return { items, total: count ?? 0 }
 }

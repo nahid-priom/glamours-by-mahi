@@ -106,7 +106,7 @@ export function StockDetailsDrawer({ row, open, canViewCost, onOpenChange }: Pro
               <Link to={`/products/${row.product_id}/edit`}>Edit Product</Link>
             </Button>
             <Button asChild size="sm" variant="outline" className="flex-1">
-              <Link to="/inventory/ledger">Stock History</Link>
+              <Link to={`/inventory/ledger?productId=${row.product_id}`}>Stock History</Link>
             </Button>
           </div>
         </div>

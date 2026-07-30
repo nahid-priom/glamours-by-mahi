@@ -1,4 +1,5 @@
 export { CustomerSummaryCard } from './components/CustomerSummaryCard'
+export { CustomerRecentOrders } from './components/CustomerRecentOrders'
 export { CustomersAdminPage } from './pages/CustomersAdminPage'
 export { CustomerDetailPage } from './pages/CustomerDetailPage'
 export { CustomersPage } from './CustomersPage'

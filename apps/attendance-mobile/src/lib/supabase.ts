@@ -1,0 +1,33 @@
+import 'react-native-url-polyfill/auto'
+import { createClient } from '@supabase/supabase-js'
+import * as SecureStore from 'expo-secure-store'
+import { Platform } from 'react-native'
+
+const ExpoSecureStoreAdapter = {
+  getItem: (key: string) => SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+}
+
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? ''
+const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? ''
+
+if (!url || !anon) {
+  console.warn('Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY')
+}
+
+export const supabase = createClient(url, anon, {
+  auth: {
+    storage: Platform.OS === 'web' ? undefined : ExpoSecureStoreAdapter,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+})
+
+export function functionsBaseUrl() {
+  return (
+    process.env.EXPO_PUBLIC_ATTENDANCE_FUNCTION_URL?.replace(/\/$/, '') ||
+    `${url.replace(/\/$/, '')}/functions/v1`
+  )
+}

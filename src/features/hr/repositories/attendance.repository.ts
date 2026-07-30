@@ -170,3 +170,111 @@ export async function getTodayAttendanceSummary(branchId?: string | null) {
     employees,
   }
 }
+
+type UntypedRpc = (
+  fn: string,
+  args?: Record<string, unknown>,
+) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+
+const untypedRpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc
+// New mobile tables are not yet in generated Database types
+const fromUntyped = (table: string) => (supabase as unknown as { from: (t: string) => any }).from(table)
+
+export type MobileDeviceRow = {
+  id: string
+  employee_id: string
+  status: string
+  platform: string
+  device_name: string | null
+  installation_id: string
+  created_at: string
+  employees: { full_name: string; employee_code: string } | null
+}
+
+export async function listMobileAttendanceDevices(): Promise<MobileDeviceRow[]> {
+  const { data, error } = await fromUntyped('employee_attendance_devices')
+    .select('id, employee_id, status, platform, device_name, installation_id, created_at, employees(full_name, employee_code)')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as MobileDeviceRow[]
+}
+
+export async function approveMobileDevice(payload: {
+  device_id: string
+  action: 'approve' | 'reject' | 'revoke' | 'block'
+  reason?: string
+}) {
+  const { data, error } = await untypedRpc('approve_attendance_device', { payload })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export type AttendanceAttemptRow = {
+  id: string
+  employee_id: string | null
+  event_type: string | null
+  decision: string
+  rejection_reason: string | null
+  risk_score: number
+  distance_metres: number | null
+  created_at: string
+}
+
+export async function listAttendanceAttempts(limit = 50): Promise<AttendanceAttemptRow[]> {
+  const { data, error } = await fromUntyped('attendance_attempts')
+    .select(
+      'id, employee_id, event_type, decision, rejection_reason, risk_score, distance_metres, created_at',
+    )
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data ?? []) as AttendanceAttemptRow[]
+}
+
+export type CorrectionRequestRow = {
+  id: string
+  employee_id: string
+  work_date: string
+  request_type: string
+  reason: string
+  status: string
+  created_at: string
+  employees: { full_name: string; employee_code: string } | null
+}
+
+export async function listCorrectionRequests(): Promise<CorrectionRequestRow[]> {
+  const { data, error } = await fromUntyped('attendance_correction_requests')
+    .select(
+      'id, employee_id, work_date, request_type, reason, status, created_at, employees(full_name, employee_code)',
+    )
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (error) throw error
+  return (data ?? []) as CorrectionRequestRow[]
+}
+
+export async function reviewCorrectionRequest(payload: {
+  id: string
+  action: 'approve' | 'reject'
+  notes?: string
+}) {
+  const { data, error } = await untypedRpc('review_attendance_correction', { payload })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export async function issueBranchQr(branchId: string) {
+  const { data, error } = await untypedRpc('issue_attendance_branch_qr', {
+    payload: { branch_id: branchId },
+  })
+  if (error) throw new Error(error.message)
+  return data as {
+    id: string
+    branch_id: string
+    token: string
+    issued_at: string
+    expires_at: string
+  }
+}

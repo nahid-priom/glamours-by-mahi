@@ -173,6 +173,9 @@ export const SalesCommissionsPage = lazy(() =>
 export const CommissionSettingsPage = lazy(() =>
   import('@/features/sales/pages/CommissionSettingsPage').then((m) => ({ default: m.CommissionSettingsPage })),
 )
+export const ActivityLogsPage = lazy(() =>
+  import('@/features/activity-logs/pages/ActivityLogsPage').then((m) => ({ default: m.ActivityLogsPage })),
+)
 export const OnlineOrdersPage = lazy(() =>
   import('@/features/sales/pages/OnlineOrdersPage').then((m) => ({ default: m.OnlineOrdersPage })),
 )
