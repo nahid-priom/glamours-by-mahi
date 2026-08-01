@@ -30,9 +30,21 @@ function isPayable(status: string) {
   return status === 'approved' || status === 'pending'
 }
 
-function statusLabel(status: string) {
+function statusLabel(status: string, reversedAmount = 0) {
+  if (status === 'reversed') return 'reversed'
+  if (reversedAmount > 0 && (status === 'pending' || status === 'approved' || status === 'paid')) {
+    return 'partially reversed'
+  }
   if (status === 'pending' || status === 'approved') return 'unpaid'
   return status
+}
+
+function commissionStatusClass(status: string, reversedAmount = 0) {
+  if (status === 'reversed') return 'bg-rose-100 text-rose-900'
+  if (reversedAmount > 0) return 'bg-amber-100 text-amber-900'
+  if (status === 'pending' || status === 'approved') return 'bg-blue-100 text-blue-900'
+  if (status === 'paid') return 'bg-emerald-100 text-emerald-900'
+  return 'bg-[#F3F4F6] text-[#374151]'
 }
 
 export function SalesCommissionsPage() {
@@ -72,7 +84,7 @@ export function SalesCommissionsPage() {
     return {
       unpaid: sum(['approved', 'pending']),
       paid: sum(['paid']),
-      reversed: sum(['reversed']),
+      reversed: data.reduce((s, r) => s + Number(r.reversed_amount ?? 0), 0),
       month: data
         .filter((r) => r.created_at.slice(0, 7) === new Date().toISOString().slice(0, 7))
         .reduce((s, r) => s + Number(r.commission_amount), 0),
@@ -192,18 +204,22 @@ export function SalesCommissionsPage() {
                 <td className="px-3 py-2">{employeeName(row)}</td>
                 <td className="px-3 py-2">{row.sales?.invoice_no ?? '—'}</td>
                 <td className="px-3 py-2 tabular-nums">{formatBDT(Number(row.base_amount))}</td>
-                <td className="px-3 py-2 tabular-nums">{formatBDT(Number(row.commission_amount))}</td>
+                <td className="px-3 py-2 tabular-nums">
+                  {formatBDT(Number(row.commission_amount))}
+                  {Number(row.reversed_amount ?? 0) > 0 ? (
+                    <span className="mt-0.5 block text-[11px] text-[#9CA3AF]">
+                      −{formatBDT(Number(row.reversed_amount))} reversed
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-3 py-2">
                   <span
                     className={cn(
                       'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
-                      (row.status === 'pending' || row.status === 'approved') &&
-                        'bg-blue-100 text-blue-900',
-                      row.status === 'paid' && 'bg-emerald-100 text-emerald-900',
-                      row.status === 'reversed' && 'bg-rose-100 text-rose-900',
+                      commissionStatusClass(row.status, Number(row.reversed_amount ?? 0)),
                     )}
                   >
-                    {statusLabel(row.status)}
+                    {statusLabel(row.status, Number(row.reversed_amount ?? 0))}
                   </span>
                 </td>
                 <td className="px-3 py-2">
@@ -238,7 +254,10 @@ export function SalesCommissionsPage() {
               </p>
             </div>
             <p className="mt-2 text-xs text-[#6B7280] capitalize">
-              Status: {statusLabel(row.status)}
+              Status: {statusLabel(row.status, Number(row.reversed_amount ?? 0))}
+              {Number(row.reversed_amount ?? 0) > 0
+                ? ` · −${formatBDT(Number(row.reversed_amount))} reversed`
+                : ''}
             </p>
             {isPayable(row.status) ? (
               <div className="mt-3">

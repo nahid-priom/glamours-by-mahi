@@ -72,10 +72,26 @@ export async function cancelOnlineOrder(saleId: string, reason?: string) {
   return data
 }
 
-export async function approveOnlineOrder(saleId: string) {
-  const { data, error } = await rpc('approve_online_order', {
-    payload: { sale_id: saleId },
-  })
+export type ApproveOnlineOrderPayload = {
+  sale_id: string
+  add_items?: Array<{ variant_id: string; qty: number; unit_price?: number }>
+  increase_items?: Array<{ sale_item_id: string; add_qty: number; unit_price?: number }>
+  shipping?: number
+  discount?: number
+  notes?: string
+}
+
+/** Approve staff online order; optional tele-sales adds/increases earn separate commission. */
+export async function approveOnlineOrder(payload: string | ApproveOnlineOrderPayload) {
+  const body: ApproveOnlineOrderPayload =
+    typeof payload === 'string' ? { sale_id: payload } : payload
+  const { data, error } = await rpc('approve_online_order', { payload: body })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export async function amendStaffOnlineOrder(payload: ApproveOnlineOrderPayload) {
+  const { data, error } = await rpc('amend_staff_online_order', { payload })
   if (error) throw new Error(error.message)
   return data
 }
@@ -106,6 +122,7 @@ export const onlineOrdersRepository = {
   fulfilOnlineOrder,
   cancelOnlineOrder,
   approveOnlineOrder,
+  amendStaffOnlineOrder,
   assignOnlineOrder,
   createStaffOnlineOrder,
 }

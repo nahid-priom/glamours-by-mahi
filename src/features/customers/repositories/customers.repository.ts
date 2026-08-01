@@ -8,6 +8,8 @@ export type CustomerLedgerRow = Tables<'customer_ledger'>
 export type CustomerFilters = {
   search?: string
   status?: string | null
+  /** When true, only customers with current_due > 0 */
+  dueOnly?: boolean
   page?: number
   pageSize?: number
 }
@@ -52,6 +54,9 @@ export async function listCustomers(
   }
   if (filters.status) {
     builder = builder.eq('status', filters.status as 'active' | 'blocked' | 'archived')
+  }
+  if (filters.dueOnly) {
+    builder = builder.gt('current_due', 0)
   }
 
   const { data, error, count } = await builder

@@ -1,17 +1,23 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import {
   ArrowDownRight,
   ArrowUpRight,
   Banknote,
   Building2,
   Loader2,
+  Package,
+  RotateCcw,
+  ShoppingBag,
+  TrendingUp,
   Users,
   Wallet,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/auth.context'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardKpiCard } from './components/DashboardKpiCard'
 import { CourierStatusCard } from './components/CourierStatusCard'
 import { TopSellingProductsCard } from './components/TopSellingProductsCard'
@@ -47,9 +53,44 @@ function ChartBlock({ children }: { children: React.ReactNode }) {
   )
 }
 
+function KpiSkeletonGrid() {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <Skeleton key={i} className="h-[88px] rounded-xl" />
+      ))}
+    </div>
+  )
+}
+
+function buildFilterQuery(branchId: string, dateFrom: string | null, dateTo: string | null) {
+  const params = new URLSearchParams()
+  if (branchId) params.set('branch_id', branchId)
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo) params.set('date_to', dateTo)
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
+
 export function DashboardPage() {
-  const { session, profile } = useAuth()
-  const [branchId, setBranchId] = useState(session.branchId ?? '')
+  const { profile, activeBranchId, setActiveBranchId } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const branchId = searchParams.get('branch_id') ?? activeBranchId ?? ''
+  const dateFrom = searchParams.get('date_from')
+  const dateTo = searchParams.get('date_to')
+
+  useEffect(() => {
+    const urlBranch = searchParams.get('branch_id')
+    if (urlBranch && urlBranch !== activeBranchId) {
+      setActiveBranchId(urlBranch)
+    }
+  }, [searchParams, activeBranchId, setActiveBranchId])
+
+  const filterSuffix = useMemo(
+    () => buildFilterQuery(branchId, dateFrom, dateTo),
+    [branchId, dateFrom, dateTo],
+  )
 
   const { data: branches = [] } = useQuery({
     queryKey: queryKeys.dashboardBranches,
@@ -57,10 +98,18 @@ export function DashboardPage() {
     enabled: Boolean(profile),
   })
 
-  const { data, isLoading, error } = useDashboardOverview(branchId)
+  const { data, isLoading, error, dataUpdatedAt, isFetching } = useDashboardOverview(branchId)
 
   const salesSpark = data?.salesOverview.map((d) => d.sales) ?? []
   const collectionSpark = data?.salesOverview.map((d) => d.collection) ?? []
+
+  function onBranchChange(next: string) {
+    setActiveBranchId(next || null)
+    const params = new URLSearchParams(searchParams)
+    if (next) params.set('branch_id', next)
+    else params.delete('branch_id')
+    setSearchParams(params, { replace: true })
+  }
 
   if (!profile) {
     return (
@@ -75,7 +124,8 @@ export function DashboardPage() {
           <select
             className="h-9 rounded-full border border-[#E5E7EB] bg-white px-3 text-xs font-medium text-[#111111]"
             value={branchId}
-            onChange={(e) => setBranchId(e.target.value)}
+            onChange={(e) => onBranchChange(e.target.value)}
+            aria-label="Filter dashboard by branch"
           >
             <option value="">All Branches</option>
             {branches.map((b) => (
@@ -85,23 +135,23 @@ export function DashboardPage() {
             ))}
           </select>
           <span className="rounded-full border border-[#E5E7EB] bg-white px-3 py-2 text-[11px] text-[#6B7280]">
-            Today · Live Supabase
+            {isFetching ? 'Refreshing…' : 'Live Supabase'}
+            {data?.refreshedAt || dataUpdatedAt ? (
+              <> · {new Date(data?.refreshedAt ?? dataUpdatedAt).toLocaleTimeString()}</>
+            ) : null}
           </span>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading dashboard…
-        </div>
-      ) : null}
       {error ? (
         <p className="text-sm text-[#E11D48]">Failed to load dashboard metrics.</p>
       ) : null}
 
+      {isLoading ? <KpiSkeletonGrid /> : null}
+
       {data ? (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
             <DashboardKpiCard
               title="Today's Sales"
               value={data.kpis.todaySales}
@@ -109,7 +159,7 @@ export function DashboardPage() {
               tone="rose"
               trend={data.kpis.trends.sales}
               sparkline={salesSpark}
-              to="/sales"
+              to={`/sales${filterSuffix}`}
             />
             <DashboardKpiCard
               title="Today's Collection"
@@ -118,7 +168,7 @@ export function DashboardPage() {
               tone="green"
               trend={data.kpis.trends.collection}
               sparkline={collectionSpark}
-              to="/sales/collections"
+              to={`/sales/collections${filterSuffix}`}
             />
             <DashboardKpiCard
               title="Today's Expenses"
@@ -126,7 +176,7 @@ export function DashboardPage() {
               icon={ArrowUpRight}
               tone="amber"
               trend={data.kpis.trends.expenses}
-              to="/accounts/expenses"
+              to={`/accounts/expenses${filterSuffix}`}
             />
             <DashboardKpiCard
               title="Net Cash Flow"
@@ -134,7 +184,7 @@ export function DashboardPage() {
               icon={Wallet}
               tone="blue"
               trend={data.kpis.trends.netCashFlow}
-              to="/accounts"
+              to={`/accounts${filterSuffix}`}
             />
             <DashboardKpiCard
               title="Customer Due"
@@ -143,7 +193,7 @@ export function DashboardPage() {
               tone="slate"
               trend={0}
               trendLabel="outstanding"
-              to="/customers"
+              to={`/customers?due=1${filterSuffix ? `&${filterSuffix.slice(1)}` : ''}`}
             />
             <DashboardKpiCard
               title="Supplier Due"
@@ -152,8 +202,50 @@ export function DashboardPage() {
               tone="slate"
               trend={0}
               trendLabel="outstanding"
-              to="/suppliers"
+              to={`/suppliers?due=1${filterSuffix ? `&${filterSuffix.slice(1)}` : ''}`}
             />
+            <DashboardKpiCard
+              title="Low Stock"
+              value={data.kpis.lowStockCount}
+              icon={Package}
+              tone="amber"
+              trend={0}
+              trendLabel="items"
+              to={`/inventory/low-stock${filterSuffix}`}
+            />
+            {data.kpis.onlineOrders != null ? (
+              <DashboardKpiCard
+                title="Online Orders"
+                value={data.kpis.onlineOrders}
+                icon={ShoppingBag}
+                tone="blue"
+                trend={0}
+                trendLabel="in range"
+                to={`/sales/online-orders${filterSuffix}`}
+              />
+            ) : null}
+            {data.kpis.returnsToday != null ? (
+              <DashboardKpiCard
+                title="Returns"
+                value={data.kpis.returnsToday}
+                icon={RotateCcw}
+                tone="rose"
+                trend={0}
+                trendLabel="in range"
+                to={`/sales/returns${filterSuffix}`}
+              />
+            ) : null}
+            {data.kpis.profitToday != null ? (
+              <DashboardKpiCard
+                title="Profit"
+                value={data.kpis.profitToday}
+                icon={TrendingUp}
+                tone="green"
+                trend={0}
+                trendLabel="collection − expenses"
+                to={`/reports/profit${filterSuffix}`}
+              />
+            ) : null}
             {data.kpis.stockValuation != null ? (
               <DashboardKpiCard
                 title="Stock Value"
@@ -164,9 +256,9 @@ export function DashboardPage() {
                 trendLabel={
                   data.kpis.stockCost != null
                     ? `cost ${formatBDT(data.kpis.stockCost)}`
-                    : 'valuation RPC'
+                    : 'valuation'
                 }
-                to="/inventory"
+                to={`/inventory${filterSuffix}`}
               />
             ) : null}
           </div>

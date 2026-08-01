@@ -88,6 +88,8 @@ export type SalesCommissionRow = {
   sale_id: string | null
   base_amount: number
   commission_amount: number
+  reversed_amount?: number | null
+  original_commission_amount?: number | null
   status: string
   needs_employee_link: boolean
   created_at: string
@@ -249,7 +251,8 @@ async function listCommissions(filters: CommissionFilters = {}) {
   let q = db
     .from('salesman_commissions')
     .select(
-      `id, profile_id, employee_id, sale_id, base_amount, commission_amount, status,
+      `id, profile_id, employee_id, sale_id, base_amount, commission_amount,
+       reversed_amount, original_commission_amount, status,
        needs_employee_link, created_at,
        profiles!salesman_commissions_profile_id_fkey(full_name),
        employees!salesman_commissions_employee_id_fkey(full_name, employee_code, designation),

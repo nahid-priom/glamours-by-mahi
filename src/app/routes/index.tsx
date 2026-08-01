@@ -6,6 +6,8 @@ import { PWAProvider } from '@/features/pwa/core'
 import { useAppBootstrap } from '@/lib/deployment/use-app-bootstrap'
 import { AdminAuthGuard } from '@/app/guards/AdminAuthGuard'
 import { DashboardLayout } from './lazy-layouts'
+import { administrationRoutes } from './administration.routes'
+import { staffRoutes } from './staff.routes'
 import { accountsRoutes } from './accounts.routes'
 import { courierRoutes } from './courier.routes'
 import { customersRoutes } from './customers.routes'
@@ -51,6 +53,7 @@ export const router = createBrowserRouter([
               dashboardRoutes,
               ...salesRoutes,
               moderatorRoutes,
+              staffRoutes,
               productsRoutes,
               ...inventoryRoutes,
               ...purchasesRoutes,
@@ -60,6 +63,7 @@ export const router = createBrowserRouter([
               accountsRoutes,
               hrRoutes,
               reportsRoutes,
+              administrationRoutes,
               ...settingsRoutes,
             ],
           },

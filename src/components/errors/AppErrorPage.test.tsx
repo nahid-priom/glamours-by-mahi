@@ -1,19 +1,30 @@
 /** @vitest-environment jsdom */
 import type { ReactNode } from 'react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { AppErrorPage } from './AppErrorPage'
 
+vi.mock('@/lib/env/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/env/config')>()
+  return {
+    ...actual,
+    isDevMode: vi.fn(() => true),
+  }
+})
+
+import { isDevMode } from '@/lib/env/config'
+
 function renderWithRouter(ui: ReactNode, initialPath = '/') {
-  const router = createMemoryRouter(
-    [{ path: '*', element: ui }],
-    { initialEntries: [initialPath] },
-  )
+  const router = createMemoryRouter([{ path: '*', element: ui }], { initialEntries: [initialPath] })
   return render(<RouterProvider router={router} />)
 }
 
 describe('AppErrorPage', () => {
+  beforeEach(() => {
+    vi.mocked(isDevMode).mockReturnValue(true)
+  })
+
   it('shows public home action on storefront routes', () => {
     renderWithRouter(<AppErrorPage />, '/shop')
     expect(screen.getByRole('heading', { name: 'Something went wrong' })).toBeTruthy()
@@ -32,20 +43,10 @@ describe('AppErrorPage', () => {
   })
 
   it('does not expose stack traces in production UI', () => {
-    const previous = import.meta.env.DEV
-    Object.defineProperty(import.meta, 'env', {
-      value: { ...import.meta.env, DEV: false },
-      configurable: true,
-    })
-
+    vi.mocked(isDevMode).mockReturnValue(false)
     renderWithRouter(
       <AppErrorPage technicalDetails="TypeError: secret internals at /assets/foo.js" />,
     )
     expect(screen.queryByText(/secret internals/i)).toBeNull()
-
-    Object.defineProperty(import.meta, 'env', {
-      value: { ...import.meta.env, DEV: previous },
-      configurable: true,
-    })
   })
 })

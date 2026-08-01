@@ -29,6 +29,8 @@ export interface CourierCredentialsRef {
   /** Reference to Edge Function secrets — never store raw secrets in client tables. */
   secretRef: string
   environment: 'sandbox' | 'production'
+  organizationId?: string
+  companyId?: string
 }
 
 export interface CreateParcelRequest {

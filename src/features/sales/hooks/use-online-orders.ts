@@ -40,7 +40,7 @@ export function useCancelOnlineOrder() {
 export function useApproveOnlineOrder() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (saleId: string) => approveOnlineOrder(saleId),
+    mutationFn: (saleId: string) => approveOnlineOrder({ sale_id: saleId }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['online-orders'] })
     },

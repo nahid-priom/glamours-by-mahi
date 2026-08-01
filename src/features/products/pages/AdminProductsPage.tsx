@@ -26,7 +26,7 @@ import {
 import { buildProductInventoryViewModels, UNCATEGORIZED_CATEGORY_ID } from '../lib/product-list-model'
 import {
   getCategoryProductCounts,
-  listProducts,
+  listProductsWithInventorySummary,
   softDeleteProduct,
   type ProductListItem,
 } from '../repositories/catalog.repository'
@@ -94,7 +94,7 @@ export function AdminProductsPage() {
     refetch,
   } = useQuery({
     queryKey: queryKeys.products(listParams),
-    queryFn: () => listProducts(listParams),
+    queryFn: () => listProductsWithInventorySummary(listParams),
     placeholderData: keepPreviousData,
   })
 

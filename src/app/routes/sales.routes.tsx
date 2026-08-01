@@ -6,6 +6,7 @@ import {
   ExchangeCreatePage,
   ExchangesPage,
   HeldSalesPage,
+  ApproveOnlineOrderPage,
   OnlineOrdersPage,
   PosPage,
   SaleDetailPage,
@@ -27,7 +28,18 @@ export const salesRoutes: RouteObject[] = [
   },
   {
     element: <PermissionRoute permission="orders.read" />,
-    children: [{ path: '/sales/online-orders', element: withSuspense(OnlineOrdersPage) }],
+    children: [
+      { path: '/sales/online-orders', element: withSuspense(OnlineOrdersPage) },
+      {
+        element: <PermissionRoute permission={['orders.approve', 'orders.fulfil']} />,
+        children: [
+          {
+            path: '/sales/online-orders/:id/approve',
+            element: withSuspense(ApproveOnlineOrderPage),
+          },
+        ],
+      },
+    ],
   },
   {
     element: <PermissionRoute permission={['exchange.read', 'exchange.create']} />,

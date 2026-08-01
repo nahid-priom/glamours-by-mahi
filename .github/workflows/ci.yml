@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Typecheck · Lint · Unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:coverage
+      - run: npm run test:edge
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage
+          if-no-files-found: ignore
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+  e2e:
+    name: Playwright smoke
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - name: Preview + e2e
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+          CI: 'true'
+        run: |
+          npx vite preview --host 127.0.0.1 --port 4173 &
+          npx --yes wait-on http://127.0.0.1:4173
+          npx playwright test --project=desktop
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+  supabase-sql:
+    name: Supabase local SQL smoke
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase
+        run: supabase start
+      - name: Apply migrations + P0/RLS smoke
+        run: |
+          supabase db reset --yes
+          supabase db query --local --file supabase/tests/rpc/p0_delivery_smoke.sql
+          supabase db query --local --file supabase/tests/rpc/exchange_and_reset_contract_smoke.sql
+          supabase db query --local --file supabase/tests/rpc/bulk_import_smoke.sql
+          supabase db query --local --file supabase/tests/rls/rls_matrix_smoke.sql
+          supabase db query --local --file supabase/tests/sql/inventory_wac_outcome_smoke.sql
+          supabase db query --local --file supabase/tests/sql/mod_reference_uniqueness_smoke.sql
+          supabase db query --local --file supabase/tests/sql/commission_structure_smoke.sql
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup

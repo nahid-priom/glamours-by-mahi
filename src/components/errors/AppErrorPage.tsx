@@ -4,6 +4,7 @@ import { Link, useNavigate, useRouteError } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { brandConfig } from '@/config/brand'
 import { isChunkLoadError } from '@/lib/deployment/chunk-recovery'
+import { isDevMode } from '@/lib/env/config'
 
 export type AppErrorVariant = 'public' | 'erp' | 'offline' | 'config'
 
@@ -133,7 +134,7 @@ export function AppErrorPage({
           ) : null}
         </div>
 
-        {import.meta.env.DEV && technicalDetails ? (
+        {isDevMode() && technicalDetails ? (
           <pre className="mt-6 max-h-40 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
             {technicalDetails}
           </pre>
@@ -154,7 +155,7 @@ export function RouteErrorElement() {
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false
   const chunkError = isChunkLoadError(error)
 
-  if (import.meta.env.DEV) {
+  if (isDevMode()) {
     console.error('[route-error]', error)
   } else if (chunkError || error instanceof Error) {
     console.error('[route-error]', error instanceof Error ? error.message : 'chunk load failure')

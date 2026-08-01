@@ -1159,6 +1159,109 @@ export async function listProductAudit(productId: string): Promise<ProductAuditE
   return (data ?? []) as ProductAuditEntry[]
 }
 
+export type ProductInventorySummaryRow = {
+  id: string
+  name: string
+  base_sku: string | null
+  status: string | null
+  reorder_level: number
+  is_active: boolean
+  category_id: string | null
+  category_name: string | null
+  variant_count: number
+  total_stock: number
+  stock_cost: number
+  stock_value: number
+  stock_status: string
+  cover_path: string | null
+}
+
+export async function listProductsWithInventorySummary(
+  params: PageParams & { branchId?: string | null } = {},
+): Promise<PagedResult<ProductListItem>> {
+  const page = params.page ?? 1
+  const pageSize = params.pageSize ?? 24
+  try {
+    const { data, error } = await untypedRpc('list_products_with_inventory_summary', {
+      payload: {
+        search: params.search ?? null,
+        category_id: params.categoryId ?? null,
+        status: params.status ?? null,
+        stock_status: params.stockStatus ?? null,
+        branch_id: params.branchId ?? null,
+        page,
+        page_size: pageSize,
+      },
+    })
+    if (error) throw error
+    const row = data as { items?: ProductInventorySummaryRow[]; total?: number; page?: number; page_size?: number }
+    const items = (row.items ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      base_sku: p.base_sku,
+      status: p.status,
+      reorder_level: p.reorder_level,
+      is_active: p.is_active,
+      category_id: p.category_id,
+      totalStock: p.total_stock,
+      variantCount: p.variant_count,
+      categories: p.category_name ? { id: p.category_id ?? '', name: p.category_name } : null,
+      coverUrl: p.cover_path,
+    })) as unknown as ProductListItem[]
+    return {
+      items,
+      total: row.total ?? 0,
+      page: row.page ?? page,
+      pageSize: row.page_size ?? pageSize,
+    }
+  } catch {
+    return listProducts(params)
+  }
+}
+
+export async function getProductVariantSummary(productId: string, branchId?: string | null) {
+  const { data, error } = await untypedRpc('get_product_variant_summary', {
+    p_product_id: productId,
+    p_branch_id: branchId ?? null,
+  })
+  if (error) throw error
+  return data as {
+    product_id: string
+    name: string
+    status: string
+    reorder_level: number
+    variants: Array<{
+      variant_id: string
+      sku: string
+      barcode: string | null
+      name: string | null
+      selling_price: number
+      purchase_price: number
+      is_active: boolean
+      total_stock: number
+      reserved: number
+      available: number
+    }>
+  }
+}
+
+export async function getVariantBranchStock(variantId: string) {
+  const { data, error } = await untypedRpc('get_variant_branch_stock', {
+    p_variant_id: variantId,
+  })
+  if (error) throw error
+  return (data ?? []) as Array<{
+    branch_id: string
+    branch_name: string
+    branch_code: string
+    location_id: string
+    location_name: string
+    quantity: number
+    qty_reserved: number
+    available: number
+  }>
+}
+
 export const catalogRepository = {
   listCategories,
   searchCategories,
@@ -1199,4 +1302,7 @@ export const catalogRepository = {
   listBranchPrices,
   upsertBranchPrice,
   listProductAudit,
+  listProductsWithInventorySummary,
+  getProductVariantSummary,
+  getVariantBranchStock,
 }

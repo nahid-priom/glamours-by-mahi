@@ -16,6 +16,7 @@ import { brandConfig } from '@/config/brand'
 import { useAuth } from '@/features/auth/auth.context'
 import { PWAInstallButton } from '@/features/pwa/components/PWAInstallButton'
 import { QuickActionsMenu } from '@/features/dashboard/components/QuickActionsMenu'
+import { BranchSwitcher } from '@/components/layout/BranchSwitcher'
 
 export function TopHeader() {
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -60,6 +61,7 @@ export function TopHeader() {
         </div>
 
         <div className="hidden shrink-0 items-center gap-2 lg:flex">
+          <BranchSwitcher />
           <QuickActionsMenu />
           <div className="flex items-center gap-1.5 rounded-xl border border-border bg-slate-50 px-3 py-1.5 text-xs text-text-muted">
             <Calendar className="h-3.5 w-3.5" />

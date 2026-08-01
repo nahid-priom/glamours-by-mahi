@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageShell } from '@/components/layout/PageShell'
@@ -12,6 +12,7 @@ import { formatBDT } from '@/lib/format'
 import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
+import { supabase } from '@/lib/supabase/client'
 import {
   approveSalesReturn,
   getSale,
@@ -26,6 +27,34 @@ type ReturnDraft = {
   unitPrice: number
   selected: boolean
   condition: string
+  barcode?: string | null
+}
+
+type ReturnableRow = {
+  sale_item_id: string
+  variant_id: string
+  sold_qty: number
+  returnable_qty: number
+  unit_price: number
+  product_name: string
+  variant_name: string
+  barcode: string | null
+}
+
+const CONDITIONS = [
+  { value: 'sellable', label: 'Sellable — restock' },
+  { value: 'damaged', label: 'Damaged — write-off' },
+  { value: 'defective', label: 'Defective — supplier claim' },
+  { value: 'quarantine', label: 'Quarantine — inspect' },
+] as const
+
+type UntypedRpc = (fn: string, args?: object) => Promise<{ data: unknown; error: { message: string } | null }>
+const untypedRpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc
+
+async function fetchReturnableItems(saleId: string): Promise<ReturnableRow[]> {
+  const { data, error } = await untypedRpc('get_sale_returnable_items', { p_sale_id: saleId })
+  if (error) throw error
+  return (data ?? []) as ReturnableRow[]
 }
 
 export function SaleReturnPage() {
@@ -36,10 +65,18 @@ export function SaleReturnPage() {
   const [reason, setReason] = useState('')
   const [refundAccountId, setRefundAccountId] = useState('')
   const [lines, setLines] = useState<ReturnDraft[] | null>(null)
+  const [scanValue, setScanValue] = useState('')
+  const scanRef = useRef<HTMLInputElement>(null)
 
   const { data: sale, isLoading } = useQuery({
     queryKey: queryKeys.sale(id ?? ''),
     queryFn: () => getSale(id!),
+    enabled: !!id,
+  })
+
+  const { data: returnableRows = [], isLoading: returnableLoading } = useQuery({
+    queryKey: ['sale-returnable', id],
+    queryFn: () => fetchReturnableItems(id!),
     enabled: !!id,
   })
 
@@ -50,6 +87,18 @@ export function SaleReturnPage() {
 
   const draftLines = useMemo(() => {
     if (lines) return lines
+    if (returnableRows.length > 0) {
+      return returnableRows.map((row) => ({
+        saleItemId: row.sale_item_id,
+        label: `${row.product_name} · ${row.variant_name}`,
+        maxQty: Number(row.returnable_qty),
+        qty: Number(row.returnable_qty),
+        unitPrice: Number(row.unit_price),
+        selected: Number(row.returnable_qty) > 0,
+        condition: 'sellable',
+        barcode: row.barcode,
+      }))
+    }
     if (!sale?.sale_items) return []
     return sale.sale_items.map((item) => {
       const product = item.product_variants?.products?.name ?? 'Product'
@@ -62,9 +111,10 @@ export function SaleReturnPage() {
         unitPrice: Number(item.unit_price),
         selected: true,
         condition: 'sellable',
+        barcode: item.product_variants?.barcode ?? null,
       } satisfies ReturnDraft
     })
-  }, [lines, sale])
+  }, [lines, returnableRows, sale])
 
   const selectedLines = draftLines.filter((l) => l.selected && l.qty > 0)
   const returnTotal = selectedLines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0)
@@ -107,7 +157,30 @@ export function SaleReturnPage() {
     )
   }
 
-  if (isLoading) return <LoadingSkeleton rows={4} />
+  function handleScanSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const code = scanValue.trim()
+    if (!code) return
+    const match = draftLines.find(
+      (l) => l.barcode && l.barcode.toLowerCase() === code.toLowerCase() && l.maxQty > 0,
+    )
+    if (!match) {
+      toast('No returnable line matches that barcode', 'error')
+      setScanValue('')
+      return
+    }
+    setLines(
+      draftLines.map((line) =>
+        line.saleItemId === match.saleItemId
+          ? { ...line, selected: true, qty: Math.min(line.qty + 1, line.maxQty) }
+          : line,
+      ),
+    )
+    setScanValue('')
+    scanRef.current?.focus()
+  }
+
+  if (isLoading || returnableLoading) return <LoadingSkeleton rows={4} />
   if (!sale || sale.deleted_at) return <EmptyState title="Sale not found" />
   if (sale.status !== 'completed') {
     return (
@@ -123,7 +196,7 @@ export function SaleReturnPage() {
   return (
     <PageShell
       title={`Return ${sale.invoice_no}`}
-      description="Creates a completed sale return via approve_sales_return (stock + finance)."
+      description="Return sold qty minus prior returns. Condition controls stock destination."
       actions={
         <Link to={`/sales/${sale.id}`}>
           <Button variant="outline" className="rounded-full">
@@ -133,6 +206,19 @@ export function SaleReturnPage() {
       }
     >
       <div className="mx-auto max-w-lg space-y-4 rounded-2xl border bg-white p-5 shadow-sm">
+        <form onSubmit={handleScanSubmit} className="flex gap-2">
+          <Input
+            ref={scanRef}
+            placeholder="Scan barcode to select line…"
+            value={scanValue}
+            onChange={(e) => setScanValue(e.target.value)}
+            autoComplete="off"
+          />
+          <Button type="submit" variant="outline">
+            Scan
+          </Button>
+        </form>
+
         <ul className="space-y-3 text-sm">
           {draftLines.map((line) => (
             <li key={line.saleItemId} className="space-y-2 border-b pb-3">
@@ -141,12 +227,14 @@ export function SaleReturnPage() {
                   type="checkbox"
                   className="mt-1"
                   checked={line.selected}
+                  disabled={line.maxQty <= 0}
                   onChange={(e) => updateLine(line.saleItemId, { selected: e.target.checked })}
                 />
                 <span className="flex-1">
                   <span className="font-medium">{line.label}</span>
                   <span className="mt-0.5 block text-xs text-[#6B7280]">
-                    Sold {line.maxQty} · {formatBDT(line.unitPrice)}
+                    Returnable {line.maxQty} · {formatBDT(line.unitPrice)}
+                    {line.barcode ? ` · ${line.barcode}` : ''}
                   </span>
                 </span>
               </label>
@@ -166,7 +254,7 @@ export function SaleReturnPage() {
                     />
                   </div>
                   <div>
-                    <Label>Condition</Label>
+                    <Label>Condition / destination</Label>
                     <select
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
                       value={line.condition}
@@ -174,9 +262,11 @@ export function SaleReturnPage() {
                         updateLine(line.saleItemId, { condition: e.target.value })
                       }
                     >
-                      <option value="sellable">Sellable</option>
-                      <option value="damaged">Damaged</option>
-                      <option value="quarantine">Quarantine</option>
+                      {CONDITIONS.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -186,6 +276,16 @@ export function SaleReturnPage() {
         </ul>
 
         <p className="text-sm font-semibold">Return total: {formatBDT(returnTotal)}</p>
+
+        <div>
+          <Label>Reason</Label>
+          <Input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Customer return reason"
+            className="mt-1"
+          />
+        </div>
 
         <div>
           <Label>Refund account (if cash refund due)</Label>
@@ -203,22 +303,12 @@ export function SaleReturnPage() {
           </select>
         </div>
 
-        <label className="block text-sm">
-          <span className="mb-1 block text-[#6B7280]">Reason</span>
-          <Input
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Damaged / Wrong size / Customer request"
-            className="rounded-xl"
-          />
-        </label>
-
         <Button
-          className="w-full rounded-full"
+          className="w-full"
           disabled={mutation.isPending || selectedLines.length === 0}
           onClick={() => mutation.mutate()}
         >
-          {mutation.isPending ? 'Processing…' : 'Confirm Return'}
+          {mutation.isPending ? 'Processing return…' : 'Complete return'}
         </Button>
       </div>
     </PageShell>

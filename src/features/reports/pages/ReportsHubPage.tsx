@@ -12,6 +12,7 @@ const LINKS = [
   { to: '/reports/salesperson', title: 'Salesperson', desc: 'Performance by staff' },
   { to: '/reports/product-performance', title: 'Product performance', desc: 'Top variants by revenue' },
   { to: '/reports/courier-returns', title: 'Courier returns', desc: 'Return request outcomes' },
+  { to: '/reports/courier', title: 'Courier', desc: 'Parcels, COD, delivery rates and sync logs' },
 ]
 
 export function ReportsHubPage() {

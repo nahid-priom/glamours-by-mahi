@@ -16,6 +16,9 @@ export type DashboardOverview = {
     lowStockCount: number
     stockValuation: number | null
     stockCost: number | null
+    onlineOrders?: number
+    returnsToday?: number
+    profitToday?: number
     trends: {
       sales: number
       collection: number
@@ -84,6 +87,16 @@ export type DashboardOverview = {
     created_at: string
   }>
   accounts: Array<{ id: string; name: string; balance: number }>
+  refreshedAt?: string
+}
+
+type UntypedRpc = (fn: string, args?: object) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>
+const untypedRpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc
+
+export type DashboardQueryParams = {
+  branchId?: string | null
+  dateFrom?: string | null
+  dateTo?: string | null
 }
 
 function dayStartIso(d = new Date()) {
@@ -113,6 +126,113 @@ function pctChange(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 1000) / 10
 }
 
+function num(v: unknown): number {
+  const n = Number(v ?? 0)
+  return Number.isFinite(n) ? n : 0
+}
+
+function mapRpcOverview(raw: Record<string, unknown>): DashboardOverview {
+  const kpis = (raw.kpis ?? {}) as Record<string, unknown>
+  const trends = (kpis.trends ?? {}) as Record<string, unknown>
+  return {
+    kpis: {
+      todaySales: num(kpis.todaySales),
+      todayCollection: num(kpis.todayCollection),
+      todayExpenses: num(kpis.todayExpenses),
+      netCashFlow: num(kpis.netCashFlow),
+      customerDue: num(kpis.customerDue),
+      supplierDue: num(kpis.supplierDue),
+      lowStockCount: num(kpis.lowStockCount),
+      stockValuation: kpis.stockValuation == null ? null : num(kpis.stockValuation),
+      stockCost: kpis.stockCost == null ? null : num(kpis.stockCost),
+      onlineOrders: num(kpis.onlineOrders),
+      returnsToday: num(kpis.returnsToday),
+      profitToday: num(kpis.profitToday),
+      trends: {
+        sales: num(trends.sales),
+        collection: num(trends.collection),
+        expenses: num(trends.expenses),
+        netCashFlow: num(trends.netCashFlow),
+      },
+    },
+    salesOverview: ((raw.salesOverview ?? []) as Array<Record<string, unknown>>).map((d) => ({
+      date: String(d.date ?? ''),
+      label: String(d.label ?? ''),
+      sales: num(d.sales),
+      collection: num(d.collection),
+    })),
+    channelPerformance: ((raw.channelPerformance ?? []) as Array<Record<string, unknown>>).map((c) => ({
+      channel: String(c.channel ?? 'other'),
+      sales: num(c.sales),
+      count: num(c.count),
+    })),
+    channelTotal: num(raw.channelTotal),
+    orderStatuses: {
+      pending: num((raw.orderStatuses as Record<string, unknown> | undefined)?.pending),
+      readyToShip: num((raw.orderStatuses as Record<string, unknown> | undefined)?.readyToShip),
+      courierBooked: num((raw.orderStatuses as Record<string, unknown> | undefined)?.courierBooked),
+      inTransit: num((raw.orderStatuses as Record<string, unknown> | undefined)?.inTransit),
+      deliveredToday: num((raw.orderStatuses as Record<string, unknown> | undefined)?.deliveredToday),
+      returnedToday: num((raw.orderStatuses as Record<string, unknown> | undefined)?.returnedToday),
+    },
+    topProducts: ((raw.topProducts ?? []) as Array<Record<string, unknown>>).map((p) => ({
+      rank: num(p.rank),
+      productId: String(p.productId ?? ''),
+      name: String(p.name ?? ''),
+      qty: num(p.qty),
+      revenue: num(p.revenue),
+      image: String(p.image ?? ''),
+    })),
+    branchPerformance: ((raw.branchPerformance ?? []) as Array<Record<string, unknown>>).map((b) => ({
+      id: String(b.id ?? ''),
+      name: String(b.name ?? ''),
+      sales: num(b.sales),
+      collection: num(b.collection),
+      profit: num(b.profit),
+    })),
+    lowStockProducts: ((raw.lowStockProducts ?? []) as Array<Record<string, unknown>>).map((p) => ({
+      productId: String(p.productId ?? ''),
+      productName: String(p.productName ?? ''),
+      branchName: String(p.branchName ?? ''),
+      qty: num(p.qty),
+      image: String(p.image ?? ''),
+    })),
+    cashFlowTrend: ((raw.cashFlowTrend ?? []) as Array<Record<string, unknown>>).map((d) => ({
+      date: String(d.date ?? ''),
+      label: String(d.label ?? ''),
+      income: num(d.income),
+      expense: num(d.expense),
+      profit: num(d.profit),
+    })),
+    attendanceToday: {
+      present: num((raw.attendanceToday as Record<string, unknown> | undefined)?.present),
+      late: num((raw.attendanceToday as Record<string, unknown> | undefined)?.late),
+      absent: num((raw.attendanceToday as Record<string, unknown> | undefined)?.absent),
+      leave: num((raw.attendanceToday as Record<string, unknown> | undefined)?.leave),
+      employees: ((raw.attendanceToday as Record<string, unknown> | undefined)?.employees as Array<Record<string, unknown>> ?? []).map((e) => ({
+        id: String(e.id ?? ''),
+        name: String(e.name ?? ''),
+        role: String(e.role ?? ''),
+        status: String(e.status ?? ''),
+        checkIn: String(e.checkIn ?? ''),
+      })),
+    },
+    recentActivity: ((raw.recentActivity ?? []) as Array<Record<string, unknown>>).map((a) => ({
+      id: String(a.id ?? ''),
+      action: String(a.action ?? ''),
+      userName: String(a.userName ?? ''),
+      details: String(a.details ?? ''),
+      created_at: String(a.created_at ?? ''),
+    })),
+    accounts: ((raw.accounts ?? []) as Array<Record<string, unknown>>).map((a) => ({
+      id: String(a.id ?? ''),
+      name: String(a.name ?? ''),
+      balance: num(a.balance),
+    })),
+    refreshedAt: raw.refreshedAt ? String(raw.refreshedAt) : undefined,
+  }
+}
+
 async function sumDue(table: 'customers' | 'suppliers') {
   const { data, error } = await supabase.from(table).select('current_due').is('deleted_at', null)
   if (error) throw error
@@ -138,7 +258,6 @@ async function salesTotals(fromIso: string, toIso: string, branchId?: string | n
 }
 
 async function expenseTotal(fromDate: string, toDate: string) {
-  // Prefer simple retail expense entries; fall back to 0 if table unavailable
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   const { data, error } = await db
@@ -155,20 +274,10 @@ async function expenseTotal(fromDate: string, toDate: string) {
   return (data ?? []).reduce((s: number, r: { amount: number }) => s + Number(r.amount ?? 0), 0)
 }
 
-export async function listDashboardBranches(): Promise<DashboardBranch[]> {
-  const { data, error } = await supabase
-    .from('branches')
-    .select('id, name, code')
-    .eq('is_active', true)
-    .is('deleted_at', null)
-    .order('name')
-  if (error) throw error
-  return (data ?? []).filter((b) => !b.code.includes('WH'))
-}
-
-export async function getDashboardOverview(branchId?: string | null): Promise<DashboardOverview> {
-  const todayStart = dayStartIso()
-  const todayEnd = dayEndIso()
+async function getDashboardOverviewClient(params: DashboardQueryParams = {}): Promise<DashboardOverview> {
+  const branchId = params.branchId ?? null
+  const todayStart = params.dateFrom ?? dayStartIso()
+  const todayEnd = params.dateTo ?? dayEndIso()
   const yesterdayStart = dayStartIso(daysAgo(1))
   const yesterdayEnd = dayEndIso(daysAgo(1))
   const todayDate = todayStart.slice(0, 10)
@@ -307,7 +416,41 @@ export async function getDashboardOverview(branchId?: string | null): Promise<Da
       name: a.name,
       balance: Number(a.current_balance ?? 0),
     })),
+    refreshedAt: new Date().toISOString(),
   }
+}
+
+export async function listDashboardBranches(): Promise<DashboardBranch[]> {
+  const { data, error } = await supabase
+    .from('branches')
+    .select('id, name, code')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('name')
+  if (error) throw error
+  return (data ?? []).filter((b) => !b.code.includes('WH'))
+}
+
+export async function getDashboardOverview(params: DashboardQueryParams = {}): Promise<DashboardOverview> {
+  const branchId = params.branchId ?? null
+  const dateFrom = params.dateFrom ?? dayStartIso()
+  const dateTo = params.dateTo ?? dayEndIso()
+
+  const { data, error } = await untypedRpc('get_dashboard_overview', {
+    p_branch_id: branchId,
+    p_date_from: dateFrom,
+    p_date_to: dateTo,
+  })
+
+  if (!error && data && typeof data === 'object') {
+    return mapRpcOverview(data as Record<string, unknown>)
+  }
+
+  if (error && !/could not find|does not exist|42883|PGRST202/i.test(error.message)) {
+    console.warn('get_dashboard_overview RPC failed, using client fallback', error.message)
+  }
+
+  return getDashboardOverviewClient({ branchId, dateFrom, dateTo })
 }
 
 export const dashboardRepository = {

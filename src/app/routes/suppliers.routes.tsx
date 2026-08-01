@@ -1,11 +1,17 @@
 import type { RouteObject } from 'react-router-dom'
 import { PermissionRoute } from '@/app/guards/PermissionRoute'
-import { SupplierDetailPage, SuppliersPage, withSuspense } from './lazy'
+import {
+  SupplierDetailPage,
+  SupplierImportPage,
+  SuppliersPage,
+  withSuspense,
+} from './lazy'
 
 export const suppliersRoutes: RouteObject = {
   element: <PermissionRoute permission="suppliers.read" />,
   children: [
     { path: '/suppliers', element: withSuspense(SuppliersPage) },
+    { path: '/suppliers/import', element: withSuspense(SupplierImportPage) },
     { path: '/suppliers/new', element: withSuspense(SuppliersPage) },
     { path: '/suppliers/:id', element: withSuspense(SupplierDetailPage) },
     { path: '/suppliers/:id/edit', element: withSuspense(SupplierDetailPage) },

@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { PermissionRoute } from '@/app/guards/PermissionRoute'
 import {
   BranchReportPage,
+  CourierReportPage,
   CourierReturnsReportPage,
   CustomerDueReportPage,
   InventoryReportPage,
@@ -31,6 +32,7 @@ export const reportsRoutes: RouteObject = {
     { path: '/reports/branch', element: withSuspense(BranchReportPage) },
     { path: '/reports/salesperson', element: withSuspense(SalespersonReportPage) },
     { path: '/reports/product-performance', element: withSuspense(ProductPerformanceReportPage) },
+    { path: '/reports/courier', element: withSuspense(CourierReportPage) },
     { path: '/reports/courier-returns', element: withSuspense(CourierReturnsReportPage) },
     { path: '/reports/products', element: <Navigate to="/reports/product-performance" replace /> },
     { path: '/reports/branches', element: <Navigate to="/reports/branch" replace /> },

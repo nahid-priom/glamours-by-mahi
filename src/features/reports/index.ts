@@ -17,3 +17,4 @@ export {
   CourierReturnsReportPage,
 } from './pages/AnalyticsReportsPages'
 export { TopCustomersReportPage } from './pages/TopCustomersReportPage'
+export { CourierReportPage } from './pages/CourierReportPage'

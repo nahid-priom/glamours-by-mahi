@@ -8,6 +8,8 @@ export type SupplierLedgerRow = Tables<'supplier_ledger'>
 export type SupplierFilters = {
   search?: string
   status?: string | null
+  /** When true, only suppliers with current_due > 0 */
+  dueOnly?: boolean
   page?: number
   pageSize?: number
 }
@@ -50,6 +52,9 @@ export async function listSuppliers(
   if (q) builder = builder.or(`name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`)
   if (filters.status) {
     builder = builder.eq('status', filters.status as 'active' | 'inactive')
+  }
+  if (filters.dueOnly) {
+    builder = builder.gt('current_due', 0)
   }
 
   const { data, error, count } = await builder

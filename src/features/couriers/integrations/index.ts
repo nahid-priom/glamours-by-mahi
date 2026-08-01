@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase/client'
 import type {
   CourierCredentialsRef,
   CourierProviderAdapter,
@@ -18,6 +19,21 @@ function mapStatus(raw: string): CreateParcelResult['status'] {
   if (s.includes('fail')) return 'delivery_failed'
   if (s.includes('book') || s.includes('create')) return 'booked'
   return 'unknown'
+}
+
+async function invokeSteadfast<T>(
+  action: 'testConnection' | 'createParcel' | 'getStatus',
+  payload: Record<string, unknown>,
+  meta?: { organization_id?: string; courier_company_id?: string; created_by?: string },
+): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('courier-steadfast', {
+    body: { action, payload, ...meta },
+  })
+  if (error) throw new Error(error.message)
+  if (data && typeof data === 'object' && 'error' in data && data.error) {
+    throw new Error(String(data.error))
+  }
+  return data as T
 }
 
 /** Manual / in-house courier — no external API; booking stays internal. */
@@ -106,8 +122,65 @@ function stubAdapter(
   }
 }
 
+/** Steadfast — proxied via courier-steadfast Edge Function (secrets server-side). */
+export const steadfastAdapter: CourierProviderAdapter = {
+  providerId: 'steadfast',
+  displayName: 'Steadfast',
+
+  async testConnection(creds) {
+    try {
+      const res = await invokeSteadfast<{ ok: boolean; message: string }>('testConnection', {}, {
+        organization_id: creds.organizationId,
+        courier_company_id: creds.companyId,
+      })
+      return { ok: res.ok, message: res.message }
+    } catch (e) {
+      return { ok: false, message: (e as Error).message }
+    }
+  },
+
+  async createParcel(creds, request) {
+    const res = await invokeSteadfast<CreateParcelResult>(
+      'createParcel',
+      {
+        merchantOrderId: request.merchantOrderId,
+        recipientName: request.recipientName,
+        recipientPhone: request.recipientPhone,
+        recipientAddress: request.recipientAddress,
+        codAmount: request.codAmount,
+        note: request.note,
+      },
+      { organization_id: creds.organizationId, courier_company_id: creds.companyId },
+    )
+    return res
+  },
+
+  async trackParcel(creds, trackingCode) {
+    return invokeSteadfast<TrackParcelResult>(
+      'getStatus',
+      { trackingCode },
+      { organization_id: creds.organizationId, courier_company_id: creds.companyId },
+    )
+  },
+
+  async cancelParcel() {
+    throw new Error('Steadfast cancel is not implemented in this adapter yet.')
+  },
+
+  async normalizeWebhook(payload) {
+    return manualCourierAdapter.normalizeWebhook(payload, {})
+  },
+
+  verifyWebhookSignature(_rawBody, headers, secret) {
+    const provided =
+      headers['x-webhook-secret'] ??
+      headers['x-courier-secret'] ??
+      headers['authorization']?.replace(/^Bearer\s+/i, '')
+    return Boolean(secret) && provided === secret
+  },
+}
+
 export const pathaoAdapter = stubAdapter('pathao', 'Pathao')
-export const steadfastAdapter = stubAdapter('steadfast', 'Steadfast')
 export const redxAdapter = stubAdapter('redx', 'RedX')
 export const paperflyAdapter = stubAdapter('paperfly', 'Paperfly')
 

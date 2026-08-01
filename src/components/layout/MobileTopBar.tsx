@@ -1,7 +1,6 @@
-import { useState } from 'react'
-import { Bell, Menu } from 'lucide-react'
+import { Bell, LogOut, Menu } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { APP_NAME } from '@/lib/constants'
-import { ROLES } from '@/lib/constants'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { BranchSwitcher } from '@/components/layout/BranchSwitcher'
+import { useAuth } from '@/features/auth/auth-session'
 import { cn } from '@/lib/utils'
 
 interface MobileTopBarProps {
@@ -20,12 +21,24 @@ interface MobileTopBarProps {
 }
 
 export function MobileTopBar({ onMenuClick, className }: MobileTopBarProps) {
-  const [role, setRole] = useState<string>('Super Admin')
+  const { profile, signOut } = useAuth()
+  const navigate = useNavigate()
+  const name = profile?.full_name ?? 'Staff'
+  const initials = name
+    .split(' ')
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/admin/login', { replace: true })
+  }
 
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 flex h-14 shrink-0 items-center border-b border-border bg-white px-4 lg:hidden',
+        'sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1 border-b border-border bg-white px-3 lg:hidden',
         className,
       )}
     >
@@ -39,14 +52,14 @@ export function MobileTopBar({ onMenuClick, className }: MobileTopBarProps) {
         <Menu className="h-5 w-5" />
       </Button>
 
-      <div className="min-w-0 flex-1 px-2 text-center">
-        <span className="truncate text-sm font-bold text-red-500">{APP_NAME}</span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-bold text-red-500">{APP_NAME}</p>
+        <BranchSwitcher className="mt-0.5 max-w-full border-0 bg-transparent px-0 py-0" />
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
         <Button variant="ghost" size="icon" className="relative h-9 w-9" aria-label="Notifications">
           <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
         </Button>
 
         <DropdownMenu>
@@ -57,21 +70,22 @@ export function MobileTopBar({ onMenuClick, className }: MobileTopBarProps) {
               aria-label="Profile menu"
             >
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-[10px] font-semibold">CEO</AvatarFallback>
+                <AvatarFallback className="text-[10px] font-semibold">{initials}</AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>{role}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-xs font-normal text-text-muted">
-              Switch Role
+            <DropdownMenuLabel>
+              <p className="truncate text-sm">{name}</p>
+              <p className="truncate text-[10px] font-normal text-muted-foreground">
+                {profile?.role_name ?? 'Staff'}
+              </p>
             </DropdownMenuLabel>
-            {ROLES.map((r) => (
-              <DropdownMenuItem key={r} onClick={() => setRole(r)}>
-                {r}
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => void handleSignOut()}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

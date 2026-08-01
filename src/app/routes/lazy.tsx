@@ -103,6 +103,9 @@ export const CustomersAdminPage = lazy(() =>
 export const CustomerDetailPage = lazy(() =>
   import('@/features/customers/pages/CustomerDetailPage').then((m) => ({ default: m.CustomerDetailPage })),
 )
+export const CustomerImportPage = lazy(() =>
+  import('@/features/customers/pages/CustomerImportPage').then((m) => ({ default: m.CustomerImportPage })),
+)
 export const SettingsPage = lazy(() =>
   import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 )
@@ -178,6 +181,11 @@ export const ActivityLogsPage = lazy(() =>
 )
 export const OnlineOrdersPage = lazy(() =>
   import('@/features/sales/pages/OnlineOrdersPage').then((m) => ({ default: m.OnlineOrdersPage })),
+)
+export const ApproveOnlineOrderPage = lazy(() =>
+  import('@/features/sales/pages/ApproveOnlineOrderPage').then((m) => ({
+    default: m.ApproveOnlineOrderPage,
+  })),
 )
 
 export const CategoriesPage = lazy(() =>
@@ -351,6 +359,73 @@ export const CourierReturnsReportPage = lazy(() =>
     default: m.CourierReturnsReportPage,
   })),
 )
+export const CourierReportPage = lazy(() =>
+  import('@/features/reports/pages/CourierReportPage').then((m) => ({ default: m.CourierReportPage })),
+)
+
+export const AdministrationHubPage = lazy(() =>
+  import('@/features/administration/pages/AdministrationHubPage').then((m) => ({
+    default: m.AdministrationHubPage,
+  })),
+)
+export const AdminUsersListPage = lazy(() =>
+  import('@/features/administration/pages/AdminUsersListPage').then((m) => ({
+    default: m.AdminUsersListPage,
+  })),
+)
+export const AdminUserInvitePage = lazy(() =>
+  import('@/features/administration/pages/AdminUserInvitePage').then((m) => ({
+    default: m.AdminUserInvitePage,
+  })),
+)
+export const AdminUserDetailPage = lazy(() =>
+  import('@/features/administration/pages/AdminUserDetailPage').then((m) => ({
+    default: m.AdminUserDetailPage,
+  })),
+)
+export const AdminRolesPage = lazy(() =>
+  import('@/features/administration/pages/AdminRolesPage').then((m) => ({ default: m.AdminRolesPage })),
+)
+export const AdminPermissionsPage = lazy(() =>
+  import('@/features/administration/pages/AdminPermissionsPage').then((m) => ({
+    default: m.AdminPermissionsPage,
+  })),
+)
+export const DataResetSettingsPage = lazy(() =>
+  import('@/features/settings/pages/DataResetSettingsPage').then((m) => ({
+    default: m.DataResetSettingsPage,
+  })),
+)
+
+export const StaffDashboardPage = lazy(() =>
+  import('@/features/staff/pages/StaffDashboardPage').then((m) => ({ default: m.StaffDashboardPage })),
+)
+export const StaffMySalesPage = lazy(() =>
+  import('@/features/staff/pages/MySalesPage').then((m) => ({ default: m.MySalesPage })),
+)
+export const StaffMyOrdersPage = lazy(() =>
+  import('@/features/staff/pages/MyOrdersPage').then((m) => ({ default: m.MyOrdersPage })),
+)
+export const StaffMyCommissionPage = lazy(() =>
+  import('@/features/staff/pages/MyCommissionPage').then((m) => ({ default: m.MyCommissionPage })),
+)
+export const StaffFollowUpsPage = lazy(() =>
+  import('@/features/staff/pages/FollowUpsPage').then((m) => ({ default: m.FollowUpsPage })),
+)
+export const StaffMyCustomersPage = lazy(() =>
+  import('@/features/staff/pages/MyCustomersPage').then((m) => ({ default: m.MyCustomersPage })),
+)
+export const StaffMyTargetsPage = lazy(() =>
+  import('@/features/staff/pages/MyTargetsPage').then((m) => ({ default: m.MyTargetsPage })),
+)
+export const StaffProfilePage = lazy(() =>
+  import('@/features/staff/pages/StaffProfilePage').then((m) => ({ default: m.StaffProfilePage })),
+)
+export const AdminTargetsPage = lazy(() =>
+  import('@/features/administration/pages/AdminTargetsPage').then((m) => ({
+    default: m.AdminTargetsPage,
+  })),
+)
 
 export const ModeratorDashboardPage = lazy(() =>
   import('@/features/moderator/pages/ModeratorDashboardPage').then((m) => ({
@@ -368,6 +443,9 @@ export const SuppliersPage = lazy(() =>
 )
 export const SupplierDetailPage = lazy(() =>
   import('@/features/suppliers/pages/SupplierDetailPage').then((m) => ({ default: m.SupplierDetailPage })),
+)
+export const SupplierImportPage = lazy(() =>
+  import('@/features/suppliers/pages/SupplierImportPage').then((m) => ({ default: m.SupplierImportPage })),
 )
 
 export const HrEmployeesPage = lazy(() =>

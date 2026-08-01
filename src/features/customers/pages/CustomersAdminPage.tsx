@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Loader2, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -47,13 +47,18 @@ export function CustomersAdminPage() {
   const { profile } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const dueOnly = searchParams.get('due') === '1'
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Customer | null>(null)
   const [form, setForm] = useState<FormState>(empty)
 
-  const filters = { search, page, pageSize: 30 }
+  const filters = useMemo(
+    () => ({ search, page, pageSize: 30, dueOnly }),
+    [search, page, dueOnly],
+  )
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.customersAdmin(filters),
     queryFn: () => listCustomers(filters),
@@ -178,23 +183,49 @@ export function CustomersAdminPage() {
           <h1 className="text-xl font-bold text-[#111827]">Customers</h1>
           <p className="text-sm text-[#6B7280]">Supabase-backed customer directory and dues.</p>
         </div>
-        <PermissionGate permission="customers.manage">
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add customer
-          </Button>
-        </PermissionGate>
+        <div className="flex flex-wrap gap-2">
+          <PermissionGate permission="customers.import">
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/customers/import">
+                <Upload className="mr-1.5 h-4 w-4" />
+                Import
+              </Link>
+            </Button>
+          </PermissionGate>
+          <PermissionGate permission="customers.manage">
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add customer
+            </Button>
+          </PermissionGate>
+        </div>
       </div>
 
-      <Input
-        placeholder="Search name, phone, email…"
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value)
-          setPage(1)
-        }}
-        className="max-w-sm"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          placeholder="Search name, phone, email…"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPage(1)
+          }}
+          className="max-w-sm"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant={dueOnly ? 'default' : 'outline'}
+          onClick={() => {
+            const next = new URLSearchParams(searchParams)
+            if (dueOnly) next.delete('due')
+            else next.set('due', '1')
+            setSearchParams(next, { replace: true })
+            setPage(1)
+          }}
+        >
+          Due only
+        </Button>
+      </div>
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-[#6B7280]">

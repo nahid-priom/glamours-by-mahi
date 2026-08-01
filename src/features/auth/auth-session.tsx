@@ -225,3 +225,34 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthSessionProvider')
   return ctx
 }
+
+/** Test-only provider: inject auth state without Supabase session bootstrap. */
+export function AuthTestProvider({
+  value,
+  children,
+}: {
+  value: Partial<AuthContextValue>
+  children: ReactNode
+}) {
+  const merged = useMemo<AuthContextValue>(
+    () => ({
+      session: null,
+      user: null,
+      profile: null,
+      permissions: [],
+      branchIds: [],
+      activeBranchId: null,
+      setActiveBranchId: () => undefined,
+      loading: false,
+      signIn: async () => undefined,
+      signOut: async () => undefined,
+      refreshProfile: async () => undefined,
+      ...value,
+      can:
+        value.can ??
+        ((permission) => hasPermission(value.permissions ?? [], permission)),
+    }),
+    [value],
+  )
+  return <AuthContext.Provider value={merged}>{children}</AuthContext.Provider>
+}

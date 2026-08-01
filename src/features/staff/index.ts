@@ -1,0 +1,8 @@
+export { StaffDashboardPage } from './pages/StaffDashboardPage'
+export { MySalesPage } from './pages/MySalesPage'
+export { MyOrdersPage } from './pages/MyOrdersPage'
+export { MyCommissionPage } from './pages/MyCommissionPage'
+export { FollowUpsPage } from './pages/FollowUpsPage'
+export { MyCustomersPage } from './pages/MyCustomersPage'
+export { MyTargetsPage } from './pages/MyTargetsPage'
+export { StaffProfilePage } from './pages/StaffProfilePage'

@@ -92,7 +92,7 @@ export function DashboardKpiCard({
 
   if (to) {
     return (
-      <Link to={to} className="block h-full">
+      <Link to={to} className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111111] focus-visible:ring-offset-2">
         {content}
       </Link>
     )

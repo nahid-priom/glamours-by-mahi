@@ -115,19 +115,26 @@ export function OnlineOrdersPage() {
                       <div className="flex flex-wrap gap-2">
                         {pendingApproval ? (
                           <PermissionGate permission="orders.approve">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={approve.isPending}
-                              onClick={() => {
-                                approve.mutate(row.id, {
-                                  onSuccess: () => toast('Order approved', 'success'),
-                                  onError: (e) => toast((e as Error).message, 'error'),
-                                })
-                              }}
-                            >
-                              Approve
-                            </Button>
+                            <div className="flex flex-wrap gap-2">
+                              <Button size="sm" variant="secondary" asChild>
+                                <Link to={`/sales/online-orders/${row.id}/approve`}>
+                                  Review & Approve
+                                </Link>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={approve.isPending}
+                                onClick={() => {
+                                  approve.mutate(row.id, {
+                                    onSuccess: () => toast('Order approved', 'success'),
+                                    onError: (e) => toast((e as Error).message, 'error'),
+                                  })
+                                }}
+                              >
+                                Quick approve
+                              </Button>
+                            </div>
                           </PermissionGate>
                         ) : null}
                         {canFulfil ? (

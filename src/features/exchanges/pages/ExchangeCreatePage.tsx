@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -66,6 +66,12 @@ export function ExchangeCreatePage() {
   const [chargeAsDue, setChargeAsDue] = useState(false)
   const [creditAsAdvance, setCreditAsAdvance] = useState(false)
 
+  const clientTxnKeyRef = useRef(
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `ex-${Date.now()}`,
+  )
+
   const salesQuery = useQuery({
     queryKey: ['exchange-sales-search', saleQuery],
     queryFn: () => searchSalesForExchange(saleQuery),
@@ -108,7 +114,7 @@ export function ExchangeCreatePage() {
 
       return completeExchange({
         sale_id: selectedSale.id,
-        client_txn_key: crypto.randomUUID(),
+        client_txn_key: clientTxnKeyRef.current,
         note: note.trim() || null,
         payment_account_id: difference > 0 && !chargeAsDue ? paymentAccountId : null,
         refund_account_id: difference < 0 && !creditAsAdvance ? refundAccountId : null,
@@ -128,6 +134,10 @@ export function ExchangeCreatePage() {
       })
     },
     onSuccess: async (res) => {
+      clientTxnKeyRef.current =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `ex-${Date.now()}`
       await qc.invalidateQueries({ queryKey: ['exchanges'] })
       toast(`Exchange ${res.exchange_no} completed`)
       navigate('/sales/exchanges')
@@ -539,6 +549,9 @@ export function ExchangeCreatePage() {
               <Button disabled={mutation.isPending} onClick={() => mutation.mutate()}>
                 {mutation.isPending ? 'Processing…' : 'Confirm exchange'}
               </Button>
+              {mutation.isPending ? (
+                <p className="text-xs text-[#6B7280]">Do not close — exchange is being posted…</p>
+              ) : null}
             </div>
           </section>
         ) : null}

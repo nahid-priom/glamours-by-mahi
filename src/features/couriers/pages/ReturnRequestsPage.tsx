@@ -55,7 +55,8 @@ export function ReturnRequestsPage() {
       <div>
         <h1 className="text-xl font-bold text-[#111827]">Courier Return Requests</h1>
         <p className="text-sm text-[#6B7280]">
-          Approve with condition quantities or reject via RPC.
+          Approve with condition quantities or reject via RPC. Courier webhook returns create{' '}
+          <strong>pending review</strong> requests — stock is not restocked until you approve here.
         </p>
       </div>
 

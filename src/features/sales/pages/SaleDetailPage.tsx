@@ -208,6 +208,9 @@ export function SaleDetailPage() {
                       <p className="text-xs text-text-muted">
                         {item.product_variants?.sku}
                         {item.product_variants?.name ? ` · ${item.product_variants.name}` : ''}
+                        {(item as { line_origin?: string | null }).line_origin
+                          ? ` · ${(item as { line_origin?: string }).line_origin}`
+                          : ''}
                       </p>
                     </div>
                   </div>

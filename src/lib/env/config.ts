@@ -21,6 +21,11 @@ function readEnv(name: string): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
+/** Readable in tests via vi.mock; Vite inlines import.meta.env.DEV at build time. */
+export function isDevMode(): boolean {
+  return import.meta.env.DEV === true
+}
+
 export function validatePublicEnv(): EnvValidationIssue[] {
   return REQUIRED_PUBLIC_VARS.flatMap(({ key, label }) => {
     const value = readEnv(key)

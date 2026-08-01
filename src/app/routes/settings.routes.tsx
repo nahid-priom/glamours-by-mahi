@@ -2,6 +2,7 @@ import type { RouteObject } from 'react-router-dom'
 import { PermissionRoute } from '@/app/guards/PermissionRoute'
 import {
   ActivityLogsPage,
+  DataResetSettingsPage,
   HeroSlideEditorPage,
   HeroSlidePreviewPage,
   SettingsPage,
@@ -44,6 +45,10 @@ export const settingsRoutes: RouteObject[] = [
       { path: '/settings/website/hero/:id/preview', element: withSuspense(HeroSlidePreviewPage) },
       { path: '/settings/website/hero/:id', element: withSuspense(HeroSlideEditorPage) },
     ],
+  },
+  {
+    element: <PermissionRoute permission="settings.data_reset" />,
+    children: [{ path: '/settings/data-reset', element: withSuspense(DataResetSettingsPage) }],
   },
   {
     element: <PermissionRoute permission={['stores.read', 'stores.manage', 'settings.manage']} />,

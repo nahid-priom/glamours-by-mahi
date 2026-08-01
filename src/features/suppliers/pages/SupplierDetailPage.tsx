@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { formatBDT } from '@/lib/format'
 import { partyLedgerEntryLabel } from '@/lib/party-ledger'
 import { queryKeys } from '@/lib/query/keys'
+import { SupplierRatingStars, getSupplierRating, refreshSupplierRating } from '@/features/supplier-rating'
 import {
   getSupplier,
   listSupplierLedger,
@@ -35,6 +36,16 @@ export function SupplierDetailPage() {
   const { data: payments = [] } = useQuery({
     queryKey: [...queryKeys.supplier(id), 'payments'],
     queryFn: () => listSupplierPayments(id),
+    enabled: Boolean(id),
+  })
+
+  const { data: rating } = useQuery({
+    queryKey: [...queryKeys.supplier(id), 'rating'],
+    queryFn: async () => {
+      const existing = await getSupplierRating(id)
+      if (existing) return existing
+      return refreshSupplierRating(id)
+    },
     enabled: Boolean(id),
   })
 
@@ -78,6 +89,11 @@ export function SupplierDetailPage() {
             </Link>
           </Button>
           <h1 className="text-xl font-bold text-[#111827]">{supplier.name}</h1>
+          {rating ? (
+            <div className="mt-1">
+              <SupplierRatingStars score={rating.score} status={rating.rating_status} />
+            </div>
+          ) : null}
           <p className="text-sm text-[#6B7280]">
             {[supplier.phone, supplier.email, supplier.address].filter(Boolean).join(' · ') ||
               'No contact details'}

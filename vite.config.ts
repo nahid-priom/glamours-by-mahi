@@ -197,6 +197,29 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    setupFiles: ['src/test/setup/vitest.setup.ts'],
+    css: false,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      // Gate on unit-tested logic paths; page/UI trees climb separately toward 80%.
+      include: [
+        'src/features/pos/cart-utils.ts',
+        'src/features/pos/pos-workflows.ts',
+        'src/features/sales/schemas/**',
+        'src/features/accounting/repositories/unified-core-wrappers.ts',
+        'src/lib/permissions/**',
+        'src/components/permission-gate/**',
+        'src/app/guards/PermissionRoute.tsx',
+      ],
+      exclude: ['src/**/*.{test,spec}.{ts,tsx}', 'src/**/__tests__/**'],
+      thresholds: {
+        lines: 50,
+        functions: 50,
+        branches: 40,
+        statements: 50,
+      },
+    },
   },
 })

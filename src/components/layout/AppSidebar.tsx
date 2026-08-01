@@ -14,6 +14,7 @@ import {
   Settings,
   ChevronDown,
   Sparkles,
+  Shield,
 } from 'lucide-react'
 import { BrandMark } from '@/components/brand/BrandMark'
 import { PoweredByCodeBondhu } from '@/components/brand/PoweredByCodeBondhu'
@@ -58,14 +59,68 @@ const groups: NavGroup[] = [
     ],
   },
   {
+    id: 'staff',
+    label: 'My Workspace',
+    icon: Sparkles,
+    module: 'staff',
+    children: [
+      {
+        to: '/staff/dashboard',
+        label: 'Dashboard',
+        end: true,
+        permission: ['staff.dashboard.read', 'moderator.dashboard.read'],
+      },
+      {
+        to: '/staff/my-sales',
+        label: 'My Sales',
+        permission: ['staff.sales.read_own', 'sales.read'],
+      },
+      {
+        to: '/staff/my-orders',
+        label: 'My Orders',
+        permission: ['staff.sales.read_own', 'orders.read'],
+      },
+      {
+        to: '/staff/my-commission',
+        label: 'My Commission',
+        permission: ['staff.commission.read_own', 'sales.commission.read'],
+      },
+      {
+        to: '/staff/my-targets',
+        label: 'My Targets',
+        permission: ['staff.targets.read_own', 'staff.dashboard.read'],
+      },
+      {
+        to: '/staff/follow-ups',
+        label: 'Follow-ups',
+        permission: 'staff.follow_ups.manage',
+      },
+      {
+        to: '/staff/my-customers',
+        label: 'My Customers',
+        permission: ['staff.dashboard.read', 'customers.read'],
+      },
+      {
+        to: '/moderator/orders/new',
+        label: 'New Order',
+        permission: 'moderator.order.create',
+      },
+      {
+        to: '/staff/profile',
+        label: 'Profile',
+        permission: ['staff.dashboard.read', 'moderator.dashboard.read'],
+      },
+    ],
+  },
+  {
     id: 'moderator',
-    label: 'Moderator',
+    label: 'Moderator (legacy)',
     icon: Sparkles,
     module: 'moderator',
     children: [
       {
         to: '/moderator',
-        label: 'Dashboard',
+        label: 'Order intake KPIs',
         end: true,
         permission: 'moderator.dashboard.read',
       },
@@ -187,6 +242,45 @@ const groups: NavGroup[] = [
     module: 'stores',
   },
   {
+    id: 'administration',
+    label: 'Administration',
+    icon: Shield,
+    module: 'administration',
+    children: [
+      {
+        to: '/administration',
+        label: 'Overview',
+        end: true,
+        permission: ['administration.read', 'administration.users.read', 'settings.manage'],
+      },
+      {
+        to: '/administration/users',
+        label: 'Users',
+        permission: ['administration.users.read', 'settings.manage'],
+      },
+      {
+        to: '/administration/roles',
+        label: 'Roles',
+        permission: ['administration.roles.manage', 'settings.manage'],
+      },
+      {
+        to: '/administration/permissions',
+        label: 'Permissions',
+        permission: ['administration.permissions.read', 'settings.manage'],
+      },
+      {
+        to: '/administration/activity',
+        label: 'Activity',
+        permission: ['administration.activity.read', 'audit.read'],
+      },
+      {
+        to: '/administration/targets',
+        label: 'Staff Targets',
+        permission: ['staff.targets.manage', 'settings.manage'],
+      },
+    ],
+  },
+  {
     id: 'settings',
     label: 'Settings',
     icon: Settings,
@@ -202,6 +296,11 @@ const groups: NavGroup[] = [
         to: '/settings/website',
         label: 'Website',
         permission: ['website.hero.read', 'website.manage', 'settings.manage'],
+      },
+      {
+        to: '/settings/data-reset',
+        label: 'Data Reset',
+        permission: 'settings.data_reset',
       },
     ],
   },

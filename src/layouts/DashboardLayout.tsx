@@ -5,6 +5,7 @@ import { TopHeader } from '@/components/layout/TopHeader'
 import { MobileTopBar } from '@/components/layout/MobileTopBar'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 import { AppFooter } from '@/components/layout/AppFooter'
+import { AppBreadcrumbs } from '@/components/breadcrumbs'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
@@ -74,6 +75,7 @@ export function DashboardLayout() {
                 : 'px-4 py-5 sm:px-5 sm:py-6',
             )}
           >
+            {!isPosRoute ? <AppBreadcrumbs /> : null}
             <Outlet />
           </div>
         </main>
