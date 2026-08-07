@@ -34,7 +34,8 @@ const LEVELS = [
   {
     id: 'full' as const,
     title: '5. Full Business Reset',
-    desc: 'Transactions + inventory + accounts. Org, admin users, and roles preserved.',
+    desc:
+      'Transactions + inventory + accounts + catalog masters (products, variants, categories, subcategories, brands). Org, admin users, and roles preserved.',
   },
 ]
 
@@ -63,10 +64,11 @@ export function DataResetSettingsPage() {
         reset_level: level,
       }),
     onSuccess: () => {
-      toast('Data reset completed. Review the audit log.', 'error')
+      toast('Data reset completed. Review the audit log.', 'success')
       setConfirm('')
       setPhrase('')
       setPreview(null)
+      void previewMut.mutate()
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })

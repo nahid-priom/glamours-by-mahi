@@ -47,6 +47,18 @@ BEGIN
     RAISE EXCEPTION 'execute_data_reset must enforce settings.data_reset permission';
   END IF;
 
+  -- Full reset must clear category base data (catalog masters)
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'execute_data_reset'
+      AND pg_get_functiondef(p.oid) ILIKE '%UPDATE public.categories%'
+  ) THEN
+    RAISE EXCEPTION 'execute_data_reset must soft-delete categories on full reset';
+  END IF;
+
   IF EXISTS (
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'exchanges'
