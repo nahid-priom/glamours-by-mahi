@@ -1,9 +1,10 @@
 /**
  * Edge Function: courier-steadfast
  * Steadfast Courier API proxy — secrets never exposed to browser.
+ * Requires authenticated JWT + courier.book or courier.integration.manage.
  *
  * Required secrets: STEADFAST_API_KEY, STEADFAST_SECRET_KEY, STEADFAST_BASE_URL
- * Optional: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (for sync logging)
+ * Optional: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (logging)
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -89,6 +90,50 @@ async function logSync(
   });
 }
 
+async function assertCourierPermission(
+  req: Request,
+): Promise<{ userId: string; supabaseUser: ReturnType<typeof createClient> }> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) {
+    throw Object.assign(new Error("Missing Authorization bearer token"), { status: 401 });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!supabaseUrl || !anonKey) {
+    throw Object.assign(new Error("Server misconfigured"), { status: 500 });
+  }
+
+  const supabaseUser = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: userData, error: userError } = await supabaseUser.auth.getUser();
+  if (userError || !userData.user) {
+    throw Object.assign(new Error("Unauthorized"), { status: 401 });
+  }
+
+  const { data: allowed, error: permError } = await supabaseUser.rpc("user_has_permission", {
+    p_permission_key: "courier.book",
+  });
+
+  const { data: allowedManage } = await supabaseUser.rpc("user_has_permission", {
+    p_permission_key: "courier.integration.manage",
+  });
+
+  if (permError) {
+    // Fallback: try manage only
+    if (!allowedManage) {
+      throw Object.assign(new Error("Missing courier permission"), { status: 403 });
+    }
+  } else if (!allowed && !allowedManage) {
+    throw Object.assign(new Error("Missing courier permission"), { status: 403 });
+  }
+
+  return { userId: userData.user.id, supabaseUser };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -100,7 +145,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const supabase =
+  const supabaseLog =
     supabaseUrl && serviceRoleKey
       ? createClient(supabaseUrl, serviceRoleKey, {
           auth: { persistSession: false, autoRefreshToken: false },
@@ -108,6 +153,8 @@ Deno.serve(async (req) => {
       : null;
 
   try {
+    const { userId } = await assertCourierPermission(req);
+
     const body = (await req.json()) as {
       action?: SteadfastAction;
       organization_id?: string;
@@ -121,26 +168,28 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "action is required" }, 400);
     }
 
+    const createdBy = body.created_by ?? userId;
+
     if (action === "testConnection") {
       try {
         await steadfastFetch("/get_balance", { method: "GET" });
-        await logSync(supabase, {
+        await logSync(supabaseLog, {
           organization_id: body.organization_id,
           courier_company_id: body.courier_company_id,
           action: "testConnection",
           success: true,
-          created_by: body.created_by,
+          created_by: createdBy,
         });
         return jsonResponse({ ok: true, message: "Steadfast connection successful." });
       } catch (e) {
         const msg = (e as Error).message;
-        await logSync(supabase, {
+        await logSync(supabaseLog, {
           organization_id: body.organization_id,
           courier_company_id: body.courier_company_id,
           action: "testConnection",
           success: false,
           error_message: msg,
-          created_by: body.created_by,
+          created_by: createdBy,
         });
         return jsonResponse({ ok: false, message: msg }, 400);
       }
@@ -168,14 +217,14 @@ Deno.serve(async (req) => {
         consignment.tracking_code ?? consignment.trackingCode ?? consignment.invoice ?? "",
       );
 
-      await logSync(supabase, {
+      await logSync(supabaseLog, {
         organization_id: body.organization_id,
         courier_company_id: body.courier_company_id,
         action: "createParcel",
         success: true,
         request_meta: reqBody as Record<string, unknown>,
         response_meta: data,
-        created_by: body.created_by,
+        created_by: createdBy,
       });
 
       return jsonResponse({
@@ -203,14 +252,14 @@ Deno.serve(async (req) => {
           "unknown",
       );
 
-      await logSync(supabase, {
+      await logSync(supabaseLog, {
         organization_id: body.organization_id,
         courier_company_id: body.courier_company_id,
         action: "getStatus",
         success: true,
         request_meta: { trackingCode },
         response_meta: data,
-        created_by: body.created_by,
+        created_by: createdBy,
       });
 
       return jsonResponse({
@@ -224,7 +273,8 @@ Deno.serve(async (req) => {
 
     return jsonResponse({ error: "Unknown action" }, 400);
   } catch (e) {
-    console.error("courier-steadfast error", e);
-    return jsonResponse({ error: (e as Error).message }, 500);
+    const err = e as Error & { status?: number };
+    console.error("courier-steadfast error", err);
+    return jsonResponse({ error: err.message }, err.status ?? 500);
   }
 });

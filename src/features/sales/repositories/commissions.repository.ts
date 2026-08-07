@@ -93,6 +93,10 @@ export type SalesCommissionRow = {
   status: string
   needs_employee_link: boolean
   created_at: string
+  product_name?: string | null
+  variant_name?: string | null
+  qty?: number | null
+  event_type?: string | null
   profiles?: { full_name: string } | null
   employees?: { full_name: string; employee_code: string; designation: string | null } | null
   sales?: { invoice_no: string } | null
@@ -254,6 +258,7 @@ async function listCommissions(filters: CommissionFilters = {}) {
       `id, profile_id, employee_id, sale_id, base_amount, commission_amount,
        reversed_amount, original_commission_amount, status,
        needs_employee_link, created_at,
+       product_name, variant_name, qty, event_type,
        profiles!salesman_commissions_profile_id_fkey(full_name),
        employees!salesman_commissions_employee_id_fkey(full_name, employee_code, designation),
        sales!salesman_commissions_sale_id_fkey(invoice_no)`,

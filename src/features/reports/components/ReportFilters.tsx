@@ -1,4 +1,4 @@
-import { Input } from '@/components/ui/input'
+import { AppDateRangeField } from '@/components/date-picker'
 import {
   Select,
   SelectContent,
@@ -25,17 +25,11 @@ export function ReportFiltersPanel({ filters, onChange }: ReportFiltersProps) {
         <CardTitle className="text-base">Report Filters</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-3">
-        <Input
-          type="date"
-          value={filters.date_from ?? ''}
-          onChange={(e) => set({ date_from: e.target.value })}
-          className="w-[160px]"
-        />
-        <Input
-          type="date"
-          value={filters.date_to ?? ''}
-          onChange={(e) => set({ date_to: e.target.value })}
-          className="w-[160px]"
+        <AppDateRangeField
+          from={filters.date_from ?? ''}
+          to={filters.date_to ?? ''}
+          onChange={({ from, to }) => set({ date_from: from, date_to: to })}
+          className="min-w-[14rem]"
         />
         <Select value={filters.store ?? 'all'} onValueChange={(v) => set({ store: v })}>
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Store" /></SelectTrigger>

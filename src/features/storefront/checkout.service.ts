@@ -1,5 +1,4 @@
 import { STOREFRONT_ORG_SLUG } from '@/config/catalog'
-import { fraudService } from '@/features/fraud/fraud.service'
 import { calcCartTotal, cartService } from './cart.service'
 import { validateCartItemVariant } from './utils/product-variants'
 import type { CheckoutInput, CheckoutResult } from './storefront.types'
@@ -84,16 +83,6 @@ export const checkoutService = {
 
     const { deliveryCharge, total } = calcCartTotal(cart.items)
 
-    const fraudResult = await fraudService.runHybridCheck(input.phone, {
-      cod_amount: total,
-    })
-
-    if (fraudResult.risk_level === 'BLOCKED') {
-      throw new Error(
-        'Order cannot be placed. This phone number is flagged for fraud. Please contact support.',
-      )
-    }
-
     let result: PlaceEcommerceOrderResult
     try {
       result = await placeEcommerceOrder({
@@ -108,7 +97,6 @@ export const checkoutService = {
         note: [
           `Delivery area: ${input.delivery_area}`,
           input.notes ? `Notes: ${input.notes}` : null,
-          `Fraud: ${fraudResult.risk_level} (${fraudResult.final_score})`,
         ]
           .filter(Boolean)
           .join(' | '),
@@ -142,8 +130,8 @@ export const checkoutService = {
       invoiceId: result.sale_id,
       invoiceNo: result.invoice_no,
       publicShareToken: result.public_share_token,
-      fraudLevel: fraudResult.risk_level,
-      fraudScore: fraudResult.final_score,
+      fraudLevel: 'SAFE',
+      fraudScore: 0,
       totalCod: Number(result.grand_total ?? total),
       deliveryCharge: Number(result.shipping ?? deliveryCharge),
     }

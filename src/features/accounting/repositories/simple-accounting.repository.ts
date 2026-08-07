@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client'
+import { todayYmd, toQueryBounds } from '@/lib/datetime/bd'
 import type { Json } from '@/types/database'
 
 export type TxnDirection = 'in' | 'out' | 'all'
@@ -149,11 +150,12 @@ function stringArray(value: unknown, fallback: string[]): string[] {
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  return todayYmd()
 }
 
 function dayBounds(day: string) {
-  return { start: `${day}T00:00:00.000Z`, end: `${day}T23:59:59.999Z` }
+  const b = toQueryBounds(day, day)
+  return { start: b.fromIso!, end: b.toIso! }
 }
 
 function n(value: unknown) {
@@ -310,8 +312,11 @@ async function listTransactions(filters: TxnFilters = {}): Promise<SimpleTransac
 
   if (filters.accountId) q = q.eq('account_id', filters.accountId)
   if (filters.branchId) q = q.eq('branch_id', filters.branchId)
-  if (filters.from) q = q.gte('transaction_date', `${filters.from}T00:00:00.000Z`)
-  if (filters.to) q = q.lte('transaction_date', `${filters.to}T23:59:59.999Z`)
+  if (filters.from || filters.to) {
+    const bounds = toQueryBounds(filters.from ?? filters.to, filters.to ?? filters.from)
+    if (bounds.fromIso) q = q.gte('transaction_date', bounds.fromIso)
+    if (bounds.toIso) q = q.lte('transaction_date', bounds.toIso)
+  }
   if (filters.direction && filters.direction !== 'all') {
     q = q.eq('direction', filters.direction)
   }
@@ -516,6 +521,7 @@ async function createIncome(payload: {
   reference?: string
   client_txn_key?: string
 }) {
+  const clientTxnKey = payload.client_txn_key ?? newClientTxnKey()
   const { data, error } = await supabase.rpc('create_income', {
     payload: {
       amount: payload.amount,
@@ -525,7 +531,7 @@ async function createIncome(payload: {
       note: payload.note ?? null,
       entry_date: payload.entry_date ?? null,
       reference: payload.reference ?? null,
-      client_txn_key: payload.client_txn_key ?? null,
+      client_txn_key: clientTxnKey,
     } as unknown as Json,
   })
   if (error) throw error
@@ -543,6 +549,7 @@ async function createExpense(payload: {
   payee?: string
   client_txn_key?: string
 }) {
+  const clientTxnKey = payload.client_txn_key ?? newClientTxnKey()
   const { data, error } = await supabase.rpc('create_expense', {
     payload: {
       amount: payload.amount,
@@ -553,7 +560,7 @@ async function createExpense(payload: {
       entry_date: payload.entry_date ?? null,
       reference: payload.reference ?? null,
       payee: payload.payee ?? null,
-      client_txn_key: payload.client_txn_key ?? null,
+      client_txn_key: clientTxnKey,
     } as unknown as Json,
   })
   if (error) throw error
@@ -571,6 +578,7 @@ async function transferBalance(payload: {
   transfer_date?: string
   client_txn_key?: string
 }) {
+  const clientTxnKey = payload.client_txn_key ?? newClientTxnKey()
   const { data, error } = await supabase.rpc('transfer_account_balance', {
     payload: {
       from_account_id: payload.from_account_id,
@@ -579,7 +587,7 @@ async function transferBalance(payload: {
       note: payload.note ?? payload.description ?? null,
       transfer_date: payload.transfer_date ?? payload.entry_date ?? null,
       branch_id: payload.branch_id ?? null,
-      client_txn_key: payload.client_txn_key ?? null,
+      client_txn_key: clientTxnKey,
     } as unknown as Json,
   })
   if (error) throw error
@@ -898,16 +906,18 @@ async function collectCustomerDue(payload: {
   branch_id?: string | null
   note?: string | null
   reference?: string | null
+  client_txn_key?: string
 }) {
   if (!payload.branch_id) throw new Error('Select an active branch first')
   if (!payload.financial_account_id) throw new Error('Select a receive account')
+  const clientTxnKey = payload.client_txn_key ?? newClientTxnKey()
   const { data, error } = await supabase.rpc('collect_customer_due', {
     payload: {
       customer_id: payload.customer_id,
       branch_id: payload.branch_id,
       amount: payload.amount,
       note: payload.note ?? null,
-      client_txn_key: newClientTxnKey(),
+      client_txn_key: clientTxnKey,
       payments: [
         {
           method: payload.payment_method,
@@ -934,9 +944,11 @@ async function paySupplier(payload: {
   reference?: string | null
   note?: string | null
   purchase_id?: string | null
+  client_txn_key?: string
 }) {
   if (!payload.branch_id) throw new Error('Select an active branch first')
   if (!payload.financial_account_id) throw new Error('Select a payment account')
+  const clientTxnKey = payload.client_txn_key ?? newClientTxnKey()
   const { data, error } = await supabase.rpc('pay_supplier', {
     payload: {
       supplier_id: payload.supplier_id,
@@ -944,7 +956,7 @@ async function paySupplier(payload: {
       branch_id: payload.branch_id,
       purchase_id: payload.purchase_id ?? null,
       note: payload.note ?? null,
-      client_txn_key: newClientTxnKey(),
+      client_txn_key: clientTxnKey,
       payments: [
         {
           method: payload.method,

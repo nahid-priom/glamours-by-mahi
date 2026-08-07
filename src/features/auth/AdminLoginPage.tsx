@@ -15,7 +15,7 @@ import { AuthSessionProvider, useAuth } from '@/features/auth/auth-session'
 import { FullPageLoader } from '@/components/loading/FullPageLoader'
 
 const schema = z.object({
-  email: z.string().email('Enter a valid email'),
+  identifier: z.string().min(1, 'Enter username or email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
@@ -30,7 +30,7 @@ function LoginForm() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: 'mahi@codebondhu.com', password: '' },
+    defaultValues: { identifier: '', password: '' },
   })
 
   useEffect(() => {
@@ -46,7 +46,7 @@ function LoginForm() {
   const onSubmit = form.handleSubmit(async (values) => {
     setError(null)
     try {
-      await signIn(values.email, values.password)
+      await signIn(values.identifier, values.password)
       navigate(from, { replace: true })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed')
@@ -68,10 +68,15 @@ function LoginForm() {
         </div>
         <form onSubmit={onSubmit} className="space-y-4 p-6" noValidate>
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" autoComplete="username" {...form.register('email')} />
-            {form.formState.errors.email ? (
-              <p className="text-xs text-[#E11D48]">{form.formState.errors.email.message}</p>
+            <Label htmlFor="identifier">Username or email</Label>
+            <Input
+              id="identifier"
+              type="text"
+              autoComplete="username"
+              {...form.register('identifier')}
+            />
+            {form.formState.errors.identifier ? (
+              <p className="text-xs text-[#E11D48]">{form.formState.errors.identifier.message}</p>
             ) : null}
           </div>
           <div className="space-y-1.5">
@@ -97,8 +102,7 @@ function LoginForm() {
             <PWAInstallButton variant="menu" />
           </div>
           <p className="text-[11px] leading-relaxed text-[#9CA3AF]">
-            Apply <code className="rounded bg-slate-100 px-1">supabase/migrations</code> and create
-            staff users in Supabase Auth with matching <code className="rounded bg-slate-100 px-1">profiles</code> rows.
+            Sign in with the username your Super Admin assigned, or with your email if you have one.
           </p>
         </form>
       </div>

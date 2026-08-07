@@ -1,19 +1,21 @@
 import { supabase } from '@/lib/supabase/client'
+import { addDaysYmd, todayYmd, toQueryBounds } from '@/lib/datetime/bd'
 import { downloadCsv } from '@/lib/format'
 
 export type ReportRange = { from: string; to: string }
 
 function defaultRange(): ReportRange {
-  const to = new Date()
-  const from = new Date()
-  from.setDate(from.getDate() - 30)
-  return {
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
-  }
+  const to = todayYmd()
+  return { from: addDaysYmd(to, -30), to }
+}
+
+function rangeBounds(range: ReportRange) {
+  const b = toQueryBounds(range.from, range.to)
+  return { fromIso: b.fromIso!, toIso: b.toIso! }
 }
 
 async function salesReport(range: ReportRange) {
+  const { fromIso, toIso } = rangeBounds(range)
   const { data, error } = await supabase
     .from('sales')
     .select(
@@ -21,21 +23,22 @@ async function salesReport(range: ReportRange) {
     )
     .is('deleted_at', null)
     .eq('status', 'completed')
-    .gte('completed_at', `${range.from}T00:00:00`)
-    .lte('completed_at', `${range.to}T23:59:59`)
+    .gte('completed_at', fromIso)
+    .lte('completed_at', toIso)
     .order('completed_at', { ascending: false })
   if (error) throw error
   return data ?? []
 }
 
 async function purchasesReport(range: ReportRange) {
+  const { fromIso, toIso } = rangeBounds(range)
   const { data, error } = await supabase
     .from('purchases')
     .select('id, invoice_no, grand_total, paid_total, due_total, completed_at, suppliers(name)')
     .is('deleted_at', null)
     .eq('status', 'completed')
-    .gte('completed_at', `${range.from}T00:00:00`)
-    .lte('completed_at', `${range.to}T23:59:59`)
+    .gte('completed_at', fromIso)
+    .lte('completed_at', toIso)
     .order('completed_at', { ascending: false })
   if (error) throw error
   return data ?? []
@@ -79,14 +82,15 @@ async function supplierDueReport() {
 
 async function profitReport(range: ReportRange) {
   const sales = await salesReport(range)
+  const { fromIso, toIso } = rangeBounds(range)
   const { data: items, error } = await supabase
     .from('sale_items')
     .select('sale_id, line_total, cost_price, qty, sales!inner(completed_at, status, deleted_at)')
     .is('deleted_at', null)
     .eq('sales.status', 'completed')
     .is('sales.deleted_at', null)
-    .gte('sales.completed_at', `${range.from}T00:00:00`)
-    .lte('sales.completed_at', `${range.to}T23:59:59`)
+    .gte('sales.completed_at', fromIso)
+    .lte('sales.completed_at', toIso)
   if (error) throw error
 
   const revenue = sales.reduce((s, r) => s + Number(r.grand_total), 0)
@@ -129,6 +133,7 @@ async function salespersonReport(range: ReportRange) {
 }
 
 async function productPerformanceReport(range: ReportRange) {
+  const { fromIso, toIso } = rangeBounds(range)
   const { data, error } = await supabase
     .from('sale_items')
     .select(
@@ -141,8 +146,8 @@ async function productPerformanceReport(range: ReportRange) {
     .is('deleted_at', null)
     .eq('sales.status', 'completed')
     .is('sales.deleted_at', null)
-    .gte('sales.completed_at', `${range.from}T00:00:00`)
-    .lte('sales.completed_at', `${range.to}T23:59:59`)
+    .gte('sales.completed_at', fromIso)
+    .lte('sales.completed_at', toIso)
   if (error) throw error
 
   const map = new Map<
@@ -170,14 +175,15 @@ async function productPerformanceReport(range: ReportRange) {
 }
 
 async function courierReturnsReport(range: ReportRange) {
+  const { fromIso, toIso } = rangeBounds(range)
   const { data, error } = await supabase
     .from('courier_return_requests')
     .select(
       'id, status, courier_reason, rejection_reason, created_at, reviewed_at, courier_companies(name), courier_parcels(tracking_no)',
     )
     .is('deleted_at', null)
-    .gte('created_at', `${range.from}T00:00:00`)
-    .lte('created_at', `${range.to}T23:59:59`)
+    .gte('created_at', fromIso)
+    .lte('created_at', toIso)
     .order('created_at', { ascending: false })
   if (error) throw error
   return data ?? []

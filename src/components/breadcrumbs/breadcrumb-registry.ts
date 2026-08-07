@@ -54,9 +54,18 @@ const STATIC_TRAILS: Array<{ pattern: RegExp; crumbs: BreadcrumbCrumb[] }> = [
   },
   {
     pattern: /^\/moderator\/orders\/new\/?$/,
-    crumbs: [{ label: 'Moderator', to: '/moderator' }, { label: 'New Order' }],
+    crumbs: [
+      { label: 'My Workspace', to: '/staff/dashboard' },
+      { label: 'New Order' },
+    ],
   },
-  { pattern: /^\/moderator\/?$/, crumbs: [{ label: 'Moderator' }] },
+  {
+    pattern: /^\/moderator\/?$/,
+    crumbs: [
+      { label: 'My Workspace', to: '/staff/dashboard' },
+      { label: 'Order intake' },
+    ],
+  },
   {
     pattern: /^\/staff\/dashboard\/?$/,
     crumbs: [{ label: 'My Workspace', to: '/staff/dashboard' }, { label: 'Dashboard' }],
@@ -333,7 +342,7 @@ const STATIC_TRAILS: Array<{ pattern: RegExp; crumbs: BreadcrumbCrumb[] }> = [
     crumbs: [
       { label: 'Administration', to: '/administration' },
       { label: 'Users', to: '/administration/users' },
-      { label: 'New User' },
+      { label: 'Create user' },
     ],
   },
   {

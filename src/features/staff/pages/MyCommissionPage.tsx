@@ -1,6 +1,14 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { formatBDT } from '@/lib/format'
 import { ResponsiveDataView, MobileEntityCard } from '@/components/data-view'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   getStaffCommissionSummary,
   listStaffCommissionEntries,
@@ -12,23 +20,63 @@ function commissionStatusLabel(status: string, reversedAmount = 0) {
   return status
 }
 
+function eventTypeLabel(eventType: string | null | undefined) {
+  switch (eventType) {
+    case 'return_reverse':
+      return 'Return'
+    case 'exchange_reverse':
+      return 'Exchange reverse'
+    case 'exchange_replacement':
+      return 'Exchange'
+    case 'sale':
+    default:
+      return 'Sale'
+  }
+}
+
 export function MyCommissionPage() {
+  const [eventType, setEventType] = useState('all')
+
   const summary = useQuery({
     queryKey: ['staff-commission-summary'],
     queryFn: getStaffCommissionSummary,
   })
   const entries = useQuery({
-    queryKey: ['staff-commission-entries'],
-    queryFn: () => listStaffCommissionEntries({ page: 1, page_size: 30 }),
+    queryKey: ['staff-commission-entries', eventType],
+    queryFn: () =>
+      listStaffCommissionEntries({
+        page: 1,
+        page_size: 50,
+        event_type: eventType === 'all' ? undefined : eventType,
+      }),
   })
 
   const s = summary.data
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
-      <div>
-        <h1 className="text-xl font-bold">My Commission</h1>
-        <p className="text-sm text-[#6B7280]">শুধু আপনার Commission — পরিবর্তন করা যাবে না</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold">My Commission</h1>
+          <p className="text-sm text-[#6B7280]">
+            Per-product commission for your sales, returns, and exchanges
+          </p>
+        </div>
+        <label className="space-y-1 text-sm">
+          <span className="text-[#6B7280]">Event</span>
+          <Select value={eventType} onValueChange={setEventType}>
+            <SelectTrigger className="h-9 min-w-[11rem]">
+              <SelectValue placeholder="All events" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All events</SelectItem>
+              <SelectItem value="sale">Sale</SelectItem>
+              <SelectItem value="return_reverse">Return</SelectItem>
+              <SelectItem value="exchange_reverse">Exchange reverse</SelectItem>
+              <SelectItem value="exchange_replacement">Exchange</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
       </div>
 
       {s ? (
@@ -67,9 +115,11 @@ export function MyCommissionPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-[#F9FAFB] text-left text-xs uppercase text-[#6B7280]">
                 <tr>
+                  <th className="px-3 py-2">Product</th>
+                  <th className="px-3 py-2">Variant</th>
+                  <th className="px-3 py-2">Qty</th>
+                  <th className="px-3 py-2">Event</th>
                   <th className="px-3 py-2">Invoice</th>
-                  <th className="px-3 py-2">Customer</th>
-                  <th className="px-3 py-2">Sale</th>
                   <th className="px-3 py-2">Commission</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Date</th>
@@ -80,9 +130,11 @@ export function MyCommissionPage() {
                   const reversed = Number(r.reversed_amount ?? 0)
                   return (
                     <tr key={r.id} className="border-t">
-                      <td className="px-3 py-2 font-medium">{r.invoice_no ?? '—'}</td>
-                      <td className="px-3 py-2">{r.customer_name ?? '—'}</td>
-                      <td className="px-3 py-2">{formatBDT(Number(r.grand_total ?? 0))}</td>
+                      <td className="px-3 py-2 font-medium">{r.product_name ?? '—'}</td>
+                      <td className="px-3 py-2">{r.variant_name ?? '—'}</td>
+                      <td className="px-3 py-2 tabular-nums">{r.qty ?? '—'}</td>
+                      <td className="px-3 py-2">{eventTypeLabel(r.event_type)}</td>
+                      <td className="px-3 py-2">{r.invoice_no ?? '—'}</td>
                       <td className="px-3 py-2 font-semibold">
                         {formatBDT(Number(r.commission_amount))}
                         {reversed > 0 ? (
@@ -106,10 +158,11 @@ export function MyCommissionPage() {
         )}
         renderCard={(r) => (
           <MobileEntityCard
-            title={r.invoice_no ?? 'Commission'}
-            subtitle={r.customer_name ?? undefined}
+            title={r.product_name ?? r.invoice_no ?? 'Commission'}
+            subtitle={[r.variant_name, r.invoice_no].filter(Boolean).join(' · ') || undefined}
             badges={
               <span className="text-xs capitalize">
+                {eventTypeLabel(r.event_type)} ·{' '}
                 {commissionStatusLabel(r.status, Number(r.reversed_amount ?? 0))}
               </span>
             }
@@ -123,7 +176,7 @@ export function MyCommissionPage() {
                     },
                   ]
                 : []),
-              { label: 'Sale', value: formatBDT(Number(r.grand_total ?? 0)) },
+              { label: 'Qty', value: String(r.qty ?? '—') },
               { label: 'Date', value: new Date(r.created_at).toLocaleDateString() },
             ]}
           />

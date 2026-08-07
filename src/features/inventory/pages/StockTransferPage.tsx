@@ -11,7 +11,13 @@ import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateInventoryQueries } from '../lib/invalidate-inventory-queries'
-import { dispatch, getTransfer, listTransfers, receive } from '../repositories/inventory.repository'
+import {
+  cancelTransfer,
+  dispatch,
+  getTransfer,
+  listTransfers,
+  receive,
+} from '../repositories/inventory.repository'
 
 type ReceiveLine = {
   id: string
@@ -46,7 +52,16 @@ export function StockTransferPage() {
   const dispatchMutation = useMutation({
     mutationFn: dispatch,
     onSuccess: () => {
-      toast('Stock transfer created')
+      toast('Transfer dispatched')
+      invalidate()
+    },
+    onError: (e: Error) => toast(e.message, 'error'),
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => cancelTransfer(id, 'Cancelled from transfers list'),
+    onSuccess: () => {
+      toast('Transfer cancelled')
       invalidate()
     },
     onError: (e: Error) => toast(e.message, 'error'),
@@ -213,14 +228,30 @@ export function StockTransferPage() {
                 <TableCell>
                   <div className="flex justify-end gap-1">
                     {row.status === 'draft' ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={dispatchMutation.isPending}
-                        onClick={() => dispatchMutation.mutate(row.id)}
-                      >
-                        Dispatch
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={dispatchMutation.isPending}
+                          onClick={() => dispatchMutation.mutate(row.id)}
+                        >
+                          Dispatch
+                        </Button>
+                        <PermissionGate permission="inventory.transfer">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={cancelMutation.isPending}
+                            onClick={() => {
+                              if (window.confirm('Cancel this draft transfer?')) {
+                                cancelMutation.mutate(row.id)
+                              }
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </PermissionGate>
+                      </>
                     ) : null}
                     {row.status === 'in_transit' || row.status === 'partially_received' ? (
                       <>
@@ -239,6 +270,26 @@ export function StockTransferPage() {
                         >
                           Receive all
                         </Button>
+                        {row.status === 'in_transit' ? (
+                          <PermissionGate permission="inventory.transfer">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={cancelMutation.isPending}
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    'Cancel in-transit transfer and restore unreceived stock to source?',
+                                  )
+                                ) {
+                                  cancelMutation.mutate(row.id)
+                                }
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </PermissionGate>
+                        ) : null}
                       </>
                     ) : null}
                   </div>

@@ -8,11 +8,13 @@ export type CatalogVariantRow = {
   barcode: string | null
   name: string | null
   selling_price: number
+  /** Always 0 on public catalog — cost never exposed to anon. */
   purchase_price: number
   is_active: boolean
   imagePath: string | null
   optionValues: Array<{ option: string; value: string }>
   stockQty: number
+  inStock: boolean
 }
 
 export type CatalogProductRow = {
@@ -22,6 +24,7 @@ export type CatalogProductRow = {
   base_sku: string | null
   base_barcode: string | null
   selling_price: number
+  /** Always 0 on public catalog — cost never exposed to anon. */
   purchase_price: number
   unit: string
   wholesale_price: number | null
@@ -65,9 +68,7 @@ type RawProduct = {
   base_sku: string | null
   base_barcode: string | null
   selling_price: number
-  purchase_price: number
   unit: string
-  wholesale_price: number | null
   has_variants: boolean
   product_type: string
   is_active: boolean
@@ -90,7 +91,6 @@ type RawProduct = {
     barcode: string | null
     name: string | null
     selling_price: number
-    purchase_price: number
     is_active: boolean
     deleted_at: string | null
     image_path: string | null
@@ -99,7 +99,11 @@ type RawProduct = {
       product_options: { name: string; deleted_at: string | null } | null
       product_option_values: { value: string; deleted_at: string | null } | null
     }> | null
-    inventory_balances: Array<{ quantity: number; deleted_at: string | null }> | null
+    inventory_balances: Array<{
+      quantity: number
+      qty_reserved?: number
+      deleted_at: string | null
+    }> | null
   }> | null
 }
 
@@ -110,9 +114,7 @@ const PRODUCT_SELECT = `
   base_sku,
   base_barcode,
   selling_price,
-  purchase_price,
   unit,
-  wholesale_price,
   has_variants,
   product_type,
   is_active,
@@ -124,13 +126,13 @@ const PRODUCT_SELECT = `
   subcategories(id, name),
   product_images(storage_path, is_cover, deleted_at, sort_order, variant_id),
   product_variants(
-    id, sku, barcode, name, selling_price, purchase_price, is_active, deleted_at, image_path,
+    id, sku, barcode, name, selling_price, is_active, deleted_at, image_path,
     variant_option_values(
       deleted_at,
       product_options(name, deleted_at),
       product_option_values(value, deleted_at)
     ),
-    inventory_balances(quantity, deleted_at)
+    inventory_balances(quantity, qty_reserved, deleted_at)
   )
 `
 
@@ -155,7 +157,11 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
     .map((v) => {
       const stockQty = (v.inventory_balances ?? [])
         .filter((b) => !b.deleted_at)
-        .reduce((sum, b) => sum + Number(b.quantity ?? 0), 0)
+        .reduce((sum, b) => {
+          const available =
+            Number(b.quantity ?? 0) - Number(b.qty_reserved ?? 0)
+          return sum + Math.max(available, 0)
+        }, 0)
       const optionValues = (v.variant_option_values ?? [])
         .filter((ov) => !ov.deleted_at)
         .map((ov) => ({
@@ -169,11 +175,12 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
         barcode: v.barcode,
         name: v.name,
         selling_price: Number(v.selling_price),
-        purchase_price: Number(v.purchase_price),
+        purchase_price: 0,
         is_active: v.is_active,
         imagePath: v.image_path ?? imagesByVariant.get(v.id) ?? null,
         optionValues,
         stockQty,
+        inStock: stockQty > 0,
       }
     })
 
@@ -187,9 +194,9 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
     base_sku: row.base_sku,
     base_barcode: row.base_barcode,
     selling_price: Number(row.selling_price),
-    purchase_price: Number(row.purchase_price),
+    purchase_price: 0,
     unit: row.unit,
-    wholesale_price: row.wholesale_price != null ? Number(row.wholesale_price) : null,
+    wholesale_price: null,
     has_variants: row.has_variants,
     product_type: row.product_type,
     is_active: row.is_active,

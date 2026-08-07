@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Phone } from 'lucide-react'
 import { formatBDT } from '@/lib/format'
+import { AppDateTimeField } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -79,12 +80,7 @@ export function FollowUpsPage() {
         />
         <div className="space-y-1.5">
           <Label>সময়</Label>
-          <Input
-            type="datetime-local"
-            value={when}
-            onChange={(e) => setWhen(e.target.value)}
-            required
-          />
+          <AppDateTimeField value={when} onChange={setWhen} />
         </div>
         <div className="space-y-1.5">
           <Label>নোট</Label>

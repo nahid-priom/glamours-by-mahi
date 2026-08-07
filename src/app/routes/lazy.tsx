@@ -500,3 +500,8 @@ export const PrintReportPage = lazy(() =>
 export const PublicInvoicePage = lazy(() =>
   import('@/features/print/PublicInvoicePage').then((m) => ({ default: m.PublicInvoicePage })),
 )
+export const PrintExchangeReceiptPage = lazy(() =>
+  import('@/features/print/PrintExchangeReceipt').then((m) => ({
+    default: m.PrintExchangeReceiptPage,
+  })),
+)

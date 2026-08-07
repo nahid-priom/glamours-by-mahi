@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AppDateField } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { addDaysYmd, todayYmd } from '@/lib/datetime/bd'
 import { listAdminUsers } from '../repositories/administration.repository'
 import { assignStaffTarget } from '@/features/staff/repositories/staff.repository'
 
@@ -14,12 +16,8 @@ export function AdminTargetsPage() {
   const [staffUserId, setStaffUserId] = useState('')
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('monthly')
   const [salesAmount, setSalesAmount] = useState(100000)
-  const [startsAt, setStartsAt] = useState(() => new Date().toISOString().slice(0, 10))
-  const [endsAt, setEndsAt] = useState(() => {
-    const d = new Date()
-    d.setMonth(d.getMonth() + 1)
-    return d.toISOString().slice(0, 10)
-  })
+  const [startsAt, setStartsAt] = useState(() => todayYmd())
+  const [endsAt, setEndsAt] = useState(() => addDaysYmd(todayYmd(), 30))
 
   const { data: users = [] } = useQuery({
     queryKey: ['admin-users-targets'],
@@ -96,11 +94,11 @@ export function AdminTargetsPage() {
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
               <Label>Starts</Label>
-              <Input type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+              <AppDateField value={startsAt} onChange={setStartsAt} />
             </div>
             <div className="space-y-1.5">
               <Label>Ends</Label>
-              <Input type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+              <AppDateField value={endsAt} onChange={setEndsAt} />
             </div>
           </div>
           <Button type="submit" disabled={mut.isPending || !staffUserId}>

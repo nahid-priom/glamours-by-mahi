@@ -3,20 +3,21 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { simpleAccountingRepository } from '../../repositories/simple-accounting.repository'
 import { PageHeader, ErrorText, KpiCard } from '../../components/AccountingUi'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { AppDateField } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
+import { todayYmd } from '@/lib/datetime/bd'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 
 export function DailyClosingPage() {
   const { activeBranchId } = useAuth()
   const { toast } = useToast()
-  const today = new Date().toISOString().slice(0, 10)
-  const [businessDate, setBusinessDate] = useState(today)
+  const [businessDate, setBusinessDate] = useState(() => todayYmd())
   const [accountId, setAccountId] = useState<string | null>(null)
   const [counted, setCounted] = useState('')
   const [notes, setNotes] = useState('')
@@ -79,7 +80,7 @@ export function DailyClosingPage() {
       <div className="space-y-3 rounded-xl border border-border bg-white p-4">
         <div className="space-y-1">
           <Label>Business date</Label>
-          <Input type="date" value={businessDate} onChange={(e) => setBusinessDate(e.target.value)} />
+          <AppDateField value={businessDate} onChange={setBusinessDate} />
         </div>
         <div className="space-y-1">
           <Label>Cash account</Label>

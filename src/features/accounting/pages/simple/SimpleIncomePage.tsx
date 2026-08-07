@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { simpleAccountingRepository } from '../../repositories/simple-accounting.repository'
 import {
@@ -54,6 +54,8 @@ export function SimpleIncomePage() {
 
   const total = data.reduce((s, r) => s + r.amount, 0)
 
+  const submitTxnKey = useRef<string | null>(null)
+
   const create = useMutation({
     mutationFn: async () => {
       if (!activeBranchId) throw new Error('Select an active branch first')
@@ -63,18 +65,26 @@ export function SimpleIncomePage() {
       if (!fa) throw new Error('Select a cash/bank account')
       const cat = categoryId || categories[0]?.id
       if (!cat) throw new Error('Select an income category')
+      if (!submitTxnKey.current) {
+        submitTxnKey.current =
+          typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `income-${Date.now()}`
+      }
       return simpleAccountingRepository.createIncome({
         amount: amt,
         account_id: fa,
         category_id: cat,
         branch_id: activeBranchId,
         note: note || undefined,
+        client_txn_key: submitTxnKey.current,
       })
     },
     onSuccess: async () => {
       toast('Income recorded')
       setAmount('')
       setNote('')
+      submitTxnKey.current = null
       await invalidateAccountingMovementCaches(qc)
     },
     onError: (e: Error) => toast(e.message, 'error'),

@@ -47,6 +47,20 @@ function commissionStatusClass(status: string, reversedAmount = 0) {
   return 'bg-[#F3F4F6] text-[#374151]'
 }
 
+function eventTypeLabel(eventType: string | null | undefined) {
+  switch (eventType) {
+    case 'return_reverse':
+      return 'Return'
+    case 'exchange_reverse':
+      return 'Exchange reverse'
+    case 'exchange_replacement':
+      return 'Exchange'
+    case 'sale':
+    default:
+      return 'Sale'
+  }
+}
+
 export function SalesCommissionsPage() {
   const { toast } = useToast()
   const qc = useQueryClient()
@@ -187,10 +201,12 @@ export function SalesCommissionsPage() {
       ) : null}
 
       <div className="hidden overflow-x-auto rounded-xl border border-border bg-white md:block">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[960px] text-sm">
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
             <tr>
               <th className="px-3 py-2 text-left">Employee</th>
+              <th className="px-3 py-2 text-left">Product</th>
+              <th className="px-3 py-2 text-left">Event</th>
               <th className="px-3 py-2 text-left">Invoice</th>
               <th className="px-3 py-2 text-left">Base</th>
               <th className="px-3 py-2 text-left">Commission</th>
@@ -202,6 +218,16 @@ export function SalesCommissionsPage() {
             {data.map((row) => (
               <tr key={row.id} className="border-b last:border-0">
                 <td className="px-3 py-2">{employeeName(row)}</td>
+                <td className="px-3 py-2">
+                  <p className="font-medium">{row.product_name ?? '—'}</p>
+                  {row.variant_name ? (
+                    <p className="text-[11px] text-[#9CA3AF]">
+                      {row.variant_name}
+                      {row.qty != null ? ` · qty ${row.qty}` : ''}
+                    </p>
+                  ) : null}
+                </td>
+                <td className="px-3 py-2">{eventTypeLabel(row.event_type)}</td>
                 <td className="px-3 py-2">{row.sales?.invoice_no ?? '—'}</td>
                 <td className="px-3 py-2 tabular-nums">{formatBDT(Number(row.base_amount))}</td>
                 <td className="px-3 py-2 tabular-nums">
@@ -247,7 +273,13 @@ export function SalesCommissionsPage() {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate font-semibold">{employeeName(row)}</p>
-                <p className="text-xs text-[#6B7280]">{row.sales?.invoice_no ?? '—'}</p>
+                <p className="truncate text-xs text-[#6B7280]">
+                  {row.product_name ?? '—'}
+                  {row.variant_name ? ` · ${row.variant_name}` : ''}
+                </p>
+                <p className="text-xs text-[#6B7280]">
+                  {eventTypeLabel(row.event_type)} · {row.sales?.invoice_no ?? '—'}
+                </p>
               </div>
               <p className="shrink-0 text-sm font-bold tabular-nums">
                 {formatBDT(Number(row.commission_amount))}
@@ -278,7 +310,8 @@ export function SalesCommissionsPage() {
 
       {!isLoading && data.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-[#6B7280]">
-          No commissions yet. Complete a POS sale with an employee who has an active rule.
+          No commissions yet. Complete a POS sale as a user linked to an employee with an active
+          commission structure.
         </p>
       ) : null}
     </div>

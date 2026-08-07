@@ -107,23 +107,32 @@ export function getStaffCommissionSummary() {
   return rpc<StaffCommissionSummary>('get_staff_commission_summary', {})
 }
 
+export type StaffCommissionEntry = {
+  id: string
+  sale_id: string | null
+  sale_item_id?: string | null
+  product_id?: string | null
+  variant_id?: string | null
+  product_name?: string | null
+  variant_name?: string | null
+  qty?: number | null
+  event_type?: string | null
+  commission_amount: number
+  reversed_amount?: number | null
+  original_commission_amount?: number | null
+  base_amount: number
+  status: string
+  created_at: string
+  approved_at: string | null
+  paid_at: string | null
+  invoice_no: string | null
+  grand_total: number | null
+  customer_name: string | null
+}
+
 export function listStaffCommissionEntries(filters: Record<string, unknown> = {}) {
   return rpc<{
-    items: Array<{
-      id: string
-      sale_id: string | null
-      commission_amount: number
-      reversed_amount?: number | null
-      original_commission_amount?: number | null
-      base_amount: number
-      status: string
-      created_at: string
-      approved_at: string | null
-      paid_at: string | null
-      invoice_no: string | null
-      grand_total: number | null
-      customer_name: string | null
-    }>
+    items: StaffCommissionEntry[]
     page: number
     page_size: number
   }>('list_staff_commission_entries', filters)

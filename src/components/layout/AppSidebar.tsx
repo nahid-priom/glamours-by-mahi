@@ -34,7 +34,8 @@ type NavGroup = {
   children?: NavItem[]
 }
 
-const groups: NavGroup[] = [
+/** Exported for nav smoke tests — do not mutate at runtime. */
+export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
@@ -101,6 +102,12 @@ const groups: NavGroup[] = [
         permission: ['staff.dashboard.read', 'customers.read'],
       },
       {
+        to: '/moderator',
+        label: 'Order intake',
+        end: true,
+        permission: 'moderator.dashboard.read',
+      },
+      {
         to: '/moderator/orders/new',
         label: 'New Order',
         permission: 'moderator.order.create',
@@ -109,25 +116,6 @@ const groups: NavGroup[] = [
         to: '/staff/profile',
         label: 'Profile',
         permission: ['staff.dashboard.read', 'moderator.dashboard.read'],
-      },
-    ],
-  },
-  {
-    id: 'moderator',
-    label: 'Moderator (legacy)',
-    icon: Sparkles,
-    module: 'moderator',
-    children: [
-      {
-        to: '/moderator',
-        label: 'Order intake KPIs',
-        end: true,
-        permission: 'moderator.dashboard.read',
-      },
-      {
-        to: '/moderator/orders/new',
-        label: 'New Order',
-        permission: 'moderator.order.create',
       },
     ],
   },
@@ -327,7 +315,7 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
   const { permissions } = useAuth()
 
   const visibleGroups = useMemo(() => {
-    return groups
+    return SIDEBAR_NAV_GROUPS
       .map((group) => {
         if (!itemAllowed(permissions, group)) return null
         if (!group.children) return group

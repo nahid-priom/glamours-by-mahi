@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
+import { AppDateField } from '@/components/date-picker'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { queryKeys } from '@/lib/query/keys'
@@ -185,12 +186,11 @@ export function VariantOpeningStockTable({
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Expiry</Label>
-              <Input
-                type="date"
-                className="h-9"
+              <AppDateField
                 disabled={disabled}
                 value={meta.expiresAt ?? ''}
-                onChange={(e) => onMetaChange({ ...meta, expiresAt: e.target.value })}
+                onChange={(ymd) => onMetaChange({ ...meta, expiresAt: ymd })}
+                clearable
               />
             </div>
           </>

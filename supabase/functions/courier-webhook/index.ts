@@ -1,7 +1,8 @@
 // Glamourous by Mahi · Retail ERP
 // Edge Function: courier-webhook
 // Verifies secret header, normalizes event, upserts courier_events by external_event_id,
-// creates pending courier_return_request when event type is return, returns 200.
+// applies canonical parcel status / COD via apply_courier_webhook_parcel_status,
+// creates pending courier_return_request when event type is return.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -31,6 +32,36 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return out === 0;
+}
+
+function mapStatus(eventType: string): string | null {
+  const t = eventType.toLowerCase();
+  if (["delivered", "delivery_complete", "complete"].some((x) => t.includes(x))) {
+    return "delivered";
+  }
+  if (["in_transit", "in-transit", "transit", "picked", "pickup"].some((x) => t.includes(x))) {
+    return "in_transit";
+  }
+  if (["return", "returned", "rto"].some((x) => t.includes(x))) {
+    return "returned";
+  }
+  if (["fail", "undelivered", "hold"].some((x) => t.includes(x))) {
+    return "failed";
+  }
+  if (["cancel"].some((x) => t.includes(x))) {
+    return "cancelled";
+  }
+  if (["book"].some((x) => t.includes(x))) {
+    return "booked";
+  }
+  return null;
+}
+
 function normalizeEvent(raw: Record<string, unknown>): NormalizedEvent {
   const data = (raw.data as Record<string, unknown> | undefined) ?? raw;
 
@@ -49,7 +80,6 @@ function normalizeEvent(raw: Record<string, unknown>): NormalizedEvent {
     .trim()
     .toLowerCase();
 
-  // Map common courier statuses into a coarse event_type
   let event_type = rawType;
   if (
     ["return", "returned", "return_initiated", "rto", "return_to_origin"].some(
@@ -103,7 +133,7 @@ Deno.serve(async (req) => {
       req.headers.get("x-webhook-secret") ??
       "";
 
-    if (!expectedSecret || provided !== expectedSecret) {
+    if (!expectedSecret || !timingSafeEqual(provided, expectedSecret)) {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
@@ -124,7 +154,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "external_event_id required" }, 400);
     }
 
-    // Resolve parcel / org if not provided
     let organizationId = event.organization_id;
     let courierCompanyId = event.courier_company_id;
     let parcelId = event.parcel_id;
@@ -179,7 +208,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Upsert by external_event_id for idempotency
     const { data: upserted, error: upsertError } = await supabase
       .from("courier_events")
       .upsert(
@@ -204,9 +232,27 @@ Deno.serve(async (req) => {
     }
 
     let returnRequestId: string | null = null;
+    let statusResult: unknown = null;
+
+    const mappedStatus = mapStatus(event.event_type);
+    if (parcelId && mappedStatus) {
+      const { data: statusData, error: statusError } = await supabase.rpc(
+        "apply_courier_webhook_parcel_status",
+        {
+          p_parcel_id: parcelId,
+          p_status: mappedStatus,
+          p_notes: event.courier_reason ?? `webhook:${event.event_type}`,
+          p_external_event_id: event.external_event_id,
+        },
+      );
+      if (statusError) {
+        console.error("apply_courier_webhook_parcel_status failed", statusError);
+      } else {
+        statusResult = statusData;
+      }
+    }
 
     if (event.event_type === "return" && parcelId) {
-      // Avoid duplicate pending returns for same parcel+event
       const { data: existingReturn } = await supabase
         .from("courier_return_requests")
         .select("id")
@@ -236,11 +282,9 @@ Deno.serve(async (req) => {
 
         if (returnError) {
           console.error("courier_return_requests insert failed", returnError);
-          // Still return 200 — event was stored; return creation can be retried/reconciled
         } else {
           returnRequestId = created.id;
 
-          // Seed expected items from original sale when available
           if (saleId) {
             const { data: saleItems } = await supabase
               .from("sale_items")
@@ -261,12 +305,6 @@ Deno.serve(async (req) => {
               );
             }
           }
-
-          await supabase
-            .from("courier_parcels")
-            .update({ status: "returned" })
-            .eq("id", parcelId)
-            .eq("organization_id", organizationId);
         }
       }
     }
@@ -277,6 +315,7 @@ Deno.serve(async (req) => {
       event_id: upserted.id,
       event_type: event.event_type,
       return_request_id: returnRequestId,
+      status: statusResult,
     });
   } catch (err) {
     console.error("courier-webhook error", err);

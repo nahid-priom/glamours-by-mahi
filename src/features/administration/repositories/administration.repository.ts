@@ -7,11 +7,15 @@ export type AdminUserRow = {
   id: string
   full_name: string
   email: string
+  username?: string | null
   phone: string | null
   role_id: string | null
   role_name: string | null
   default_branch_id: string | null
   is_active: boolean
+  employee_id?: string | null
+  employee_name?: string | null
+  employee_code?: string | null
   created_at: string
 }
 
@@ -49,19 +53,57 @@ export async function listAdminRoles(): Promise<AdminRoleRow[]> {
   return (data ?? []) as AdminRoleRow[]
 }
 
-export async function inviteAdminUser(payload: {
-  email: string
-  full_name: string
-  role_id?: string | null
+export async function createAdminUser(payload: {
+  employee_id: string
+  role_id: string
+  username: string
+  password: string
   default_branch_id?: string | null
   branch_ids?: string[]
+  email?: string | null
 }) {
   const { data, error } = await supabase.functions.invoke('admin-create-user', { body: payload })
   if (error) throw error
   if (data && typeof data === 'object' && 'error' in data && data.error) {
     throw new Error(String(data.error))
   }
-  return data as { user_id: string; email: string; invited: boolean }
+  return data as {
+    user_id: string
+    email: string
+    username: string
+    created: boolean
+  }
+}
+
+/** @deprecated Use createAdminUser — kept for tests/legacy call sites */
+export async function inviteAdminUser(payload: {
+  email: string
+  full_name: string
+  role_id: string
+  default_branch_id?: string | null
+  branch_ids?: string[]
+}) {
+  void payload
+  throw new Error('Invite-by-email is replaced by Create staff user (employee + username + password)')
+}
+
+export async function resetAdminUserPassword(userId: string, newPassword: string) {
+  const { data, error } = await supabase.functions.invoke('admin-reset-user-password', {
+    body: { user_id: userId, new_password: newPassword },
+  })
+  if (error) throw error
+  if (data && typeof data === 'object' && 'error' in data && data.error) {
+    throw new Error(String(data.error))
+  }
+  return data as { user_id: string; ok: boolean }
+}
+
+export async function resolveStaffLoginEmail(identifier: string): Promise<string | null> {
+  const { data, error } = await untypedRpc('resolve_staff_login_email', {
+    p_identifier: identifier,
+  })
+  if (error) throw error
+  return (data as string | null) ?? null
 }
 
 export async function previewDataReset(scope: Record<string, unknown> = {}) {

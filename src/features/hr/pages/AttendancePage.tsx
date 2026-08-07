@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import { AppDateField } from '@/components/date-picker'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -186,12 +186,11 @@ export function AttendancePage() {
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="work_date">Date</Label>
-              <Input
+              <AppDateField
                 id="work_date"
-                type="date"
                 value={workDate}
-                onChange={(e) => {
-                  setWorkDate(e.target.value)
+                onChange={(ymd) => {
+                  setWorkDate(ymd)
                   setPage(1)
                 }}
                 className="w-[160px]"

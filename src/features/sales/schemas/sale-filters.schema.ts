@@ -1,56 +1,61 @@
 import { z } from 'zod'
+import {
+  addDaysYmd,
+  endOfMonthYmd,
+  resolveShortcut,
+  startOfMonthYmd,
+  todayYmd,
+} from '@/lib/datetime/bd'
 import type { SalesDatePreset, SalesHistoryFilters, SalesSort } from '../types/sale.types'
-
-function startOfDay(d: Date): Date {
-  const x = new Date(d)
-  x.setHours(0, 0, 0, 0)
-  return x
-}
-
-function toISODate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 export function resolvePresetRange(
   preset: SalesDatePreset,
   fromDate: string | null,
   toDate: string | null,
+  now: Date = new Date(),
 ): { fromDate: string | null; toDate: string | null } {
-  const today = startOfDay(new Date())
+  const today = todayYmd(now)
   if (preset === 'all') return { fromDate: null, toDate: null }
   if (preset === 'custom') return { fromDate, toDate }
   if (preset === 'today') {
-    const d = toISODate(today)
-    return { fromDate: d, toDate: d }
+    const r = resolveShortcut('today', now)
+    return { fromDate: r.from, toDate: r.to }
+  }
+  if (preset === 'this_week') {
+    const r = resolveShortcut('this_week', now)
+    return { fromDate: r.from, toDate: r.to }
+  }
+  if (preset === 'this_month') {
+    const r = resolveShortcut('this_month', now)
+    return { fromDate: r.from, toDate: r.to }
   }
   if (preset === 'yesterday') {
-    const y = new Date(today)
-    y.setDate(y.getDate() - 1)
-    const d = toISODate(y)
+    const d = addDaysYmd(today, -1)
     return { fromDate: d, toDate: d }
   }
   if (preset === 'last_7') {
-    const from = new Date(today)
-    from.setDate(from.getDate() - 6)
-    return { fromDate: toISODate(from), toDate: toISODate(today) }
+    return { fromDate: addDaysYmd(today, -6), toDate: today }
   }
   if (preset === 'last_month') {
-    const from = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-    const to = new Date(today.getFullYear(), today.getMonth(), 0)
-    return { fromDate: toISODate(from), toDate: toISODate(to) }
+    const prevMonthDay = addDaysYmd(startOfMonthYmd(today), -1)
+    return { fromDate: startOfMonthYmd(prevMonthDay), toDate: endOfMonthYmd(prevMonthDay) }
   }
-  // this_month
-  const from = new Date(today.getFullYear(), today.getMonth(), 1)
-  return { fromDate: toISODate(from), toDate: toISODate(today) }
+  return { fromDate: null, toDate: null }
 }
 
 export const salesFiltersSchema = z.object({
   search: z.string().default(''),
   preset: z
-    .enum(['today', 'yesterday', 'last_7', 'this_month', 'last_month', 'custom', 'all'])
+    .enum([
+      'today',
+      'yesterday',
+      'this_week',
+      'last_7',
+      'this_month',
+      'last_month',
+      'custom',
+      'all',
+    ])
     .default('this_month'),
   fromDate: z.string().nullable().default(null),
   toDate: z.string().nullable().default(null),

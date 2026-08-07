@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { FormProvider, useForm } from 'react-hook-form'
+import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { AppDateTimeField } from '@/components/date-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -243,11 +244,31 @@ export function HeroSlideForm({ slide, slideId, onSubmit, submitting }: HeroSlid
             </div>
             <div>
               <Label>Starts at</Label>
-              <Input type="datetime-local" className="mt-1" {...form.register('starts_at')} />
+              <Controller
+                control={form.control}
+                name="starts_at"
+                render={({ field }) => (
+                  <AppDateTimeField
+                    className="mt-1"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
             </div>
             <div>
               <Label>Ends at</Label>
-              <Input type="datetime-local" className="mt-1" {...form.register('ends_at')} />
+              <Controller
+                control={form.control}
+                name="ends_at"
+                render={({ field }) => (
+                  <AppDateTimeField
+                    className="mt-1"
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
             </div>
           </div>
         </section>

@@ -11,7 +11,6 @@ import { formatBDT } from '@/lib/format'
 import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
 import { queryKeys } from '@/lib/query/keys'
-import { supabase } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { assertSaleReady, canAddQty } from '../cart-utils'
 import {
@@ -30,7 +29,6 @@ import {
 } from '../components/PosPostSalePreviewDialog'
 import { PosProductCard } from '../components/PosProductCard'
 import { PosProductPreviewDialog } from '../components/PosProductPreviewDialog'
-import { PosSalespersonSelect } from '../components/PosSalespersonSelect'
 import { usePosBarcodeLookup } from '../hooks/use-pos-barcode-lookup'
 import {
   usePosCatalogue,
@@ -92,7 +90,6 @@ export function PosPage() {
   const [completedPreview, setCompletedPreview] = useState<CompletedSalePreview | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [productPreview, setProductPreview] = useState<PosVariant | null>(null)
-  const [salespersonEmployeeId, setSalespersonEmployeeId] = useState<string | null>(null)
   const previewTriggerRef = useRef<HTMLElement | null>(null)
 
   const catalogue = usePosCatalogue(branchId)
@@ -129,24 +126,6 @@ export function PosPage() {
       undefined,
     [methods, defaultAccountId],
   )
-
-  useEffect(() => {
-    if (!profile?.id || !branchId) return
-    let cancelled = false
-    void (async () => {
-      const { data } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('profile_id', profile.id)
-        .eq('status', 'active')
-        .is('deleted_at', null)
-        .maybeSingle()
-      if (!cancelled && data?.id) setSalespersonEmployeeId(data.id)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [profile?.id, branchId])
 
   useEffect(() => {
     if (!branchId || !resumeId) return
@@ -372,7 +351,6 @@ export function PosPage() {
       const result = (await completeSale({
         branch_id: branchId,
         customer_id: state.customerId,
-        salesperson_employee_id: salespersonEmployeeId,
         client_txn_key: clientTxnKeyRef.current,
         note: state.note || null,
         discount: state.invoiceDiscount,
@@ -452,13 +430,6 @@ export function PosPage() {
 
   const paymentSection = (
     <>
-      <PosSalespersonSelect
-        branchId={branchId}
-        value={salespersonEmployeeId}
-        onChange={(id) => setSalespersonEmployeeId(id)}
-        disabled={busy}
-      />
-
       <div className="space-y-2 rounded-xl border border-border bg-white p-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium text-text-muted">Payment</p>

@@ -4,7 +4,7 @@ import { useCreateCustomer } from '../hooks/useCreateCustomer'
 import { isValidBdPhone, looksLikePhoneQuery, normalizeBdPhone } from '@/lib/phone-utils'
 import { useAuth } from '@/features/auth/auth.context'
 import { useToast } from '@/components/ui/toast'
-import type { Customer } from '@/database/schema'
+import type { Customer } from '../customers.types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {

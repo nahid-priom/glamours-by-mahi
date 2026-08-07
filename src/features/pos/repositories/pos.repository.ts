@@ -81,13 +81,18 @@ function mapVariantRow(
   const balances =
     (row.inventory_balances as Array<{
       quantity: number
+      qty_reserved?: number
       location_id: string
       deleted_at: string | null
     }> | null) ?? []
 
   const availableStock = balances
     .filter((b) => !b.deleted_at && locationIds.includes(b.location_id))
-    .reduce((sum, b) => sum + Number(b.quantity ?? 0), 0)
+    .reduce((sum, b) => {
+      const available =
+        Number(b.quantity ?? 0) - Number(b.qty_reserved ?? 0)
+      return sum + Math.max(available, 0)
+    }, 0)
 
   const variantLabel = (row.name as string | null) || 'Default'
 
@@ -129,13 +134,18 @@ function mapVariantRowForResume(
   const balances =
     (row.inventory_balances as Array<{
       quantity: number
+      qty_reserved?: number
       location_id: string
       deleted_at: string | null
     }> | null) ?? []
 
   const availableStock = balances
     .filter((b) => !b.deleted_at && locationIds.includes(b.location_id))
-    .reduce((sum, b) => sum + Number(b.quantity ?? 0), 0)
+    .reduce((sum, b) => {
+      const available =
+        Number(b.quantity ?? 0) - Number(b.qty_reserved ?? 0)
+      return sum + Math.max(available, 0)
+    }, 0)
 
   const variantLabel = (row.name as string | null) || 'Default'
   const productId = product?.id ?? (row.product_id as string)
@@ -216,6 +226,7 @@ export async function listPosCatalogue({
       ),
       inventory_balances (
         quantity,
+        qty_reserved,
         location_id,
         deleted_at
       )
@@ -487,6 +498,7 @@ export async function saveHeldSale(
   organizationId: string,
   salespersonId?: string | null,
 ) {
+  void organizationId
   const totals = calcCartTotals({
     lines: payload.lines,
     customerId: payload.customerId,
@@ -498,10 +510,8 @@ export async function saveHeldSale(
     note: payload.note,
   })
 
-  const { data: held, error } = await supabase
-    .from('held_sales')
-    .insert({
-      organization_id: organizationId,
+  const { data, error } = await untypedRpc('upsert_held_sale', {
+    payload: {
       branch_id: payload.branchId,
       customer_id: payload.customerId,
       salesperson_id: salespersonId ?? null,
@@ -512,27 +522,20 @@ export async function saveHeldSale(
       tax: totals.tax,
       shipping: totals.shipping,
       grand_total: totals.grandTotal,
-    })
-    .select('id')
-    .single()
-
+      items: payload.lines.map((line, index) => ({
+        variant_id: line.variantId,
+        qty: line.qty,
+        unit_price: line.unitPrice,
+        line_discount: line.lineDiscount,
+        line_total: calcLineTotal(line),
+        sort_order: index,
+      })),
+    },
+  })
   if (error) throw error
-
-  const items = payload.lines.map((line, index) => ({
-    organization_id: organizationId,
-    held_sale_id: held.id,
-    variant_id: line.variantId,
-    qty: line.qty,
-    unit_price: line.unitPrice,
-    line_discount: line.lineDiscount,
-    line_total: calcLineTotal(line),
-    sort_order: index,
-  }))
-
-  const { error: itemsError } = await supabase.from('held_sale_items').insert(items)
-  if (itemsError) throw itemsError
-
-  return held
+  const heldSaleId = (data as { held_sale_id?: string } | null)?.held_sale_id
+  if (!heldSaleId) throw new Error('Failed to hold sale')
+  return { id: heldSaleId }
 }
 
 export type HeldSaleResume = CartState & { heldSaleId: string }
@@ -626,6 +629,7 @@ export async function getHeldSaleForResume(
       ),
       inventory_balances (
         quantity,
+        qty_reserved,
         location_id,
         deleted_at
       )
@@ -677,7 +681,7 @@ export async function getHeldSaleForResume(
       unitPrice,
       qty,
       lineDiscount,
-      availableStock: Math.max(variant.availableStock, qty),
+      availableStock: variant.availableStock,
     })
   }
 
@@ -695,20 +699,9 @@ export async function getHeldSaleForResume(
 }
 
 export async function deleteHeldSale(heldSaleId: string) {
-  const now = new Date().toISOString()
-  const { error: itemsError } = await supabase
-    .from('held_sale_items')
-    .update({ deleted_at: now })
-    .eq('held_sale_id', heldSaleId)
-    .is('deleted_at', null)
-
-  if (itemsError) throw itemsError
-
-  const { error } = await supabase
-    .from('held_sales')
-    .update({ deleted_at: now })
-    .eq('id', heldSaleId)
-
+  const { error } = await untypedRpc('delete_held_sale', {
+    p_held_sale_id: heldSaleId,
+  })
   if (error) throw error
 }
 

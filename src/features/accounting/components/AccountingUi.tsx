@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { AppDateRangeField } from '@/components/date-picker'
 import { formatBDT } from '@/lib/format'
 
 export function PageHeader({
@@ -31,26 +32,13 @@ export function DateRangeInputs({
   onChange: (next: { from: string; to: string }) => void
 }) {
   return (
-    <div className="flex flex-wrap items-end gap-2">
-      <label className="text-xs text-[#6B7280]">
-        From
-        <input
-          type="date"
-          className="mt-1 block h-9 rounded-md border border-border bg-white px-2 text-sm"
-          value={from}
-          onChange={(e) => onChange({ from: e.target.value, to })}
-        />
-      </label>
-      <label className="text-xs text-[#6B7280]">
-        To
-        <input
-          type="date"
-          className="mt-1 block h-9 rounded-md border border-border bg-white px-2 text-sm"
-          value={to}
-          onChange={(e) => onChange({ from, to: e.target.value })}
-        />
-      </label>
-    </div>
+    <AppDateRangeField
+      label="Date range"
+      from={from}
+      to={to}
+      onChange={({ from: f, to: t }) => onChange({ from: f, to: t })}
+      className="min-w-[14rem]"
+    />
   )
 }
 

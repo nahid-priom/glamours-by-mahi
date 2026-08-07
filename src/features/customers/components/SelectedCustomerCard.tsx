@@ -1,7 +1,7 @@
 import { Pencil, UserRound, X } from 'lucide-react'
 import { formatBDT } from '@/lib/format'
 import { displayCustomerName } from '@/lib/phone-utils'
-import type { Customer } from '@/database/schema'
+import type { Customer } from '../customers.types'
 import { Button } from '@/components/ui/button'
 
 interface SelectedCustomerCardProps {
@@ -24,9 +24,9 @@ export function SelectedCustomerCard({ customer, onChange, onClear }: SelectedCu
         {customer.address && (
           <p className="mt-0.5 line-clamp-1 text-[11px] text-[#6B7280]">{customer.address}</p>
         )}
-        {customer.currentDue > 0 && (
+        {Number(customer.currentDue ?? customer.current_due ?? 0) > 0 && (
           <p className="mt-1 text-[11px] font-semibold text-amber-700">
-            Current due: {formatBDT(customer.currentDue)}
+            Current due: {formatBDT(Number(customer.currentDue ?? customer.current_due ?? 0))}
           </p>
         )}
       </div>

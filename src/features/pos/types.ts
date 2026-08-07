@@ -70,7 +70,6 @@ export type CartTotals = {
 export type CompletePosSalePayload = {
   branch_id: string
   customer_id: string | null
-  salesperson_employee_id?: string | null
   client_txn_key: string
   note: string | null
   discount: number

@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ExternalLink, Loader2 } from 'lucide-react'
+import { AppDateRangeField } from '@/components/date-picker'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { toQueryBounds } from '@/lib/datetime/bd'
 import {
   Select,
   SelectContent,
@@ -43,18 +44,18 @@ export function ActivityLogsPage() {
   const [selected, setSelected] = useState<ActivityFeedItem | null>(null)
   const [showTechnical, setShowTechnical] = useState(false)
 
-  const filters = useMemo(
-    () => ({
+  const filters = useMemo(() => {
+    const bounds = toQueryBounds(fromDate || null, toDate || null)
+    return {
       search: search.trim() || null,
       module: module === 'all' ? null : module,
-      from: fromDate ? `${fromDate}T00:00:00.000Z` : null,
-      to: toDate ? `${toDate}T23:59:59.999Z` : null,
+      from: bounds.fromIso,
+      to: bounds.toIso,
       branchId: branchScoped ? activeBranchId : null,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
-    }),
-    [search, module, fromDate, toDate, branchScoped, activeBranchId, page],
-  )
+    }
+  }, [search, module, fromDate, toDate, branchScoped, activeBranchId, page])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['activity-feed', filters],
@@ -109,28 +110,17 @@ export function ActivityLogsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-[9.5rem]">
-          <p className="mb-1 text-xs font-medium text-[#6B7280]">From</p>
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value)
-              setPage(0)
-            }}
-          />
-        </div>
-        <div className="w-[9.5rem]">
-          <p className="mb-1 text-xs font-medium text-[#6B7280]">To</p>
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value)
-              setPage(0)
-            }}
-          />
-        </div>
+        <AppDateRangeField
+          label="Date range"
+          from={fromDate}
+          to={toDate}
+          onChange={({ from, to }) => {
+            setFromDate(from)
+            setToDate(to)
+            setPage(0)
+          }}
+          className="min-w-[14rem]"
+        />
         <Button
           type="button"
           size="sm"

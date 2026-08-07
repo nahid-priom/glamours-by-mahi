@@ -1,9 +1,12 @@
 /**
  * Edge Function: admin-create-user
- * Invite staff via Supabase Auth Admin API (service role). Never stores plain-text passwords.
+ * Create staff from an Employee with username + password (Supabase Auth).
+ * Never stores plain-text passwords in app tables.
  *
- * Required secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * Body: { email, full_name, role_id?, default_branch_id?, branch_ids?, organization_id }
+ * Body: {
+ *   employee_id, role_id, username, password,
+ *   default_branch_id?, branch_ids?, email?
+ * }
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -19,6 +22,14 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function normalizeUsername(raw: string): string {
+  return raw.trim().toLowerCase();
+}
+
+function isValidUsername(u: string): boolean {
+  return /^[a-z0-9._-]{3,40}$/.test(u);
 }
 
 Deno.serve(async (req) => {
@@ -53,7 +64,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
-    // Permission check must run as the caller (not service role), so auth.uid() resolves.
     const callerClient = createClient(supabaseUrl, anonKey || serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: `Bearer ${jwt}` } },
@@ -62,7 +72,6 @@ Deno.serve(async (req) => {
       p_permission_key: "administration.users.create",
     });
 
-    // Fallback: Super Admin / Owner via role name when RPC is unavailable under anon key.
     let allowed = Boolean(canCreate) && !permErr;
     if (!allowed) {
       const { data: profile } = await admin
@@ -79,18 +88,35 @@ Deno.serve(async (req) => {
     }
 
     const body = (await req.json()) as {
-      email?: string;
-      full_name?: string;
+      employee_id?: string;
       role_id?: string;
+      username?: string;
+      password?: string;
       default_branch_id?: string;
       branch_ids?: string[];
+      email?: string;
       organization_id?: string;
     };
 
-    const email = body.email?.trim().toLowerCase();
-    const fullName = body.full_name?.trim();
-    if (!email || !fullName) {
-      return jsonResponse({ error: "email and full_name are required" }, 400);
+    const employeeId = body.employee_id?.trim();
+    const roleId = body.role_id?.trim();
+    const username = normalizeUsername(body.username ?? "");
+    const password = body.password ?? "";
+
+    if (!employeeId || !roleId || !username || !password) {
+      return jsonResponse(
+        { error: "employee_id, role_id, username and password are required" },
+        400,
+      );
+    }
+    if (!isValidUsername(username)) {
+      return jsonResponse(
+        { error: "Username must be 3–40 chars: letters, numbers, . _ -" },
+        400,
+      );
+    }
+    if (password.length < 8) {
+      return jsonResponse({ error: "Password must be at least 8 characters" }, 400);
     }
 
     const { data: callerProfile } = await admin
@@ -104,76 +130,189 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "organization_id could not be resolved" }, 400);
     }
 
-    const { data: inviteData, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(
-      email,
-      {
-        data: { full_name: fullName, organization_id: orgId },
-        redirectTo: `${Deno.env.get("APP_URL") ?? supabaseUrl}/admin/login`,
+    const { data: org } = await admin
+      .from("organizations")
+      .select("slug")
+      .eq("id", orgId)
+      .maybeSingle();
+    const orgSlug = (org?.slug as string | undefined) || "org";
+
+    const { data: employee, error: empErr } = await admin
+      .from("employees")
+      .select("id, full_name, email, phone, profile_id, status, organization_id, branch_id")
+      .eq("id", employeeId)
+      .eq("organization_id", orgId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (empErr || !employee) {
+      return jsonResponse({ error: "Employee not found in your organization" }, 404);
+    }
+    if (employee.profile_id) {
+      return jsonResponse({ error: "Employee already has a linked user account" }, 400);
+    }
+    if (employee.status === "terminated") {
+      return jsonResponse({ error: "Cannot create login for terminated employee" }, 400);
+    }
+
+    const { data: existingUser } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("organization_id", orgId)
+      .ilike("username", username)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (existingUser) {
+      return jsonResponse({ error: "Username already taken in this organization" }, 400);
+    }
+
+    const employeeEmail = (employee.email as string | null)?.trim().toLowerCase() || null;
+    const overrideEmail = body.email?.trim().toLowerCase() || null;
+    const authEmail =
+      overrideEmail ||
+      employeeEmail ||
+      `${username}@${orgSlug}.staff.local`;
+
+    const fullName = (employee.full_name as string).trim();
+
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
+      email: authEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        username,
+        full_name: fullName,
+        organization_id: orgId,
+        employee_id: employeeId,
       },
-    );
+    });
 
-    if (inviteErr) {
-      return jsonResponse({ error: inviteErr.message }, 400);
+    if (createErr) {
+      return jsonResponse({ error: createErr.message }, 400);
     }
 
-    const userId = inviteData.user?.id;
+    const userId = created.user?.id;
     if (!userId) {
-      return jsonResponse({ error: "Invite succeeded but user id missing" }, 500);
+      return jsonResponse({ error: "User created but id missing" }, 500);
     }
+
+    const defaultBranchId =
+      body.default_branch_id ?? (employee.branch_id as string | null) ?? null;
 
     const { error: profileErr } = await admin.from("profiles").upsert({
       id: userId,
       organization_id: orgId,
       full_name: fullName,
-      email,
-      role_id: body.role_id ?? null,
-      default_branch_id: body.default_branch_id ?? null,
+      email: authEmail,
+      username,
+      phone: (employee.phone as string | null) ?? null,
+      role_id: roleId,
+      default_branch_id: defaultBranchId,
       is_active: true,
       created_by: callerData.user.id,
       updated_by: callerData.user.id,
     });
 
     if (profileErr) {
+      await admin.auth.admin.deleteUser(userId);
       return jsonResponse({ error: profileErr.message }, 500);
     }
 
-    if (body.branch_ids?.length) {
-      const rows = body.branch_ids.map((branchId) => ({
+    const { error: linkErr } = await admin
+      .from("employees")
+      .update({
+        profile_id: userId,
+        updated_by: callerData.user.id,
+      })
+      .eq("id", employeeId)
+      .eq("organization_id", orgId)
+      .is("deleted_at", null)
+      .is("profile_id", null);
+
+    if (linkErr) {
+      console.error("employee link failed", linkErr.message);
+      return jsonResponse({ error: "User created but employee link failed: " + linkErr.message }, 500);
+    }
+
+    // Align commission structures + ledger with the new login profile
+    const { error: rulesSyncErr } = await admin
+      .from("salesman_commission_rules")
+      .update({
+        profile_id: userId,
+        updated_by: callerData.user.id,
+      })
+      .eq("employee_id", employeeId)
+      .eq("organization_id", orgId)
+      .is("deleted_at", null);
+
+    if (rulesSyncErr) {
+      console.error("commission rules profile sync failed", rulesSyncErr.message);
+    }
+
+    const { error: ledgerSyncErr } = await admin
+      .from("salesman_commissions")
+      .update({
+        profile_id: userId,
+        updated_by: callerData.user.id,
+        needs_employee_link: false,
+      })
+      .eq("employee_id", employeeId)
+      .eq("organization_id", orgId)
+      .is("deleted_at", null)
+      .is("profile_id", null);
+
+    if (ledgerSyncErr) {
+      console.error("commission ledger profile sync failed", ledgerSyncErr.message);
+    }
+
+    const branchIds = Array.from(
+      new Set(
+        [
+          ...(body.branch_ids ?? []),
+          defaultBranchId,
+        ].filter((id): id is string => Boolean(id)),
+      ),
+    );
+
+    for (const branchId of branchIds) {
+      const { error: branchErr } = await admin.from("user_branch_access").insert({
         user_id: userId,
         branch_id: branchId,
         organization_id: orgId,
         created_by: callerData.user.id,
         updated_by: callerData.user.id,
-      }));
-      const { error: branchErr } = await admin.from("user_branch_access").upsert(rows, {
-        onConflict: "user_id,branch_id",
       });
       if (branchErr) {
-        // Partial unique index may not support onConflict; insert individually.
-        for (const row of rows) {
-          await admin.from("user_branch_access").insert(row);
-        }
+        console.error("user_branch_access insert failed", branchErr.message);
       }
     }
 
     await admin.rpc("write_audit_log", {
       p_organization_id: orgId,
-      p_branch_id: body.default_branch_id ?? null,
+      p_branch_id: defaultBranchId,
       p_actor_id: callerData.user.id,
-      p_action: "admin.user.invite",
+      p_action: "admin.user.create",
       p_entity_type: "profile",
       p_entity_id: userId,
       p_before_data: null,
-      p_after_data: { email, full_name: fullName, role_id: body.role_id ?? null },
+      p_after_data: {
+        email: authEmail,
+        username,
+        full_name: fullName,
+        role_id: roleId,
+        employee_id: employeeId,
+      },
       p_reason: null,
       p_request_meta: { source: "admin-create-user" },
     });
 
     return jsonResponse({
       user_id: userId,
-      email,
+      email: authEmail,
+      username,
       full_name: fullName,
-      invited: true,
+      employee_id: employeeId,
+      created: true,
     });
   } catch (e) {
     console.error("admin-create-user error", e);

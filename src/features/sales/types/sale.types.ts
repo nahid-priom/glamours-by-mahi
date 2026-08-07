@@ -1,6 +1,7 @@
 export type SalesDatePreset =
   | 'today'
   | 'yesterday'
+  | 'this_week'
   | 'last_7'
   | 'this_month'
   | 'last_month'

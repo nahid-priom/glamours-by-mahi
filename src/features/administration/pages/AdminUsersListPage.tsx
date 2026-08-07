@@ -26,12 +26,12 @@ export function AdminUsersListPage() {
           <h1 className="text-xl font-bold">Users</h1>
         </div>
         <Button asChild size="sm">
-          <Link to="/administration/users/new">Invite user</Link>
+          <Link to="/administration/users/new">Create user</Link>
         </Button>
       </div>
 
       <Input
-        placeholder="Search name or email…"
+        placeholder="Search name, username or email…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="max-w-sm"
@@ -49,6 +49,7 @@ export function AdminUsersListPage() {
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
             <tr>
               <th className="px-3 py-2 text-left">Name</th>
+              <th className="px-3 py-2 text-left">Username</th>
               <th className="px-3 py-2 text-left">Email</th>
               <th className="px-3 py-2 text-left">Role</th>
               <th className="px-3 py-2 text-left">Status</th>
@@ -61,7 +62,11 @@ export function AdminUsersListPage() {
                   <Link className="font-medium hover:underline" to={`/administration/users/${u.id}`}>
                     {u.full_name}
                   </Link>
+                  {u.employee_code ? (
+                    <div className="text-xs text-[#9CA3AF]">{u.employee_code}</div>
+                  ) : null}
                 </td>
+                <td className="px-3 py-2">{u.username ?? '—'}</td>
                 <td className="px-3 py-2">{u.email}</td>
                 <td className="px-3 py-2">{u.role_name ?? '—'}</td>
                 <td className="px-3 py-2">{u.is_active ? 'Active' : 'Inactive'}</td>

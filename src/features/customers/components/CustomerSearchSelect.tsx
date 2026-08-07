@@ -6,7 +6,7 @@ import { SelectedCustomerCard } from './SelectedCustomerCard'
 import { AddCustomerDialog } from './AddCustomerDialog'
 import { customersService } from '@/services/customers.service'
 import { looksLikePhoneQuery } from '@/lib/phone-utils'
-import type { Customer } from '@/database/schema'
+import type { Customer } from '../customers.types'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -35,7 +35,9 @@ export function CustomerSearchSelect({
   const [tick, setTick] = useState(0)
 
   const { results, loading } = useCustomerSearch(query, 10)
-  const selected = value ? customersService.getById(value) : null
+  const selected = value
+    ? (customersService.getById(value) as unknown as Customer | null)
+    : null
 
   // Refresh selected after create (tick forces re-read)
   useEffect(() => {

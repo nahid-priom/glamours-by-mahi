@@ -13,7 +13,10 @@ export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const chromeRef = useRef<HTMLDivElement>(null)
-  const isPosRoute = location.pathname === '/sales/pos' || location.pathname === '/sales/new'
+  const isPosRoute =
+    location.pathname === '/sales/pos' ||
+    location.pathname === '/sales/new' ||
+    location.pathname === '/sales/exchanges/new'
 
   useLayoutEffect(() => {
     const el = chromeRef.current

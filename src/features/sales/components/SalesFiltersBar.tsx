@@ -1,4 +1,5 @@
 import { peekDatabase } from '@/database/transaction'
+import { AppDateRangeField } from '@/components/date-picker'
 import { Input } from '@/components/ui/input'
 import type { SaleListFilters } from '@/services/sales.service'
 
@@ -18,19 +19,17 @@ export function SalesFiltersBar({ filters, onChange }: SalesFiltersBarProps) {
   return (
     <div className="space-y-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-sm sm:p-4">
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-        <Input
-          type="date"
-          value={filters.from ?? ''}
-          onChange={(e) => set('from', e.target.value || undefined)}
-          className="h-9 rounded-xl"
-          aria-label="From date"
-        />
-        <Input
-          type="date"
-          value={filters.to ?? ''}
-          onChange={(e) => set('to', e.target.value || undefined)}
-          className="h-9 rounded-xl"
-          aria-label="To date"
+        <AppDateRangeField
+          from={filters.from ?? ''}
+          to={filters.to ?? ''}
+          onChange={({ from, to }) =>
+            onChange({
+              ...filters,
+              from: from || undefined,
+              to: to || undefined,
+            })
+          }
+          className="sm:col-span-2"
         />
         <select
           className={selectClass}

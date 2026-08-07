@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
+import { AppDateRangeField } from '@/components/date-picker'
 import {
   Select,
   SelectContent,
@@ -171,23 +171,13 @@ export function StockLedgerFilterBar({
         </DropdownMenu>
       </div>
 
-      <div className="w-[9.5rem]">
-        <p className="mb-1 text-xs font-medium text-[#6B7280]">From</p>
-        <Input
-          type="date"
-          value={filters.fromDate}
-          onChange={(e) => onChange({ fromDate: e.target.value })}
-        />
-      </div>
-
-      <div className="w-[9.5rem]">
-        <p className="mb-1 text-xs font-medium text-[#6B7280]">To</p>
-        <Input
-          type="date"
-          value={filters.toDate}
-          onChange={(e) => onChange({ toDate: e.target.value })}
-        />
-      </div>
+      <AppDateRangeField
+        label="Date range"
+        from={filters.fromDate}
+        to={filters.toDate}
+        onChange={({ from, to }) => onChange({ fromDate: from, toDate: to })}
+        className="min-w-[14rem]"
+      />
 
       {activeCount > 0 ? (
         <Button type="button" variant="ghost" size="sm" className="h-9 gap-1" onClick={onClear}>

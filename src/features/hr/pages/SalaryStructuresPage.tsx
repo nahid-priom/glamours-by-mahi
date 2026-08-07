@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Loader2, Plus } from 'lucide-react'
+import { AppDateField } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -109,12 +110,7 @@ export function SalaryStructuresPage() {
             </div>
             <div>
               <Label>Effective from</Label>
-              <input
-                type="date"
-                className="mt-1 h-10 w-full rounded-lg border px-2 text-sm"
-                value={effectiveFrom}
-                onChange={(e) => setEffectiveFrom(e.target.value)}
-              />
+              <AppDateField className="mt-1" value={effectiveFrom} onChange={setEffectiveFrom} />
             </div>
             <div>
               <Label>Salary type</Label>

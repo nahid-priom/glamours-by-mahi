@@ -61,7 +61,7 @@ export const router = createBrowserRouter([
               customersRoutes,
               ...courierRoutes,
               accountsRoutes,
-              hrRoutes,
+              ...hrRoutes,
               reportsRoutes,
               administrationRoutes,
               ...settingsRoutes,

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import { AppDateField } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -83,16 +84,16 @@ export function PayrollNewPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Period start</Label>
-            <Input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
+            <AppDateField value={periodStart} onChange={setPeriodStart} />
           </div>
           <div className="space-y-1.5">
             <Label>Period end</Label>
-            <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
+            <AppDateField value={periodEnd} onChange={setPeriodEnd} />
           </div>
         </div>
         <div className="space-y-1.5">
           <Label>Payment date (optional)</Label>
-          <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+          <AppDateField value={paymentDate} onChange={setPaymentDate} clearable />
         </div>
         <div className="space-y-1.5">
           <Label>Scope</Label>

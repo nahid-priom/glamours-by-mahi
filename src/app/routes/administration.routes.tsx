@@ -22,11 +22,20 @@ export const administrationRoutes: RouteObject = {
     { path: '/administration', element: withSuspense(AdministrationHubPage) },
     {
       element: (
+        <PermissionRoute
+          permission={['administration.users.create', 'settings.manage']}
+        />
+      ),
+      children: [
+        { path: '/administration/users/new', element: withSuspense(AdminUserInvitePage) },
+      ],
+    },
+    {
+      element: (
         <PermissionRoute permission={['administration.users.read', 'settings.manage']} />
       ),
       children: [
         { path: '/administration/users', element: withSuspense(AdminUsersListPage) },
-        { path: '/administration/users/new', element: withSuspense(AdminUserInvitePage) },
         { path: '/administration/users/:id', element: withSuspense(AdminUserDetailPage) },
       ],
     },

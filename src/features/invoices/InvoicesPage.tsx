@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
+import { AppDateRangeField } from '@/components/date-picker'
 import { KpiGrid } from '@/components/common/KpiGrid'
 import { EntityToolbar } from '@/components/common/EntityToolbar'
 import { ActionDropdown, type ActionItem } from '@/components/common/ActionDropdown'
@@ -169,19 +169,14 @@ export function InvoicesPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              type="date"
-              className="h-11 w-full sm:w-36"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              placeholder="From"
-            />
-            <Input
-              type="date"
-              className="h-11 w-full sm:w-36"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              placeholder="To"
+            <AppDateRangeField
+              from={dateFrom}
+              to={dateTo}
+              onChange={({ from, to }) => {
+                setDateFrom(from)
+                setDateTo(to)
+              }}
+              className="w-full sm:w-auto sm:min-w-[14rem]"
             />
             <label className="flex items-center gap-2 text-xs text-text-muted">
               <input

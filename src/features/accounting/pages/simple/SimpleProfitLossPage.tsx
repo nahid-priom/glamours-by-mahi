@@ -5,34 +5,20 @@ import { PageHeader, DateRangeInputs, ErrorText, KpiCard } from '../../component
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/features/auth/auth-session'
+import { addDaysYmd, resolveShortcut, todayYmd } from '@/lib/datetime/bd'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 
-function isoDay(d: Date) {
-  return d.toISOString().slice(0, 10)
-}
-
 function monthRange() {
-  const to = new Date()
-  return { from: `${isoDay(to).slice(0, 7)}-01`, to: isoDay(to) }
+  return resolveShortcut('this_month')
 }
 
 function presetRange(kind: 'today' | 'yesterday' | 'week' | 'month') {
-  const now = new Date()
-  const today = isoDay(now)
-  if (kind === 'today') return { from: today, to: today }
-  if (kind === 'yesterday') {
-    const y = new Date(now)
-    y.setDate(y.getDate() - 1)
-    const day = isoDay(y)
-    return { from: day, to: day }
-  }
-  if (kind === 'week') {
-    const start = new Date(now)
-    start.setDate(start.getDate() - 6)
-    return { from: isoDay(start), to: today }
-  }
-  return monthRange()
+  if (kind === 'today') return resolveShortcut('today')
+  if (kind === 'week') return resolveShortcut('this_week')
+  if (kind === 'month') return resolveShortcut('this_month')
+  const d = addDaysYmd(todayYmd(), -1)
+  return { from: d, to: d }
 }
 
 export function SimpleProfitLossPage() {

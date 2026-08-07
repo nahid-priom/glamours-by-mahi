@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Trash2 } from 'lucide-react'
+import { AppDateField } from '@/components/date-picker'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Badge } from '@/components/ui/badge'
@@ -353,7 +354,17 @@ export function CommissionSettingsPage() {
               </label>
               <label className="text-sm font-medium">
                 Effective from
-                <Input type="date" className="mt-1" {...form.register('effective_from')} />
+                <Controller
+                  control={form.control}
+                  name="effective_from"
+                  render={({ field }) => (
+                    <AppDateField
+                      className="mt-1"
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
               </label>
             </div>
           ) : (
@@ -371,7 +382,17 @@ export function CommissionSettingsPage() {
                 </label>
                 <label className="text-sm font-medium">
                   Effective from
-                  <Input type="date" className="mt-1" {...form.register('effective_from')} />
+                  <Controller
+                    control={form.control}
+                    name="effective_from"
+                    render={({ field }) => (
+                      <AppDateField
+                        className="mt-1"
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
                 </label>
               </div>
 

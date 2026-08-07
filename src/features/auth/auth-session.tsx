@@ -25,7 +25,7 @@ interface AuthContextValue {
   setActiveBranchId: (id: string | null) => void
   loading: boolean
   can: (permission: Permission | Permission[]) => boolean
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (identifier: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -175,9 +175,26 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
     [permissions],
   )
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (identifier: string, password: string) => {
+    const raw = identifier.trim()
+    let email = raw
+    if (!raw.includes('@')) {
+      type UntypedRpc = (
+        fn: string,
+        args?: object,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>
+      const rpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc
+      const { data, error: resolveErr } = await rpc('resolve_staff_login_email', {
+        p_identifier: raw,
+      })
+      if (resolveErr) throw new Error('Invalid username/email or password')
+      if (!data || typeof data !== 'string') {
+        throw new Error('Invalid username/email or password')
+      }
+      email = data
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    if (error) throw new Error('Invalid username/email or password')
   }, [])
 
   const signOut = useCallback(async () => {

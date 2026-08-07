@@ -8,6 +8,7 @@ import {
   ReportSummaryCards,
   type ReportDateRange,
 } from '@/components/reports'
+import { toQueryBounds } from '@/lib/datetime/bd'
 import { reportsRepository } from '../repositories/reports.repository'
 
 type UntypedRpc = (fn: string, args?: object) => Promise<{ data: unknown; error: { message: string } | null }>
@@ -41,8 +42,9 @@ type CourierReport = {
 }
 
 async function fetchCourierReport(range: ReportDateRange): Promise<CourierReport> {
+  const bounds = toQueryBounds(range.from, range.to)
   const { data, error } = await untypedRpc('get_courier_report', {
-    payload: { from: `${range.from}T00:00:00Z`, to: `${range.to}T23:59:59Z` },
+    payload: { from: bounds.fromIso, to: bounds.toIso },
   })
   if (error) throw error
   return data as CourierReport

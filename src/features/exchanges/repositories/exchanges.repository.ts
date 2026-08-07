@@ -236,32 +236,115 @@ export async function getSaleItemsForExchange(saleId: string): Promise<ExchangeS
   })
 }
 
-export async function searchCatalogueVariants(query: string) {
+export type ExchangeCatalogueVariant = {
+  id: string
+  productId: string
+  productName: string
+  variantLabel: string
+  label: string
+  description: string
+  sku: string
+  barcode: string | null
+  unitPrice: number
+  thumbnailUrl: string | null
+}
+
+export async function searchCatalogueVariants(
+  query: string,
+): Promise<ExchangeCatalogueVariant[]> {
+  const { resolveStorageUrl } = await import(
+    '@/features/products/repositories/catalog.repository'
+  )
   const q = query.trim()
   let builder = supabase
     .from('product_variants')
-    .select('id, sku, name, barcode, selling_price, products!inner(name)')
+    .select(
+      `
+      id, sku, name, barcode, selling_price,
+      products!inner(
+        id, name,
+        product_images(storage_path, is_cover, deleted_at, variant_id)
+      )
+    `,
+    )
     .is('deleted_at', null)
     .eq('is_active', true)
     .order('sku', { ascending: true })
-    .limit(20)
+    .limit(24)
 
   if (q) {
+    // PostgREST: filter variant fields; product name filtered client-side for reliability.
     builder = builder.or(`sku.ilike.%${q}%,barcode.ilike.%${q}%,name.ilike.%${q}%`)
   }
 
   const { data, error } = await builder
   if (error) throw error
 
-  return (data ?? []).map((v) => {
-    const product = v.products as unknown as { name: string }
-    return {
-      id: v.id,
-      label: `${product.name} · ${v.name || v.sku}`,
-      description: `SKU ${v.sku}`,
-      unitPrice: Number(v.selling_price ?? 0),
+  let rows = data ?? []
+
+  // If text search missed product names, run a second pass on products.name
+  if (q && rows.length < 24) {
+    const { data: byProduct, error: byProductErr } = await supabase
+      .from('product_variants')
+      .select(
+        `
+        id, sku, name, barcode, selling_price,
+        products!inner(
+          id, name,
+          product_images(storage_path, is_cover, deleted_at, variant_id)
+        )
+      `,
+      )
+      .is('deleted_at', null)
+      .eq('is_active', true)
+      .ilike('products.name', `%${q}%`)
+      .order('sku', { ascending: true })
+      .limit(24)
+    if (!byProductErr && byProduct?.length) {
+      const seen = new Set(rows.map((r) => r.id))
+      for (const row of byProduct) {
+        if (!seen.has(row.id)) {
+          rows = [...rows, row]
+          seen.add(row.id)
+        }
+        if (rows.length >= 24) break
+      }
     }
-  })
+  }
+
+  return Promise.all(
+    rows.map(async (v) => {
+      const product = v.products as unknown as {
+        id: string
+        name: string
+        product_images?: Array<{
+          storage_path: string
+          is_cover: boolean
+          deleted_at: string | null
+          variant_id: string | null
+        }>
+      }
+      const images = (product.product_images ?? []).filter((i) => !i.deleted_at)
+      const cover =
+        images.find((i) => i.variant_id === v.id) ??
+        images.find((i) => i.is_cover) ??
+        images[0]
+      const thumbnailUrl = await resolveStorageUrl(cover?.storage_path)
+      const variantLabel = v.name || v.sku || 'Default'
+      return {
+        id: v.id,
+        productId: product.id,
+        productName: product.name,
+        variantLabel,
+        label: `${product.name} · ${variantLabel}`,
+        description: `SKU ${v.sku}`,
+        sku: v.sku,
+        barcode: v.barcode ?? null,
+        unitPrice: Number(v.selling_price ?? 0),
+        thumbnailUrl,
+      }
+    }),
+  )
 }
 
 export async function listFinancialAccounts() {

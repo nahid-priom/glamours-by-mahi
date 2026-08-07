@@ -25,6 +25,9 @@ export interface Customer {
   deleted_at?: string | null
   created_by?: string | null
   updated_by?: string | null
+  /** Alias used by legacy POS customer pickers */
+  currentDue?: number
+  current_due?: number
 }
 
 export interface CustomerFilters {

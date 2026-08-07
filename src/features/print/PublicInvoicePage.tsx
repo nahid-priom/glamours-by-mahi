@@ -5,9 +5,28 @@ import { Button } from '@/components/ui/button'
 import { formatBDT, formatDate } from '@/lib/format'
 import { supabase } from '@/lib/supabase/client'
 
+type PublicInvoiceDto = {
+  invoice_no: string
+  grand_total: number
+  paid_total: number
+  due_total: number
+  completed_at: string | null
+  status: string
+  channel: string | null
+  customer: { name: string; phone: string } | null
+  items: Array<{
+    id: string
+    qty: number
+    unit_price: number
+    line_total: number
+    name: string
+    sku: string | null
+  }>
+}
+
 /**
  * Public invoice view via random secure token (not a predictable sale UUID).
- * Tokens live on sales.public_share_token when issued from the ERP.
+ * Uses SECURITY DEFINER RPC — anon cannot list sales by tokenless SELECT.
  */
 export function PublicInvoicePage() {
   const { secureToken } = useParams<{ secureToken: string }>()
@@ -18,22 +37,13 @@ export function PublicInvoicePage() {
       if (!secureToken || secureToken.length < 16) {
         throw new Error('Invalid invoice link')
       }
-      const { data: sale, error: saleError } = await supabase
-        .from('sales')
-        .select(
-          `
-          id, invoice_no, grand_total, paid_total, due_total, completed_at, status, channel,
-          customers(name, phone),
-          sale_items(id, qty, unit_price, line_total, product_variants(name, sku, products(name)))
-        `,
-        )
-        .eq('public_share_token' as never, secureToken)
-        .is('deleted_at', null)
-        .maybeSingle()
-
-      if (saleError) throw saleError
-      if (!sale) throw new Error('Invoice not found or link expired')
-      return sale
+      const { data: dto, error: rpcError } = await supabase.rpc(
+        'get_public_invoice_by_token' as never,
+        { p_token: secureToken } as never,
+      )
+      if (rpcError) throw rpcError
+      if (!dto) throw new Error('Invoice not found or link expired')
+      return dto as unknown as PublicInvoiceDto
     },
     enabled: Boolean(secureToken),
     retry: false,
@@ -61,18 +71,8 @@ export function PublicInvoicePage() {
     )
   }
 
-  const customer = data.customers as { name: string; phone: string } | null
-  const items = (data.sale_items as Array<{
-    id: string
-    qty: number
-    unit_price: number
-    line_total: number
-    product_variants: {
-      name: string | null
-      sku: string
-      products: { name: string } | null
-    } | null
-  }>) ?? []
+  const customer = data.customer
+  const items = data.items ?? []
 
   return (
     <div className="min-h-svh bg-[#F8F6F2] px-4 py-10">
@@ -92,22 +92,15 @@ export function PublicInvoicePage() {
         ) : null}
 
         <ul className="mt-6 space-y-3 border-t border-[#111111]/8 pt-4">
-          {items.map((item) => {
-            const name =
-              item.product_variants?.products?.name ??
-              item.product_variants?.name ??
-              item.product_variants?.sku ??
-              'Item'
-            return (
-              <li key={item.id} className="flex justify-between gap-3 text-sm">
-                <span className="min-w-0">
-                  {name}
-                  <span className="text-[#6B7280]"> × {item.qty}</span>
-                </span>
-                <span className="shrink-0 font-medium">{formatBDT(Number(item.line_total))}</span>
-              </li>
-            )
-          })}
+          {items.map((item) => (
+            <li key={item.id} className="flex justify-between gap-3 text-sm">
+              <span className="min-w-0">
+                {item.name}
+                <span className="text-[#6B7280]"> × {item.qty}</span>
+              </span>
+              <span className="shrink-0 font-medium">{formatBDT(Number(item.line_total))}</span>
+            </li>
+          ))}
         </ul>
 
         <div className="mt-6 space-y-1 border-t border-[#111111]/8 pt-4 text-sm">
@@ -120,8 +113,8 @@ export function PublicInvoicePage() {
             <span>{formatBDT(Number(data.paid_total))}</span>
           </div>
           {Number(data.due_total) > 0 ? (
-            <div className="flex justify-between text-[#E11D48]">
-              <span>Due (COD)</span>
+            <div className="flex justify-between text-[#6B7280]">
+              <span>Due</span>
               <span>{formatBDT(Number(data.due_total))}</span>
             </div>
           ) : null}

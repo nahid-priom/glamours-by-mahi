@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { AppDateField } from '@/components/date-picker'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { queryKeys } from '@/lib/query/keys'
@@ -143,12 +144,12 @@ export function OpeningStockFields({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="opening-expiry">Expiry date</Label>
-              <Input
+              <AppDateField
                 id="opening-expiry"
-                type="date"
                 disabled={disabled}
                 value={value.expiresAt ?? ''}
-                onChange={(e) => onChange({ ...value, expiresAt: e.target.value })}
+                onChange={(ymd) => onChange({ ...value, expiresAt: ymd })}
+                clearable
               />
             </div>
           </>

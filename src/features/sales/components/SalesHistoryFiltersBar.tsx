@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { AppDateRangeField } from '@/components/date-picker'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +26,7 @@ import type { SalesDatePreset, SalesHistoryFilters, SalesSort } from '../types/s
 const PRESETS: Array<{ value: SalesDatePreset; label: string }> = [
   { value: 'today', label: 'Today' },
   { value: 'yesterday', label: 'Yesterday' },
+  { value: 'this_week', label: 'This Week' },
   { value: 'last_7', label: 'Last 7 Days' },
   { value: 'this_month', label: 'This Month' },
   { value: 'last_month', label: 'Last Month' },
@@ -122,22 +124,15 @@ export function SalesHistoryFiltersBar({
       </select>
 
       {filters.preset === 'custom' ? (
-        <>
-          <Input
-            type="date"
-            value={filters.fromDate ?? ''}
-            onChange={(e) => patch({ fromDate: e.target.value || null, preset: 'custom' })}
-            className="h-9 w-[9.5rem]"
-            aria-label="From date"
-          />
-          <Input
-            type="date"
-            value={filters.toDate ?? ''}
-            onChange={(e) => patch({ toDate: e.target.value || null, preset: 'custom' })}
-            className="h-9 w-[9.5rem]"
-            aria-label="To date"
-          />
-        </>
+        <AppDateRangeField
+          from={filters.fromDate ?? ''}
+          to={filters.toDate ?? ''}
+          onChange={({ from, to }) =>
+            patch({ fromDate: from || null, toDate: to || null, preset: 'custom' })
+          }
+          className="min-w-[14rem]"
+          allowModeToggle
+        />
       ) : null}
 
       <select

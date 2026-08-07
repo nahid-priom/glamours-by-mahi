@@ -1,7 +1,7 @@
 import { formatBDT } from '@/lib/format'
 import { displayCustomerName } from '@/lib/phone-utils'
 import { cn } from '@/lib/utils'
-import type { Customer } from '@/database/schema'
+import type { Customer } from '../customers.types'
 
 interface CustomerSearchResultProps {
   customer: Customer
@@ -48,9 +48,9 @@ export function CustomerSearchResult({
         <p className="truncate text-sm font-semibold text-[#111111]">{highlight(name, query)}</p>
         <p className="mt-0.5 text-xs text-[#6B7280]">{highlight(customer.phone, query)}</p>
       </div>
-      {customer.currentDue > 0 && (
+      {Number(customer.currentDue ?? customer.current_due ?? 0) > 0 && (
         <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-          Due {formatBDT(customer.currentDue)}
+          Due {formatBDT(Number(customer.currentDue ?? customer.current_due ?? 0))}
         </span>
       )}
     </button>

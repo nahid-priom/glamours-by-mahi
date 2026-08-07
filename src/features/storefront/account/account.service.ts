@@ -1,12 +1,37 @@
 import { getStorageItem, setStorageItem, STORAGE_KEYS } from '@/lib/storage'
 import type { OrderStatus } from '@/lib/constants'
 import type { Order } from '@/types'
-import { customersService } from '@/features/customers/customers.service'
-import { ordersService } from '@/features/storefront/legacy-oms/orders.service'
+import { supabase } from '@/lib/supabase/client'
 import { cartService } from '../cart.service'
 import type { AccountOrderFilters, AccountSession, AccountStats, SavedAddress } from './account.types'
 
+type UntypedRpc = (
+  fn: string,
+  args?: Record<string, unknown>,
+) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+
+const untypedRpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc
+
 const IN_PROGRESS: OrderStatus[] = ['New', 'Confirmed', 'Packed', 'Courier Booked', 'Shipped']
+
+type TrackedSale = {
+  invoice_no: string
+  grand_total: number
+  due_total: number
+  status: string
+  channel: string | null
+  completed_at: string | null
+  customers?: { name: string; phone: string } | null
+}
+
+function mapSaleStatus(status: string): OrderStatus {
+  const s = status.toLowerCase()
+  if (s === 'completed' || s === 'delivered') return 'Delivered'
+  if (s === 'cancelled') return 'Cancelled'
+  if (s === 'returned') return 'Returned'
+  if (s === 'draft') return 'New'
+  return 'Confirmed'
+}
 
 export function getSession(): AccountSession | null {
   return getStorageItem<AccountSession | null>(STORAGE_KEYS.accountSession, null)
@@ -20,38 +45,24 @@ export function clearSession(): void {
   localStorage.removeItem(`oms_${STORAGE_KEYS.accountSession}`)
 }
 
+/** Phone-only guest session — no legacy localStorage customer registry. */
 export async function loginByPhone(phone: string): Promise<AccountSession> {
   const normalized = phone.trim()
-  const customer = await customersService.getByPhone(normalized)
-  const session: AccountSession = customer
-    ? {
-        phone: customer.phone,
-        name: customer.name,
-        email: customer.email || undefined,
-        address: customer.address || undefined,
-        district: customer.district || undefined,
-      }
-    : { phone: normalized, name: 'Customer' }
+  const session: AccountSession = { phone: normalized, name: 'Customer' }
+  try {
+    const { data } = await untypedRpc('track_online_order', { p_query: normalized })
+    const rows = (data as TrackedSale[] | null) ?? []
+    const name = rows[0]?.customers?.name
+    if (name) session.name = name
+  } catch {
+    /* tracking is best-effort for greeting */
+  }
   saveSession(session)
   return session
 }
 
 export async function syncProfile(session: AccountSession): Promise<void> {
   saveSession(session)
-  const existing = await customersService.getByPhone(session.phone)
-  const payload = {
-    name: session.name,
-    phone: session.phone,
-    email: session.email ?? '',
-    address: session.address ?? '',
-    district: session.district ?? '',
-    status: 'active' as const,
-  }
-  if (existing) {
-    await customersService.update(existing.id, payload)
-  } else {
-    await customersService.create(payload)
-  }
 }
 
 function addressesKey(phone: string): string {
@@ -100,9 +111,34 @@ export function getDefaultAddress(phone: string): SavedAddress | null {
   return list.find((a) => a.isDefault) ?? list[0] ?? null
 }
 
+/** Orders for account phone via public track_online_order (exact phone match). */
 export async function getOrdersForPhone(phone: string, filters?: AccountOrderFilters): Promise<Order[]> {
-  const orders = await ordersService.getOrders({ search: phone })
-  let result = orders.filter((o) => o.customer_phone === phone && !o.deleted_at)
+  const { data, error } = await untypedRpc('track_online_order', { p_query: phone.trim() })
+  if (error) throw error
+
+  const rows = (data as TrackedSale[] | null) ?? []
+  let result: Order[] = rows.map((row, index) => {
+    const status = mapSaleStatus(row.status)
+    const now = row.completed_at ?? new Date().toISOString()
+    return {
+      id: row.invoice_no || `track-${index}`,
+      order_id: row.invoice_no,
+      store_id: 'storefront',
+      store_name: 'Glamourous by Mahi',
+      customer_name: row.customers?.name ?? 'Customer',
+      customer_phone: row.customers?.phone ?? phone,
+      delivery_address: '',
+      product_name: 'Online order',
+      quantity: 1,
+      cod_amount: Number(row.grand_total ?? 0),
+      status,
+      fraud_level: 'SAFE',
+      fraud_score: 0,
+      payment_status: Number(row.due_total ?? 0) > 0 ? 'pending' : 'collected',
+      created_at: now,
+      updated_at: now,
+    } as unknown as Order
+  })
 
   if (filters?.search?.trim()) {
     const q = filters.search.trim().toLowerCase()

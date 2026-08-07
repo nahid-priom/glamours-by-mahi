@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client'
+import { toQueryBounds } from '@/lib/datetime/bd'
 import type { Json, Tables } from '@/types/database'
 import type { EntityOption } from '@/components/entity-combobox'
 
@@ -281,17 +282,13 @@ export async function ledger(
   if (filters.movementTypes && filters.movementTypes.length > 0) {
     q = q.in('movement_type', filters.movementTypes)
   }
-  if (filters.fromDate) {
-    const fromIso = filters.fromDate.includes('T')
-      ? filters.fromDate
-      : `${filters.fromDate}T00:00:00.000Z`
-    q = q.gte('occurred_at', fromIso)
-  }
-  if (filters.toDate) {
-    const toIso = filters.toDate.includes('T')
-      ? filters.toDate
-      : `${filters.toDate}T23:59:59.999Z`
-    q = q.lte('occurred_at', toIso)
+  if (filters.fromDate || filters.toDate) {
+    const bounds = toQueryBounds(
+      filters.fromDate?.includes('T') ? filters.fromDate.slice(0, 10) : filters.fromDate,
+      filters.toDate?.includes('T') ? filters.toDate.slice(0, 10) : filters.toDate,
+    )
+    if (bounds.fromIso) q = q.gte('occurred_at', bounds.fromIso)
+    if (bounds.toIso) q = q.lte('occurred_at', bounds.toIso)
   }
 
   const { data, error, count } = await q
@@ -355,36 +352,52 @@ export type CreateTransferInput = {
 }
 
 export async function createTransfer(input: CreateTransferInput) {
-  const transferNo = `TR-${Date.now().toString(36).toUpperCase()}`
-  const { data: transfer, error } = await supabase
-    .from('stock_transfers')
-    .insert({
-      organization_id: input.organizationId,
-      transfer_no: transferNo,
+  type UntypedRpc = (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+  const untypedRpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc
+
+  const { data, error } = await untypedRpc('create_stock_transfer', {
+    payload: {
       from_branch_id: input.fromBranchId,
       to_branch_id: input.toBranchId,
       from_location_id: input.fromLocationId,
       to_location_id: input.toLocationId,
-      status: 'draft',
       notes: input.notes ?? null,
-    })
-    .select()
-    .single()
+      items: input.items.map((item) => ({
+        variant_id: item.variant_id,
+        quantity_sent: item.quantity_sent,
+        unit_cost: item.unit_cost ?? null,
+        notes: item.notes ?? null,
+      })),
+    },
+  })
   if (error) throw error
+  const result = data as { transfer_id?: string; transfer_no?: string; status?: string } | null
+  if (!result?.transfer_id) throw new Error('Failed to create transfer')
 
-  const rows = input.items.map((item) => ({
-    organization_id: input.organizationId,
-    transfer_id: transfer.id,
-    variant_id: item.variant_id,
-    quantity_sent: item.quantity_sent,
-    unit_cost: item.unit_cost ?? null,
-    notes: item.notes ?? null,
-  }))
-
-  const { error: itemsError } = await supabase.from('stock_transfer_items').insert(rows)
-  if (itemsError) throw itemsError
-
+  const { data: transfer, error: loadError } = await supabase
+    .from('stock_transfers')
+    .select()
+    .eq('id', result.transfer_id)
+    .single()
+  if (loadError) throw loadError
   return transfer
+}
+
+export async function cancelTransfer(transferId: string, reason?: string) {
+  type UntypedRpc = (
+    fn: string,
+    args?: Record<string, unknown>,
+  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>
+  const untypedRpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc
+  const { data, error } = await untypedRpc('cancel_stock_transfer', {
+    p_transfer_id: transferId,
+    p_reason: reason ?? null,
+  })
+  if (error) throw error
+  return data
 }
 
 export async function dispatch(transferId: string) {
@@ -524,6 +537,7 @@ export async function searchVariants(query: string): Promise<EntityOption[]> {
 export const inventoryRepository = {
   listStockLocations,
   branchStock,
+  cancelTransfer,
   lowStock,
   ledger,
   createAdjustment,
