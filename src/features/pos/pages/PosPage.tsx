@@ -648,9 +648,12 @@ export function PosPage() {
                     ? 'border-[#E11D48] bg-[#FFF1F2] text-[#E11D48]'
                     : 'border-border bg-white text-[#374151]',
                 )}
-                onClick={() => setCategoryFilter('all')}
+                onClick={() => {
+                  setCategoryFilter('all')
+                  setCatalogSearch('')
+                }}
               >
-                All
+                All Products
               </button>
               {categories.map((c) => (
                 <button
@@ -662,7 +665,10 @@ export function PosPage() {
                       ? 'border-[#E11D48] bg-[#FFF1F2] text-[#E11D48]'
                       : 'border-border bg-white text-[#374151]',
                   )}
-                  onClick={() => setCategoryFilter(c.id)}
+                  onClick={() => {
+                    setCategoryFilter(c.id)
+                    setCatalogSearch('')
+                  }}
                 >
                   {c.name}
                 </button>

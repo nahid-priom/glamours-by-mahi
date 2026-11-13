@@ -82,7 +82,7 @@ export function AdminPermissionsPage() {
       ) : null}
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading roles…</p> : null}
 
-      <PermissionGate permission={['settings.manage', 'administration.roles.manage']}>
+      <PermissionGate permission="settings.manage">
         <div className="space-y-3 rounded-2xl border bg-white p-4">
           <label className="block space-y-1.5 text-sm">
             <span className="text-[#6B7280]">Role</span>

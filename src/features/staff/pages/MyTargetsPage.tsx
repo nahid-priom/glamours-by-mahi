@@ -1,4 +1,7 @@
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useAuth } from '@/features/auth/auth-session'
+import { BranchSwitcher } from '@/components/layout/BranchSwitcher'
 import { useStaffDashboard } from '../hooks/use-staff-dashboard'
 import { listStaffTargets } from '../repositories/staff.repository'
 import { TargetProgressCard } from '../components/TargetProgressCard'
@@ -6,7 +9,10 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { formatBDT, formatDateShort } from '@/lib/format'
 
 export function MyTargetsPage() {
-  const { data, isLoading, error } = useStaffDashboard()
+  const { branchIds, activeBranchId } = useAuth()
+  const [params] = useSearchParams()
+  const branchFromUrl = params.get('branch_id')
+  const { data, isLoading, error } = useStaffDashboard(branchFromUrl ?? activeBranchId)
   const history = useQuery({
     queryKey: ['my-staff-targets-history'],
     queryFn: () => listStaffTargets({ limit: 50 }),
@@ -16,11 +22,14 @@ export function MyTargetsPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-4">
-      <div>
-        <h1 className="text-xl font-bold">My Targets</h1>
-        <p className="text-sm text-[#6B7280]">
-          Achievement uses your attributed sales only — not organization-wide totals.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold">My Targets</h1>
+          <p className="text-sm text-[#6B7280]">
+            Achievement uses your attributed sales only — not organization-wide totals.
+          </p>
+        </div>
+        {branchIds.length > 1 ? <BranchSwitcher /> : null}
       </div>
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
       {error ? <p className="text-sm text-[#E11D48]">{(error as Error).message}</p> : null}
@@ -59,12 +68,11 @@ export function MyTargetsPage() {
         ) : (
           <ul className="divide-y rounded-2xl border bg-white text-sm">
             {items.map((row) => {
+              const salesTarget = Number(row.sales_amount) || 0
+              const orderTarget = Number(row.order_count) || 0
               const pct =
-                Number(row.sales_amount) > 0
-                  ? Math.min(
-                      100,
-                      Math.round((Number(row.achieved_sales) / Number(row.sales_amount)) * 100),
-                    )
+                salesTarget > 0
+                  ? Math.min(100, Math.round((Number(row.achieved_sales) / salesTarget) * 100))
                   : 0
               return (
                 <li key={row.id} className="px-4 py-3">
@@ -73,8 +81,12 @@ export function MyTargetsPage() {
                     <span className="capitalize text-[#6B7280]">{row.status}</span>
                   </div>
                   <p className="text-xs text-[#6B7280]">
-                    {formatBDT(Number(row.achieved_sales))} / {formatBDT(Number(row.sales_amount))} (
-                    {pct}%) · {formatDateShort(row.starts_at)} → {formatDateShort(row.ends_at)}
+                    {salesTarget > 0
+                      ? `${formatBDT(Number(row.achieved_sales))} / ${formatBDT(salesTarget)} (${pct}%)`
+                      : orderTarget > 0
+                        ? `Order target ${orderTarget}`
+                        : '—'}{' '}
+                    · {formatDateShort(row.starts_at)} → {formatDateShort(row.ends_at)}
                   </p>
                 </li>
               )

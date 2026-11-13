@@ -79,8 +79,19 @@ export type UpsertCommissionRuleInput = {
 export type CommissionFilters = {
   status?: string | null
   employeeId?: string | null
+  /** Inclusive calendar date (Asia/Dhaka), filters on created_at */
   dateFrom?: string | null
+  /** Inclusive calendar date (Asia/Dhaka); converted to exclusive end bound */
   dateTo?: string | null
+  page?: number
+  pageSize?: number
+}
+
+export type CommissionListResult = {
+  items: SalesCommissionRow[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 export type SalesCommissionRow = {
@@ -254,7 +265,23 @@ async function searchSalespeople(query: string) {
   }))
 }
 
-async function listCommissions(filters: CommissionFilters = {}) {
+function nextDhakaDayIso(ymd: string) {
+  // Inclusive start / exclusive end: dateTo + 1 calendar day at 00:00 Asia/Dhaka
+  const [y, m, d] = ymd.split('-').map(Number)
+  const utcMs = Date.UTC(y, m - 1, d) + 24 * 60 * 60 * 1000
+  const next = new Date(utcMs)
+  const yy = next.getUTCFullYear()
+  const mm = String(next.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(next.getUTCDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}T00:00:00+06:00`
+}
+
+async function listCommissions(filters: CommissionFilters = {}): Promise<CommissionListResult> {
+  const page = Math.max(1, filters.page ?? 1)
+  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 50))
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = supabase as any
   let q = db
@@ -267,17 +294,24 @@ async function listCommissions(filters: CommissionFilters = {}) {
        profiles!salesman_commissions_profile_id_fkey(full_name),
        employees!salesman_commissions_employee_id_fkey(full_name, employee_code, designation),
        sales!salesman_commissions_sale_id_fkey(invoice_no)`,
+      { count: 'exact' },
     )
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
-    .limit(200)
+    .range(from, to)
   if (filters.status) q = q.eq('status', filters.status)
   if (filters.employeeId) q = q.eq('employee_id', filters.employeeId)
+  // Date semantic: accrual/created_at in Asia/Dhaka (inclusive start, exclusive end)
   if (filters.dateFrom) q = q.gte('created_at', `${filters.dateFrom}T00:00:00+06:00`)
-  if (filters.dateTo) q = q.lte('created_at', `${filters.dateTo}T23:59:59.999+06:00`)
-  const { data, error } = await q
+  if (filters.dateTo) q = q.lt('created_at', nextDhakaDayIso(filters.dateTo))
+  const { data, error, count } = await q
   if (error) throw error
-  return (data ?? []) as SalesCommissionRow[]
+  return {
+    items: (data ?? []) as SalesCommissionRow[],
+    total: count ?? 0,
+    page,
+    pageSize,
+  }
 }
 
 async function approveCommission(id: string) {
@@ -289,16 +323,32 @@ async function approveCommission(id: string) {
 }
 
 async function approveCommissionsBulk(ids: string[]) {
-  const results: Array<{ id: string; ok: boolean; error?: string }> = []
-  for (const id of ids) {
-    try {
-      await approveCommission(id)
-      results.push({ id, ok: true })
-    } catch (e) {
-      results.push({ id, ok: false, error: e instanceof Error ? e.message : 'Failed' })
+  const { data, error } = await untypedRpc('bulk_approve_sales_commissions', {
+    p_commission_ids: ids,
+  })
+  if (error) {
+    // Fallback when migration 131 is not yet applied: sequential approve with per-id results
+    const results: Array<{ id: string; ok: boolean; error?: string }> = []
+    for (const id of ids) {
+      try {
+        await approveCommission(id)
+        results.push({ id, ok: true })
+      } catch (e) {
+        results.push({ id, ok: false, error: e instanceof Error ? e.message : 'Failed' })
+      }
     }
+    return results
   }
-  return results
+  const payload = data as {
+    ok?: number
+    fail?: number
+    results?: Array<{ id: string; ok: boolean; error?: string }>
+  } | null
+  return (payload?.results ?? []).map((r) => ({
+    id: String(r.id),
+    ok: Boolean(r.ok),
+    error: r.error,
+  }))
 }
 
 async function rejectCommission(id: string, reason?: string) {

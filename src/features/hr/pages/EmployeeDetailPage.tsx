@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Loader2, UserPlus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { formatBDT, formatDateShort } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { supabase } from '@/lib/supabase/client'
+import { listActivityFeed } from '@/features/activity-logs/repositories/activity-logs.repository'
 import { commissionsRepository } from '@/features/sales/repositories/commissions.repository'
 import { listStaffTargets } from '@/features/staff/repositories/staff.repository'
 import { listSalaryStructures, listEmployeeAdvances } from '../repositories/payroll.repository'
@@ -25,25 +26,47 @@ import {
   type EmployeeFormState,
 } from '../components/EmployeeFormFields'
 
-type TabId = 'profile' | 'attendance' | 'leave' | 'salary' | 'commission' | 'targets' | 'advances'
+type TabId =
+  | 'overview'
+  | 'attendance'
+  | 'leave'
+  | 'salary'
+  | 'commission'
+  | 'targets'
+  | 'advances'
+  | 'activity'
 
 const TABS: Array<{ id: TabId; label: string }> = [
-  { id: 'profile', label: 'Profile' },
+  { id: 'overview', label: 'Overview' },
   { id: 'attendance', label: 'Attendance' },
   { id: 'leave', label: 'Leave' },
   { id: 'salary', label: 'Salary' },
   { id: 'commission', label: 'Commission' },
   { id: 'targets', label: 'Targets' },
   { id: 'advances', label: 'Advances' },
+  { id: 'activity', label: 'Activity' },
 ]
+
+function isTabId(value: string | null): value is TabId {
+  return Boolean(value && TABS.some((t) => t.id === value))
+}
 
 export function EmployeeDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { toast } = useToast()
   const qc = useQueryClient()
   const [form, setForm] = useState<EmployeeFormState>(emptyEmployeeForm)
-  const [tab, setTab] = useState<TabId>('profile')
+  const tabParam = searchParams.get('tab')
+  const tab: TabId = isTabId(tabParam) ? tabParam : tabParam === 'profile' ? 'overview' : 'overview'
+
+  function setTab(next: TabId) {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'overview') params.delete('tab')
+    else params.set('tab', next)
+    setSearchParams(params, { replace: true })
+  }
 
   const { data: employee, isLoading, error } = useQuery({
     queryKey: ['employee', id],
@@ -98,16 +121,21 @@ export function EmployeeDetailPage() {
   })
 
   const { data: structures = [] } = useQuery({
-    queryKey: queryKeys.salaryStructures,
-    enabled: tab === 'salary',
-    queryFn: listSalaryStructures,
+    queryKey: ['employee-salary-structures', id],
+    enabled: Boolean(id) && tab === 'salary',
+    queryFn: async () => {
+      const all = await listSalaryStructures()
+      return all.filter((s) => s.employee_id === id)
+    },
   })
 
-  const { data: commissions = [] } = useQuery({
-    queryKey: queryKeys.salesCommissions({ employeeId: id }),
+  const { data: commissionPage } = useQuery({
+    queryKey: ['employee-commissions', id],
     enabled: Boolean(id) && tab === 'commission',
-    queryFn: () => commissionsRepository.listCommissions({ employeeId: id }),
+    queryFn: () =>
+      commissionsRepository.listCommissions({ employeeId: id, page: 1, pageSize: 40 }),
   })
+  const commissions = commissionPage?.items ?? []
 
   const { data: targets } = useQuery({
     queryKey: ['employee-targets', employee?.profile_id],
@@ -116,9 +144,23 @@ export function EmployeeDetailPage() {
   })
 
   const { data: advances = [] } = useQuery({
-    queryKey: queryKeys.employeeAdvances,
-    enabled: tab === 'advances',
-    queryFn: listEmployeeAdvances,
+    queryKey: ['employee-advances', id],
+    enabled: Boolean(id) && tab === 'advances',
+    queryFn: async () => {
+      const all = await listEmployeeAdvances()
+      return all.filter((a) => a.employee_id === id)
+    },
+  })
+
+  const { data: activity } = useQuery({
+    queryKey: ['employee-activity', employee?.profile_id],
+    enabled: Boolean(employee?.profile_id) && tab === 'activity',
+    queryFn: () =>
+      listActivityFeed({
+        actorId: employee!.profile_id!,
+        limit: 40,
+        offset: 0,
+      }),
   })
 
   useEffect(() => {
@@ -186,8 +228,6 @@ export function EmployeeDetailPage() {
   }
 
   const linked = Boolean(employee.profile_id)
-  const employeeStructures = structures.filter((s) => s.employee_id === id)
-  const employeeAdvances = advances.filter((a) => a.employee_id === id)
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -198,12 +238,44 @@ export function EmployeeDetailPage() {
         </Link>
       </Button>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-3xl text-[#111111]">{employee.full_name}</h1>
-          <p className="mt-1 font-mono text-sm text-[#6B7280]">{employee.employee_code}</p>
+      <div className="rounded-2xl border bg-white p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="font-serif text-3xl text-[#111111]">{employee.full_name}</h1>
+            <p className="mt-1 font-mono text-sm text-[#6B7280]">{employee.employee_code}</p>
+            <p className="mt-2 text-sm text-[#4B5563]">
+              {[employee.designation, employee.department].filter(Boolean).join(' · ') ||
+                'No designation'}
+            </p>
+            <p className="mt-1 text-xs text-[#6B7280]">
+              Branch: {employee.branch_name ?? '—'} · Joined:{' '}
+              {employee.joining_date ? formatDateShort(employee.joining_date) : '—'} · Login:{' '}
+              {linked ? 'Linked' : 'None'}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <Badge variant={employee.status === 'active' ? 'success' : 'default'}>
+              {employee.status}
+            </Badge>
+            {!linked ? (
+              <PermissionGate permission={['administration.users.create', 'settings.manage']}>
+                <Button asChild size="sm">
+                  <Link
+                    to={`/administration/users/new?employee_id=${employee.id}`}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Create login
+                  </Link>
+                </Button>
+              </PermissionGate>
+            ) : (
+              <Button asChild size="sm" variant="outline">
+                <Link to={`/administration/users/${employee.profile_id}`}>Open user</Link>
+              </Button>
+            )}
+          </div>
         </div>
-        <Badge variant={employee.status === 'active' ? 'success' : 'default'}>{employee.status}</Badge>
       </div>
 
       <div className="flex gap-1 overflow-x-auto border-b pb-px">
@@ -223,39 +295,41 @@ export function EmployeeDetailPage() {
         ))}
       </div>
 
-      {tab === 'profile' ? (
+      {tab === 'overview' ? (
         <>
           <div className="rounded-2xl border bg-white p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="mb-3 text-sm font-semibold text-[#111111]">Contact & employment</h2>
+            <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
-                <p className="text-sm font-medium text-[#111111]">Login account</p>
-                <p className="text-xs text-[#6B7280]">
-                  {linked
-                    ? `Linked to auth profile ${employee.profile_id}`
-                    : 'No login yet — create one without orphaning this employee record.'}
-                </p>
+                <dt className="text-xs text-[#6B7280]">Phone</dt>
+                <dd>{employee.phone || '—'}</dd>
               </div>
-              {!linked ? (
-                <PermissionGate permission={['administration.users.create', 'settings.manage']}>
-                  <Button asChild size="sm">
-                    <Link
-                      to={`/administration/users/new?employee_id=${employee.id}`}
-                      className="inline-flex items-center gap-1.5"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      Create login
-                    </Link>
-                  </Button>
-                </PermissionGate>
-              ) : (
-                <Button asChild size="sm" variant="outline">
-                  <Link to={`/administration/users/${employee.profile_id}`}>Open user</Link>
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-[#6B7280]">
-              Branch: {employee.branch_name ?? '—'} · Salary: {formatBDT(Number(employee.basic_salary))}
-            </p>
+              <div>
+                <dt className="text-xs text-[#6B7280]">Email</dt>
+                <dd>{employee.email || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-[#6B7280]">Department</dt>
+                <dd>{employee.department || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-[#6B7280]">Branch</dt>
+                <dd>{employee.branch_name || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-[#6B7280]">Joining date</dt>
+                <dd>{employee.joining_date ? formatDateShort(employee.joining_date) : '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-[#6B7280]">Status</dt>
+                <dd className="capitalize">{employee.status}</dd>
+              </div>
+            </dl>
+            <PermissionGate permission={['hr.payroll.read', 'hr.salary_structure.manage']}>
+              <p className="mt-3 text-xs text-[#6B7280]">
+                Basic salary: {formatBDT(Number(employee.basic_salary))}
+              </p>
+            </PermissionGate>
           </div>
 
           <div className="rounded-2xl border bg-white p-4">
@@ -321,33 +395,43 @@ export function EmployeeDetailPage() {
       ) : null}
 
       {tab === 'salary' ? (
-        <section className="rounded-2xl border bg-white p-4">
-          <div className="mb-3 flex justify-between">
-            <h2 className="text-sm font-semibold">Salary structures</h2>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/hr/payroll/salary-structures">Manage</Link>
-            </Button>
-          </div>
-          {employeeStructures.length === 0 ? (
+        <PermissionGate
+          permission={['hr.payroll.read', 'hr.salary_structure.manage']}
+          fallback={
             <EmptyState
-              title="No structure assigned"
-              description={`Basic salary on profile: ${formatBDT(Number(employee.basic_salary))}`}
+              title="Salary restricted"
+              description="You do not have permission to view salary structures."
             />
-          ) : (
-            <ul className="divide-y text-sm">
-              {employeeStructures.map((s) => (
-                <li key={s.id} className="py-2">
-                  <p className="font-medium">
-                    {formatBDT(Number(s.basic_salary))} · {s.salary_type}
-                  </p>
-                  <p className="text-xs text-[#6B7280]">
-                    {s.effective_from} → {s.effective_to ?? 'open'}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+          }
+        >
+          <section className="rounded-2xl border bg-white p-4">
+            <div className="mb-3 flex justify-between">
+              <h2 className="text-sm font-semibold">Salary structures</h2>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/hr/payroll/salary-structures">Manage</Link>
+              </Button>
+            </div>
+            <p className="mb-3 text-xs text-[#6B7280]">
+              Profile basic salary: {formatBDT(Number(employee.basic_salary))}
+            </p>
+            {structures.length === 0 ? (
+              <EmptyState title="No structure assigned" description="Assign a salary structure from payroll." />
+            ) : (
+              <ul className="divide-y text-sm">
+                {structures.map((s) => (
+                  <li key={s.id} className="py-2">
+                    <p className="font-medium">
+                      {formatBDT(Number(s.basic_salary))} · {s.salary_type}
+                    </p>
+                    <p className="text-xs text-[#6B7280]">
+                      {s.effective_from} → {s.effective_to ?? 'open'}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </PermissionGate>
       ) : null}
 
       {tab === 'commission' ? (
@@ -355,14 +439,14 @@ export function EmployeeDetailPage() {
           <div className="mb-3 flex justify-between">
             <h2 className="text-sm font-semibold">Commission history</h2>
             <Button asChild size="sm" variant="outline">
-              <Link to={`/hr/commissions`}>Open commissions</Link>
+              <Link to={`/hr/commissions?employee=${id}`}>Open commissions</Link>
             </Button>
           </div>
           {commissions.length === 0 ? (
             <EmptyState title="No commissions" description="Accruals will appear after eligible sales." />
           ) : (
             <ul className="divide-y text-sm">
-              {commissions.slice(0, 40).map((c) => (
+              {commissions.map((c) => (
                 <li key={c.id} className="flex justify-between gap-2 py-2">
                   <div>
                     <p className="font-medium">{formatBDT(Number(c.commission_amount))}</p>
@@ -390,18 +474,26 @@ export function EmployeeDetailPage() {
           ) : (
             <ul className="divide-y text-sm">
               {(targets?.items ?? []).map((t) => {
-                const pct =
-                  Number(t.sales_amount) > 0
-                    ? Math.min(100, Math.round((Number(t.achieved_sales) / Number(t.sales_amount)) * 100))
-                    : 0
+                const salesTarget = Number(t.sales_amount) || 0
+                const orderTarget = Number(t.order_count) || 0
+                const salesPct =
+                  salesTarget > 0
+                    ? Math.min(100, Math.round((Number(t.achieved_sales) / salesTarget) * 100))
+                    : null
                 return (
                   <li key={t.id} className="py-2">
-                    <p className="font-medium capitalize">
-                      {t.target_period} · {formatBDT(Number(t.sales_amount))}
-                    </p>
+                    <p className="font-medium capitalize">{t.target_period}</p>
+                    {salesTarget > 0 ? (
+                      <p className="text-xs text-[#6B7280]">
+                        Sales {formatBDT(Number(t.achieved_sales))} / {formatBDT(salesTarget)} (
+                        {salesPct}%)
+                      </p>
+                    ) : null}
+                    {orderTarget > 0 ? (
+                      <p className="text-xs text-[#6B7280]">Orders target: {orderTarget}</p>
+                    ) : null}
                     <p className="text-xs text-[#6B7280]">
-                      Achieved {formatBDT(Number(t.achieved_sales))} ({pct}%) · {t.starts_at} →{' '}
-                      {t.ends_at}
+                      {t.starts_at} → {t.ends_at}
                     </p>
                   </li>
                 )
@@ -412,26 +504,69 @@ export function EmployeeDetailPage() {
       ) : null}
 
       {tab === 'advances' ? (
+        <PermissionGate
+          permission={['hr.payroll.read', 'hr.payroll.create']}
+          fallback={
+            <EmptyState
+              title="Advances restricted"
+              description="You do not have permission to view payroll advances."
+            />
+          }
+        >
+          <section className="rounded-2xl border bg-white p-4">
+            <div className="mb-3 flex justify-between">
+              <h2 className="text-sm font-semibold">Advances</h2>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/hr/payroll/advances">Manage advances</Link>
+              </Button>
+            </div>
+            {advances.length === 0 ? (
+              <EmptyState
+                title="No advances"
+                description="Salary advances for this employee appear here."
+              />
+            ) : (
+              <ul className="divide-y text-sm">
+                {advances.map((a) => (
+                  <li key={a.id} className="flex justify-between gap-2 py-2">
+                    <div>
+                      <p className="font-medium">{formatBDT(Number(a.amount))}</p>
+                      <p className="text-xs text-[#6B7280]">
+                        Remaining {formatBDT(Number(a.remaining_amount))} ·{' '}
+                        {formatDateShort(a.created_at)}
+                      </p>
+                    </div>
+                    <span className="capitalize text-[#6B7280]">{a.status}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </PermissionGate>
+      ) : null}
+
+      {tab === 'activity' ? (
         <section className="rounded-2xl border bg-white p-4">
-          <div className="mb-3 flex justify-between">
-            <h2 className="text-sm font-semibold">Advances</h2>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/hr/payroll/advances">Manage advances</Link>
-            </Button>
-          </div>
-          {employeeAdvances.length === 0 ? (
-            <EmptyState title="No advances" description="Salary advances for this employee appear here." />
+          {!employee.profile_id ? (
+            <EmptyState
+              title="No linked login"
+              description="Activity is attributed to the linked user account."
+            />
+          ) : (activity?.items ?? []).length === 0 ? (
+            <EmptyState
+              title="No activity"
+              description="Permission and administrative events for this user will appear here."
+            />
           ) : (
             <ul className="divide-y text-sm">
-              {employeeAdvances.map((a) => (
-                <li key={a.id} className="flex justify-between gap-2 py-2">
-                  <div>
-                    <p className="font-medium">{formatBDT(Number(a.amount))}</p>
-                    <p className="text-xs text-[#6B7280]">
-                      Remaining {formatBDT(Number(a.remaining_amount))} · {formatDateShort(a.created_at)}
-                    </p>
-                  </div>
-                  <span className="capitalize text-[#6B7280]">{a.status}</span>
+              {(activity?.items ?? []).map((row) => (
+                <li key={row.id} className="py-2">
+                  <p className="font-medium">{row.action}</p>
+                  <p className="text-xs text-[#6B7280]">
+                    {row.module} · {row.entity_type}
+                    {row.entity_id ? ` · ${row.entity_id.slice(0, 8)}…` : ''} ·{' '}
+                    {formatDateShort(row.created_at)}
+                  </p>
                 </li>
               ))}
             </ul>

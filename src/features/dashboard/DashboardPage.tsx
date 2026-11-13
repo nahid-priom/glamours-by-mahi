@@ -16,7 +16,7 @@ import {
 import { AppDateField } from '@/components/date-picker'
 import { useAuth } from '@/features/auth/auth.context'
 import { queryKeys } from '@/lib/query/keys'
-import { todayYmd } from '@/lib/datetime/bd'
+import { addDaysYmd, startOfMonthYmd, todayYmd } from '@/lib/datetime/bd'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardKpiCard } from './components/DashboardKpiCard'
 import { LowStockCard } from './components/LowStockCard'
@@ -123,10 +123,46 @@ export function DashboardPage() {
     setSearchParams(params, { replace: true })
   }
 
+  const effectiveFrom = dateFrom || todayYmd()
+  const effectiveTo = dateTo || todayYmd()
+  const isSingleToday = effectiveFrom === todayYmd() && effectiveTo === todayYmd()
+  const periodLabel =
+    effectiveFrom === effectiveTo ? effectiveFrom : `${effectiveFrom} → ${effectiveTo}`
+  const salesTitle = isSingleToday ? "Today's Sales" : `Sales (${periodLabel})`
+  const collectionTitle = isSingleToday ? "Today's Collection" : `Collection (${periodLabel})`
+  const expensesTitle = isSingleToday ? "Today's Expenses" : `Expenses (${periodLabel})`
+  const profitTitle = isSingleToday ? "Today's Net Profit" : `Net Profit (${periodLabel})`
+
   const rangeLabel =
     dateFrom || dateTo
       ? `${dateFrom ?? '…'} → ${dateTo ?? '…'}`
       : `Today, ${todayLabel}`
+
+  function applyPreset(from: string, to: string) {
+    const params = new URLSearchParams(searchParams)
+    params.set('date_from', from)
+    params.set('date_to', to)
+    setSearchParams(params, { replace: true })
+  }
+
+  const today = todayYmd()
+  const yesterday = addDaysYmd(today, -1)
+  const last7From = addDaysYmd(today, -6)
+  const thisMonthFrom = startOfMonthYmd(today)
+  const lastMonthEnd = addDaysYmd(thisMonthFrom, -1)
+  const lastMonthFrom = startOfMonthYmd(lastMonthEnd)
+
+  const presets: Array<{ id: string; label: string; from: string; to: string }> = [
+    { id: 'today', label: 'Today', from: today, to: today },
+    { id: 'yesterday', label: 'Yesterday', from: yesterday, to: yesterday },
+    { id: 'last7', label: 'Last 7 Days', from: last7From, to: today },
+    { id: 'thisMonth', label: 'This Month', from: thisMonthFrom, to: today },
+    { id: 'lastMonth', label: 'Last Month', from: lastMonthFrom, to: lastMonthEnd },
+  ]
+
+  const activePresetId =
+    presets.find((p) => dateFrom === p.from && dateTo === p.to)?.id ??
+    (dateFrom || dateTo ? 'custom' : 'today')
 
   if (!profile) {
     return (
@@ -157,46 +193,45 @@ export function DashboardPage() {
               </option>
             ))}
           </select>
-          <div className="flex items-center gap-1.5">
-            <AppDateField
-              value={dateFrom ?? ''}
-              onChange={(v) => onDateChange('date_from', v)}
-              aria-label="Dashboard date from"
-            />
-            <span className="text-[11px] text-slate-400">→</span>
-            <AppDateField
-              value={dateTo ?? ''}
-              onChange={(v) => onDateChange('date_to', v)}
-              aria-label="Dashboard date to"
-            />
-            {dateFrom || dateTo ? (
-              <button
-                type="button"
-                className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[11px] text-slate-600"
-                onClick={() => {
-                  const params = new URLSearchParams(searchParams)
-                  params.delete('date_from')
-                  params.delete('date_to')
-                  setSearchParams(params, { replace: true })
-                }}
+          <div className="flex max-w-full flex-col gap-1.5">
+            <div className="flex flex-wrap gap-1">
+              {presets.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`h-8 rounded-xl border px-2.5 text-[11px] font-medium ${
+                    activePresetId === p.id
+                      ? 'border-[#E11D48] bg-[#FFF1F2] text-[#E11D48]'
+                      : 'border-slate-200 bg-white text-slate-600'
+                  }`}
+                  onClick={() => applyPreset(p.from, p.to)}
+                >
+                  {p.label}
+                </button>
+              ))}
+              <span
+                className={`flex h-8 items-center rounded-xl border px-2.5 text-[11px] font-medium ${
+                  activePresetId === 'custom'
+                    ? 'border-[#E11D48] bg-[#FFF1F2] text-[#E11D48]'
+                    : 'border-slate-200 bg-white text-slate-500'
+                }`}
               >
-                Today
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[11px] text-slate-600"
-                onClick={() => {
-                  const t = todayYmd()
-                  const params = new URLSearchParams(searchParams)
-                  params.set('date_from', t)
-                  params.set('date_to', t)
-                  setSearchParams(params, { replace: true })
-                }}
-              >
-                Set today
-              </button>
-            )}
+                Custom
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <AppDateField
+                value={dateFrom ?? ''}
+                onChange={(v) => onDateChange('date_from', v)}
+                aria-label="Dashboard date from"
+              />
+              <span className="text-[11px] text-slate-400">→</span>
+              <AppDateField
+                value={dateTo ?? ''}
+                onChange={(v) => onDateChange('date_to', v)}
+                aria-label="Dashboard date to"
+              />
+            </div>
           </div>
           <span className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-500">
             {rangeLabel}
@@ -236,7 +271,7 @@ export function DashboardPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DashboardKpiCard
               size="primary"
-              title="Today's Sales"
+              title={salesTitle}
               value={data.kpis.todaySales}
               icon={Banknote}
               tone="rose"
@@ -246,7 +281,7 @@ export function DashboardPage() {
             />
             <DashboardKpiCard
               size="primary"
-              title="Today's Collection"
+              title={collectionTitle}
               value={data.kpis.todayCollection}
               icon={ArrowDownRight}
               tone="green"
@@ -256,7 +291,7 @@ export function DashboardPage() {
             />
             <DashboardKpiCard
               size="primary"
-              title="Today's Expenses"
+              title={expensesTitle}
               value={data.kpis.todayExpenses}
               icon={ArrowUpRight}
               tone="amber"
@@ -265,7 +300,7 @@ export function DashboardPage() {
             />
             <DashboardKpiCard
               size="primary"
-              title="Today's Net Profit"
+              title={profitTitle}
               value={data.kpis.profitToday ?? 0}
               icon={TrendingUp}
               tone="blue"
@@ -281,7 +316,7 @@ export function DashboardPage() {
               value={data.kpis.customerDue}
               icon={Users}
               tone="slate"
-              trendLabel="outstanding"
+              trendLabel="current balance"
               to={`/customers?due=1${filterSuffix ? `&${filterSuffix.slice(1)}` : ''}`}
             />
             <DashboardKpiCard
@@ -289,7 +324,7 @@ export function DashboardPage() {
               value={data.kpis.supplierDue}
               icon={Building2}
               tone="slate"
-              trendLabel="outstanding"
+              trendLabel="current balance"
               to={`/suppliers?due=1${filterSuffix ? `&${filterSuffix.slice(1)}` : ''}`}
             />
             <DashboardKpiCard
@@ -298,7 +333,7 @@ export function DashboardPage() {
               icon={Package}
               tone="amber"
               valueAsCount
-              trendLabel="items"
+              trendLabel="current"
               to={`/inventory/low-stock${filterSuffix}`}
             />
             <DashboardKpiCard
@@ -325,7 +360,7 @@ export function DashboardPage() {
               icon={Package}
               tone="slate"
               valueAsCount
-              trendLabel="active"
+              trendLabel="active catalog"
               to={`/products${filterSuffix}`}
             />
           </div>

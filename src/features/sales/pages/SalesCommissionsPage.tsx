@@ -1,10 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { commissionsRepository } from '../repositories/commissions.repository'
+import type { SalesCommissionRow } from '../repositories/commissions.repository'
 import { listEmployees } from '@/features/hr/repositories/employees.repository'
 import { AppDateField } from '@/components/date-picker'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -17,7 +28,7 @@ import { formatBDT, formatDateShort } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { cn } from '@/lib/utils'
 
-function employeeName(row: Awaited<ReturnType<typeof commissionsRepository.listCommissions>>[number]) {
+function employeeName(row: SalesCommissionRow) {
   if (row.employees?.full_name) {
     const code = row.employees.employee_code ? ` (${row.employees.employee_code})` : ''
     return `${row.employees.full_name}${code}`
@@ -72,31 +83,52 @@ function invalidateCommissionCaches(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['sales-commissions'] })
   void qc.invalidateQueries({ queryKey: ['staff-commission-summary'] })
   void qc.invalidateQueries({ queryKey: ['staff-commission-entries'] })
+  void qc.invalidateQueries({ queryKey: ['employee-commissions'] })
+  void qc.invalidateQueries({ queryKey: ['staff-dashboard'] })
   void qc.invalidateQueries({ queryKey: queryKeys.dashboard({}) })
 }
+
+const PAGE_SIZE = 50
 
 export function SalesCommissionsPage() {
   const { toast } = useToast()
   const qc = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [payAccountId, setPayAccountId] = useState<string>('')
-  const [employeeId, setEmployeeId] = useState('all')
+  const [employeeId, setEmployeeId] = useState(searchParams.get('employee') || 'all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<string[]>([])
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [rejectId, setRejectId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+
+  useEffect(() => {
+    const fromUrl = searchParams.get('employee')
+    if (fromUrl && fromUrl !== employeeId) setEmployeeId(fromUrl)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once from URL
+  }, [])
 
   const filters = {
     employeeId: employeeId === 'all' ? null : employeeId,
     status: statusFilter === 'all' ? null : statusFilter,
     dateFrom: dateFrom || null,
     dateTo: dateTo || null,
+    page,
+    pageSize: PAGE_SIZE,
   }
 
-  const { data = [], isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.salesCommissions(filters),
     queryFn: () => commissionsRepository.listCommissions(filters),
   })
+
+  const rows = data?.items ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const { data: employeesData } = useQuery({
     queryKey: queryKeys.employees({ status: 'active', pageSize: 200 }),
@@ -109,25 +141,25 @@ export function SalesCommissionsPage() {
   })
 
   const employees = employeesData?.items ?? []
-  const detail = data.find((r) => r.id === detailId) ?? null
+  const detail = rows.find((r) => r.id === detailId) ?? null
 
   const kpis = useMemo(() => {
     const sum = (statuses: string[]) =>
-      data
+      rows
         .filter((r) => statuses.includes(r.status))
         .reduce((s, r) => s + Number(r.commission_amount), 0)
     return {
       pending: sum(['pending']),
       approved: sum(['approved']),
       paid: sum(['paid']),
-      reversed: data.reduce((s, r) => s + Number(r.reversed_amount ?? 0), 0),
-      month: data
+      reversed: rows.reduce((s, r) => s + Number(r.reversed_amount ?? 0), 0),
+      month: rows
         .filter((r) => r.created_at.slice(0, 7) === new Date().toISOString().slice(0, 7))
         .reduce((s, r) => s + Number(r.commission_amount), 0),
     }
-  }, [data])
+  }, [rows])
 
-  const pendingIds = data.filter((r) => isApprovable(r.status)).map((r) => r.id)
+  const pendingIds = rows.filter((r) => isApprovable(r.status)).map((r) => r.id)
   const selectedPending = selected.filter((id) => pendingIds.includes(id))
 
   const approve = useMutation({
@@ -149,16 +181,20 @@ export function SalesCommissionsPage() {
         fail ? 'error' : 'success',
       )
       setSelected([])
+      setBulkOpen(false)
       invalidateCommissionCaches(qc)
     },
     onError: (e) => toast(e instanceof Error ? e.message : 'Bulk approve failed', 'error'),
   })
 
   const reject = useMutation({
-    mutationFn: (id: string) =>
-      commissionsRepository.rejectCommission(id, window.prompt('Reject reason (optional)') ?? undefined),
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      commissionsRepository.rejectCommission(id, reason),
     onSuccess: () => {
       toast('Commission rejected')
+      setRejectId(null)
+      setRejectReason('')
+      setDetailId(null)
       invalidateCommissionCaches(qc)
     },
     onError: (e) => toast(e instanceof Error ? e.message : 'Could not reject', 'error'),
@@ -176,11 +212,21 @@ export function SalesCommissionsPage() {
 
   const defaultAccount = payAccountId || accounts[0]?.id || ''
 
+  function onEmployeeChange(value: string) {
+    setEmployeeId(value)
+    setPage(1)
+    setSelected([])
+    const next = new URLSearchParams(searchParams)
+    if (value === 'all') next.delete('employee')
+    else next.set('employee', value)
+    setSearchParams(next, { replace: true })
+  }
+
   function toggleSelected(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
-  function renderActions(row: (typeof data)[number], fullWidth = false) {
+  function renderActions(row: SalesCommissionRow, fullWidth = false) {
     return (
       <div className={cn('flex flex-wrap gap-1', fullWidth && 'flex-col')}>
         {isApprovable(row.status) ? (
@@ -199,7 +245,10 @@ export function SalesCommissionsPage() {
               variant="ghost"
               className={fullWidth ? 'min-h-11 w-full text-[#E11D48]' : 'text-[#E11D48]'}
               disabled={reject.isPending}
-              onClick={() => reject.mutate(row.id)}
+              onClick={() => {
+                setRejectId(row.id)
+                setRejectReason('')
+              }}
             >
               Reject
             </Button>
@@ -234,18 +283,18 @@ export function SalesCommissionsPage() {
       <div>
         <h1 className="text-xl font-bold text-[#111827]">Commissions</h1>
         <p className="text-sm text-[#6B7280]">
-          Accrued → Pending → Approved → Paid. Reject cancels pending only. Never pay twice —
-          RPC enforces status.
+          Accrued → Pending → Approved → Paid. Reject cancels pending only. Date filter uses
+          created_at (Asia/Dhaka). Never pay twice — RPC enforces status.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
-          { label: 'Pending', value: kpis.pending },
-          { label: 'Approved', value: kpis.approved },
-          { label: 'Paid', value: kpis.paid },
-          { label: 'Reversed', value: kpis.reversed },
-          { label: 'This month', value: kpis.month },
+          { label: 'Pending (page)', value: kpis.pending },
+          { label: 'Approved (page)', value: kpis.approved },
+          { label: 'Paid (page)', value: kpis.paid },
+          { label: 'Reversed (page)', value: kpis.reversed },
+          { label: 'This month (page)', value: kpis.month },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-xl border border-border bg-white p-3">
             <p className="text-xs text-[#6B7280]">{kpi.label}</p>
@@ -257,7 +306,7 @@ export function SalesCommissionsPage() {
       <div className="flex flex-wrap items-end gap-3">
         <label className="space-y-1 text-sm">
           <span className="text-[#6B7280]">Employee</span>
-          <Select value={employeeId} onValueChange={setEmployeeId}>
+          <Select value={employeeId} onValueChange={onEmployeeChange}>
             <SelectTrigger className="h-9 min-w-[12rem]">
               <SelectValue placeholder="All employees" />
             </SelectTrigger>
@@ -274,7 +323,14 @@ export function SalesCommissionsPage() {
 
         <label className="space-y-1 text-sm">
           <span className="text-[#6B7280]">Status</span>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v)
+              setPage(1)
+              setSelected([])
+            }}
+          >
             <SelectTrigger className="h-9 min-w-[10rem]">
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
@@ -291,11 +347,23 @@ export function SalesCommissionsPage() {
 
         <div className="space-y-1 text-sm">
           <span className="text-[#6B7280]">From</span>
-          <AppDateField value={dateFrom} onChange={setDateFrom} />
+          <AppDateField
+            value={dateFrom}
+            onChange={(v) => {
+              setDateFrom(v)
+              setPage(1)
+            }}
+          />
         </div>
         <div className="space-y-1 text-sm">
           <span className="text-[#6B7280]">To</span>
-          <AppDateField value={dateTo} onChange={setDateTo} />
+          <AppDateField
+            value={dateTo}
+            onChange={(v) => {
+              setDateTo(v)
+              setPage(1)
+            }}
+          />
         </div>
 
         {accounts.length > 0 ? (
@@ -319,15 +387,7 @@ export function SalesCommissionsPage() {
           <Button
             size="sm"
             disabled={!selectedPending.length || bulkApprove.isPending}
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Approve ${selectedPending.length} pending commission(s)? This calls the server for each row.`,
-                )
-              ) {
-                bulkApprove.mutate(selectedPending)
-              }
-            }}
+            onClick={() => setBulkOpen(true)}
           >
             Bulk approve ({selectedPending.length})
           </Button>
@@ -368,7 +428,7 @@ export function SalesCommissionsPage() {
             </tr>
           </thead>
           <tbody>
-            {data.map((row) => (
+            {rows.map((row) => (
               <tr key={row.id} className="border-b last:border-0">
                 <td className="px-3 py-2">
                   {isApprovable(row.status) ? (
@@ -422,7 +482,7 @@ export function SalesCommissionsPage() {
       </div>
 
       <div className="space-y-2 md:hidden">
-        {data.map((row) => (
+        {rows.map((row) => (
           <div key={row.id} className="rounded-xl border border-border bg-white p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -457,10 +517,39 @@ export function SalesCommissionsPage() {
         ))}
       </div>
 
-      {!isLoading && data.length === 0 ? (
+      {!isLoading && rows.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-[#6B7280]">
           No commissions for these filters.
         </p>
+      ) : null}
+
+      {total > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-[#6B7280]">
+          <span>
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <span className="flex items-center px-2">
+              Page {page} / {totalPages}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       ) : null}
 
       {detail ? (
@@ -473,6 +562,10 @@ export function SalesCommissionsPage() {
               </Button>
             </div>
             <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-2">
+                <dt className="text-[#6B7280]">ID</dt>
+                <dd className="font-mono text-xs">{detail.id}</dd>
+              </div>
               <div className="flex justify-between gap-2">
                 <dt className="text-[#6B7280]">Employee</dt>
                 <dd className="text-right font-medium">{employeeName(detail)}</dd>
@@ -487,7 +580,9 @@ export function SalesCommissionsPage() {
               </div>
               <div className="flex justify-between gap-2">
                 <dt className="text-[#6B7280]">Status</dt>
-                <dd className="capitalize">{statusLabel(detail.status, Number(detail.reversed_amount ?? 0))}</dd>
+                <dd className="capitalize">
+                  {statusLabel(detail.status, Number(detail.reversed_amount ?? 0))}
+                </dd>
               </div>
               <div className="flex justify-between gap-2">
                 <dt className="text-[#6B7280]">Created</dt>
@@ -510,9 +605,95 @@ export function SalesCommissionsPage() {
                 </div>
               ) : null}
             </dl>
+            {isApprovable(detail.status) ? (
+              <PermissionGate permission={['sales.commission.manage', 'sales.commission.approve']}>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={approve.isPending}
+                    onClick={() => approve.mutate(detail.id)}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-[#E11D48]"
+                    disabled={reject.isPending}
+                    onClick={() => {
+                      setRejectId(detail.id)
+                      setRejectReason('')
+                    }}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </PermissionGate>
+            ) : null}
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        title="Bulk approve commissions"
+        description={`Approve ${selectedPending.length} pending commission(s)? Each row uses server approval rules; failures are reported individually.`}
+        confirmLabel={bulkApprove.isPending ? 'Approving…' : 'Approve selected'}
+        loading={bulkApprove.isPending}
+        onConfirm={() => bulkApprove.mutate(selectedPending)}
+      />
+
+      <Dialog
+        open={Boolean(rejectId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectId(null)
+            setRejectReason('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject commission</DialogTitle>
+            <DialogDescription>
+              Pending commission will be cancelled. Reason is optional and stored in notes.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="block space-y-1 text-sm">
+            <span className="text-[#6B7280]">Reason</span>
+            <textarea
+              className="min-h-[88px] w-full rounded-md border border-border px-3 py-2 text-sm"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Optional rejection reason"
+            />
+          </label>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRejectId(null)
+                setRejectReason('')
+              }}
+              disabled={reject.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              disabled={!rejectId || reject.isPending}
+              onClick={() => {
+                if (!rejectId) return
+                reject.mutate({ id: rejectId, reason: rejectReason.trim() || undefined })
+              }}
+            >
+              {reject.isPending ? 'Rejecting…' : 'Reject'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

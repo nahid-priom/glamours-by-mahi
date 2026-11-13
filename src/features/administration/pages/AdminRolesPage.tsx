@@ -20,12 +20,18 @@ export function AdminRolesPage() {
       </Button>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-bold">Roles</h1>
-        <Button asChild size="sm">
-          <Link to="/settings">Edit roles in Settings</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/administration/permissions">Edit permissions</Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link to="/settings">Create roles in Settings</Link>
+          </Button>
+        </div>
       </div>
       <p className="text-sm text-[#6B7280]">
-        Role templates are listed here. Create and edit permission bundles under Settings → Roles.
+        Role templates are listed here. Assign keys under Administration → Permissions, or create
+        roles under Settings → Roles. Writes require settings.manage.
       </p>
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
       <ul className="divide-y rounded-xl border bg-white">
@@ -40,7 +46,7 @@ export function AdminRolesPage() {
             <span className="flex items-center gap-2">
               <span className="text-xs text-[#6B7280]">{r.permission_count} permissions</span>
               <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
-                <Link to="/settings">Manage</Link>
+                <Link to="/administration/permissions">Manage</Link>
               </Button>
             </span>
           </li>

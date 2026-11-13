@@ -21,6 +21,7 @@ export function AdminTargetsPage() {
   const [branchId, setBranchId] = useState('')
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('monthly')
   const [salesAmount, setSalesAmount] = useState(100000)
+  const [orderCount, setOrderCount] = useState(0)
   const [startsAt, setStartsAt] = useState(() => todayYmd())
   const [endsAt, setEndsAt] = useState(() => addDaysYmd(todayYmd(), 30))
 
@@ -55,6 +56,7 @@ export function AdminTargetsPage() {
         branch_id: branchId || null,
         target_period: period,
         sales_amount: salesAmount,
+        order_count: orderCount,
         starts_at: startsAt,
         ends_at: endsAt,
       }),
@@ -63,6 +65,7 @@ export function AdminTargetsPage() {
       void qc.invalidateQueries({ queryKey: ['staff-dashboard'] })
       void qc.invalidateQueries({ queryKey: ['staff-targets-history'] })
       void qc.invalidateQueries({ queryKey: ['my-staff-targets-history'] })
+      void qc.invalidateQueries({ queryKey: ['employee-targets'] })
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })
@@ -129,14 +132,25 @@ export function AdminTargetsPage() {
               <option value="monthly">Monthly</option>
             </select>
           </div>
-          <div className="space-y-1.5">
-            <Label>Sales target (BDT)</Label>
-            <Input
-              type="number"
-              min={0}
-              value={salesAmount}
-              onChange={(e) => setSalesAmount(Number(e.target.value))}
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Sales target (BDT)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={salesAmount}
+                onChange={(e) => setSalesAmount(Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Order count target</Label>
+              <Input
+                type="number"
+                min={0}
+                value={orderCount}
+                onChange={(e) => setOrderCount(Number(e.target.value))}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
@@ -174,18 +188,36 @@ export function AdminTargetsPage() {
                 </thead>
                 <tbody>
                   {items.map((row) => {
+                    const salesTarget = Number(row.sales_amount) || 0
+                    const orderTarget = Number(row.order_count) || 0
                     const pct =
-                      Number(row.sales_amount) > 0
-                        ? Math.min(100, Math.round((Number(row.achieved_sales) / Number(row.sales_amount)) * 100))
+                      salesTarget > 0
+                        ? Math.min(
+                            100,
+                            Math.round((Number(row.achieved_sales) / salesTarget) * 100),
+                          )
                         : 0
                     return (
                       <tr key={row.id} className="border-t">
                         <td className="px-3 py-2 font-medium">{row.staff_name ?? '—'}</td>
                         <td className="px-3 py-2 capitalize">{row.target_period}</td>
-                        <td className="px-3 py-2">{formatBDT(Number(row.sales_amount))}</td>
                         <td className="px-3 py-2">
-                          {formatBDT(Number(row.achieved_sales))}
-                          <span className="ml-1 text-xs text-[#6B7280]">({pct}%)</span>
+                          {salesTarget > 0 ? formatBDT(salesTarget) : '—'}
+                          {orderTarget > 0 ? (
+                            <span className="mt-0.5 block text-xs text-[#6B7280]">
+                              {orderTarget} orders
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2">
+                          {salesTarget > 0 ? (
+                            <>
+                              {formatBDT(Number(row.achieved_sales))}
+                              <span className="ml-1 text-xs text-[#6B7280]">({pct}%)</span>
+                            </>
+                          ) : (
+                            '—'
+                          )}
                         </td>
                         <td className="px-3 py-2 text-xs text-[#6B7280]">
                           {formatDateShort(row.starts_at)} → {formatDateShort(row.ends_at)}
