@@ -64,6 +64,8 @@ function mapVariantRow(
         is_active: boolean
         deleted_at: string | null
         status?: string
+        category_id?: string | null
+        categories?: { name: string } | { name: string }[] | null
         product_images?: Array<{
           storage_path: string
           is_cover: boolean
@@ -95,6 +97,8 @@ function mapVariantRow(
     }, 0)
 
   const variantLabel = (row.name as string | null) || 'Default'
+  const cat = product.categories
+  const categoryName = Array.isArray(cat) ? cat[0]?.name : cat?.name
 
   return {
     variantId: row.id as string,
@@ -106,6 +110,8 @@ function mapVariantRow(
     thumbnailUrl,
     unitPrice: Number(row.selling_price ?? 0),
     availableStock,
+    categoryId: product.category_id ?? null,
+    categoryName: categoryName ?? null,
   }
 }
 
@@ -217,6 +223,8 @@ export async function listPosCatalogue({
         is_active,
         status,
         deleted_at,
+        category_id,
+        categories ( name ),
         product_images (
           storage_path,
           is_cover,

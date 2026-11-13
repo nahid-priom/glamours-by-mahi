@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -13,9 +13,10 @@ import { createAdminUser, listAdminRoles } from '../repositories/administration.
 
 export function AdminUserInvitePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { toast } = useToast()
   const qc = useQueryClient()
-  const [employeeId, setEmployeeId] = useState('')
+  const [employeeId, setEmployeeId] = useState(searchParams.get('employee_id') ?? '')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -47,6 +48,13 @@ export function AdminUserInvitePage() {
     () => unlinkedEmployees.find((e) => e.id === employeeId) ?? null,
     [unlinkedEmployees, employeeId],
   )
+
+  useEffect(() => {
+    const preselect = searchParams.get('employee_id')
+    if (!preselect || !unlinkedEmployees.some((e) => e.id === preselect)) return
+    onEmployeeChange(preselect)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once employees load
+  }, [unlinkedEmployees, searchParams])
 
   const canSubmit = useMemo(() => {
     if (!employeeId || !roleId || !username.trim() || password.length < 8) return false

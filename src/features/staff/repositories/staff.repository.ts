@@ -154,6 +154,28 @@ export function assignStaffTarget(payload: Record<string, unknown>) {
   return rpc<Record<string, unknown>>('assign_staff_target', payload)
 }
 
+export type StaffTargetRow = {
+  id: string
+  staff_user_id: string
+  staff_name: string | null
+  branch_id: string | null
+  target_period: string
+  sales_amount: number
+  order_count: number
+  collection_amount: number
+  new_customers: number
+  starts_at: string
+  ends_at: string
+  status: string
+  note: string | null
+  created_at: string
+  achieved_sales: number
+}
+
+export function listStaffTargets(filters: Record<string, unknown> = {}) {
+  return rpc<{ items: StaffTargetRow[] }>('list_staff_targets', filters)
+}
+
 export function listMyAssignedCustomers(limit = 50) {
   return rpc<
     Array<{

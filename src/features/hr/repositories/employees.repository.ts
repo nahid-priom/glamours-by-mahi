@@ -14,6 +14,11 @@ export type EmployeeDeviceMapping = Tables<'employee_device_mappings'>
 export type EmployeeListItem = Employee & {
   branch_name: string | null
   device_user_ids: string[]
+  /** Present after employee_commission_bridge migrations; may be absent in generated types. */
+  commission_eligible?: boolean | null
+  include_commission_in_payroll?: boolean | null
+  joining_date?: string | null
+  notes?: string | null
 }
 
 export type EmployeeFilters = {
@@ -38,6 +43,7 @@ export type EmployeeInput = {
   salary_type?: 'monthly' | 'daily' | 'hourly'
   status?: 'active' | 'inactive' | 'terminated'
   profile_id?: string | null
+  joining_date?: string | null
   commission_eligible?: boolean
   commission_payment_mode?: 'payroll' | 'direct' | 'select_at_approval'
   include_commission_in_payroll?: boolean
@@ -125,6 +131,20 @@ export async function getEmployeeStats(): Promise<{
   }
 }
 
+export async function getEmployee(id: string): Promise<EmployeeListItem | null> {
+  const { data, error } = await supabase
+    .from('employees')
+    .select(
+      '*, branches!employees_branch_id_fkey(name), employee_device_mappings(device_user_id, is_active)',
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return mapEmployee(data as EmployeeRow)
+}
+
 export async function createEmployee(
   organizationId: string,
   input: EmployeeInput,
@@ -144,6 +164,7 @@ export async function createEmployee(
     salary_type: input.salary_type ?? 'monthly',
     status: input.status ?? 'active',
     profile_id: input.profile_id ?? null,
+    joining_date: input.joining_date || null,
     commission_eligible: input.commission_eligible ?? false,
     commission_payment_mode: input.commission_payment_mode ?? 'select_at_approval',
     include_commission_in_payroll: input.include_commission_in_payroll ?? true,
@@ -170,6 +191,7 @@ export async function updateEmployee(id: string, input: EmployeeInput): Promise<
     salary_type: input.salary_type ?? 'monthly',
     status: input.status ?? 'active',
     profile_id: input.profile_id ?? null,
+    joining_date: input.joining_date || null,
     commission_eligible: input.commission_eligible ?? false,
     commission_payment_mode: input.commission_payment_mode ?? 'select_at_approval',
     include_commission_in_payroll: input.include_commission_in_payroll ?? true,

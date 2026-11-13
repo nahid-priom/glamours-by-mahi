@@ -79,6 +79,8 @@ export type UpsertCommissionRuleInput = {
 export type CommissionFilters = {
   status?: string | null
   employeeId?: string | null
+  dateFrom?: string | null
+  dateTo?: string | null
 }
 
 export type SalesCommissionRow = {
@@ -93,6 +95,9 @@ export type SalesCommissionRow = {
   status: string
   needs_employee_link: boolean
   created_at: string
+  approved_at?: string | null
+  paid_at?: string | null
+  notes?: string | null
   product_name?: string | null
   variant_name?: string | null
   qty?: number | null
@@ -257,7 +262,7 @@ async function listCommissions(filters: CommissionFilters = {}) {
     .select(
       `id, profile_id, employee_id, sale_id, base_amount, commission_amount,
        reversed_amount, original_commission_amount, status,
-       needs_employee_link, created_at,
+       needs_employee_link, created_at, approved_at, paid_at, notes,
        product_name, variant_name, qty, event_type,
        profiles!salesman_commissions_profile_id_fkey(full_name),
        employees!salesman_commissions_employee_id_fkey(full_name, employee_code, designation),
@@ -268,6 +273,8 @@ async function listCommissions(filters: CommissionFilters = {}) {
     .limit(200)
   if (filters.status) q = q.eq('status', filters.status)
   if (filters.employeeId) q = q.eq('employee_id', filters.employeeId)
+  if (filters.dateFrom) q = q.gte('created_at', `${filters.dateFrom}T00:00:00+06:00`)
+  if (filters.dateTo) q = q.lte('created_at', `${filters.dateTo}T23:59:59.999+06:00`)
   const { data, error } = await q
   if (error) throw error
   return (data ?? []) as SalesCommissionRow[]
@@ -276,6 +283,28 @@ async function listCommissions(filters: CommissionFilters = {}) {
 async function approveCommission(id: string) {
   const { data, error } = await supabase.rpc('approve_sales_commission', {
     p_commission_id: id,
+  })
+  if (error) throw error
+  return data
+}
+
+async function approveCommissionsBulk(ids: string[]) {
+  const results: Array<{ id: string; ok: boolean; error?: string }> = []
+  for (const id of ids) {
+    try {
+      await approveCommission(id)
+      results.push({ id, ok: true })
+    } catch (e) {
+      results.push({ id, ok: false, error: e instanceof Error ? e.message : 'Failed' })
+    }
+  }
+  return results
+}
+
+async function rejectCommission(id: string, reason?: string) {
+  const { data, error } = await supabase.rpc('reject_sales_commission', {
+    p_commission_id: id,
+    p_reason: reason || undefined,
   })
   if (error) throw error
   return data
@@ -317,6 +346,8 @@ export const commissionsRepository = {
   searchCommissionSubjects,
   searchSalespeople,
   approveCommission,
+  approveCommissionsBulk,
+  rejectCommission,
   payCommission,
   listFinancialAccounts,
 }

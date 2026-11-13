@@ -31,6 +31,7 @@ export interface RoleEntry {
   description: string
   permissions: string[]
   is_active: boolean
+  is_system?: boolean
   created_at: string
   updated_at: string
   deleted_at?: string | null

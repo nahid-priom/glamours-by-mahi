@@ -79,6 +79,11 @@ export async function invalidateSaleCompletionCaches(
     qc.invalidateQueries({ queryKey: queryKeys.accounts }),
     invalidateDashboardCaches(qc),
     qc.invalidateQueries({ queryKey: queryKeys.posProducts(opts.branchId ?? '', null) }),
+    qc.invalidateQueries({ queryKey: ['staff-dashboard'] }),
+    qc.invalidateQueries({ queryKey: ['staff-my-sales'] }),
+    qc.invalidateQueries({ queryKey: ['staff-commission-summary'] }),
+    qc.invalidateQueries({ queryKey: ['staff-commission-entries'] }),
+    qc.invalidateQueries({ queryKey: queryKeys.salesCommissions() }),
   ]
   invalidateInventoryQueries(qc)
 

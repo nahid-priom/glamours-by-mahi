@@ -57,6 +57,67 @@ async function requireOrgId() {
   return profile.organization_id
 }
 
+/** Replace active role_permissions with the selected permission keys (soft-delete removed ones). */
+async function syncRolePermissions(roleId: string, permissionKeys: string[]) {
+  const desired = [...new Set(permissionKeys.filter((k) => k && k !== '*'))]
+  if (!desired.length) throw new Error('Select at least one permission')
+
+  const { data: permRows, error: permErr } = await supabase
+    .from('permissions')
+    .select('id, key')
+    .in('key', desired)
+  if (permErr) throw permErr
+
+  const foundKeys = new Set((permRows ?? []).map((p) => p.key))
+  const missing = desired.filter((k) => !foundKeys.has(k))
+  if (missing.length) {
+    throw new Error(`Unknown permission keys: ${missing.slice(0, 5).join(', ')}`)
+  }
+  const desiredIds = new Set((permRows ?? []).map((p) => p.id))
+
+  const { data: existing, error: existErr } = await supabase
+    .from('role_permissions')
+    .select('id, permission_id, deleted_at')
+    .eq('role_id', roleId)
+  if (existErr) throw existErr
+
+  const active = (existing ?? []).filter((r) => !r.deleted_at)
+  const softDeleted = (existing ?? []).filter((r) => r.deleted_at)
+
+  const toSoftDelete = active.filter((r) => !desiredIds.has(r.permission_id)).map((r) => r.id)
+  if (toSoftDelete.length) {
+    const { error } = await supabase
+      .from('role_permissions')
+      .update({ deleted_at: new Date().toISOString() })
+      .in('id', toSoftDelete)
+    if (error) throw error
+  }
+
+  const toRestore = softDeleted
+    .filter((r) => desiredIds.has(r.permission_id))
+    .map((r) => r.id)
+  if (toRestore.length) {
+    const { error } = await supabase
+      .from('role_permissions')
+      .update({ deleted_at: null })
+      .in('id', toRestore)
+    if (error) throw error
+  }
+
+  const stillNeedInsert = [...desiredIds].filter((id) => {
+    const isActive = active.some((r) => r.permission_id === id)
+    const willRestore = softDeleted.some((r) => r.permission_id === id)
+    return !isActive && !willRestore
+  })
+
+  if (stillNeedInsert.length) {
+    const { error } = await supabase.from('role_permissions').insert(
+      stillNeedInsert.map((permission_id) => ({ role_id: roleId, permission_id })),
+    )
+    if (error) throw error
+  }
+}
+
 async function loadRoles(): Promise<RoleEntry[]> {
   const { data, error } = await supabase
     .from('roles')
@@ -90,6 +151,7 @@ async function loadRoles(): Promise<RoleEntry[]> {
     description: r.description ?? '',
     permissions: permByRole.get(r.id) ?? [],
     is_active: !r.deleted_at,
+    is_system: Boolean(r.is_system),
     created_at: r.created_at,
     updated_at: r.updated_at,
     deleted_at: r.deleted_at,
@@ -193,26 +255,49 @@ export const settingsService = {
 
   async createRole(input: RoleFormInput): Promise<AppSettings> {
     const orgId = await requireOrgId()
-    const { error } = await supabase.from('roles').insert({
-      organization_id: orgId,
-      name: input.name.trim(),
-      description: input.description || null,
-      is_system: false,
-    })
+    const { data: role, error } = await supabase
+      .from('roles')
+      .insert({
+        organization_id: orgId,
+        name: input.name.trim(),
+        description: input.description || null,
+        is_system: false,
+      })
+      .select('id')
+      .single()
     if (error) throw error
+    await syncRolePermissions(role.id, input.permissions)
     return this.getSettings()
   },
 
   async updateRole(id: string, input: RoleFormInput): Promise<AppSettings> {
-    const { error } = await supabase
+    const { data: existing, error: loadErr } = await supabase
       .from('roles')
-      .update({
-        name: input.name.trim(),
-        description: input.description || null,
-      })
+      .select('id, is_system, name')
       .eq('id', id)
-      .eq('is_system', false)
-    if (error) throw error
+      .maybeSingle()
+    if (loadErr) throw loadErr
+    if (!existing) throw new Error('Role not found')
+
+    // Never allow editing Super Admin / Owner templates via this UI.
+    const locked = ['super admin', 'owner'].includes(existing.name.trim().toLowerCase())
+    if (locked) {
+      throw new Error('System Owner / Super Admin role permissions cannot be edited here')
+    }
+
+    if (!existing.is_system) {
+      const { error } = await supabase
+        .from('roles')
+        .update({
+          name: input.name.trim(),
+          description: input.description || null,
+        })
+        .eq('id', id)
+        .eq('is_system', false)
+      if (error) throw error
+    }
+
+    await syncRolePermissions(id, input.permissions)
     return this.getSettings()
   },
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -72,6 +73,7 @@ const statusVariant = {
 export function EmployeesPage() {
   const { profile } = useAuth()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<string>('all')
@@ -156,22 +158,6 @@ export function EmployeesPage() {
     setOpen(true)
   }
 
-  function openEdit(row: EmployeeListItem) {
-    setEditing(row)
-    setForm({
-      employee_code: row.employee_code,
-      full_name: row.full_name,
-      phone: row.phone ?? '',
-      email: row.email ?? '',
-      branch_id: row.branch_id ?? '',
-      department: row.department ?? '',
-      designation: row.designation ?? '',
-      basic_salary: String(row.basic_salary),
-      status: row.status as FormState['status'],
-    })
-    setOpen(true)
-  }
-
   const items = data?.items ?? []
   const total = data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize))
@@ -186,9 +172,11 @@ export function EmployeesPage() {
           </p>
         </div>
         <PermissionGate permission="hr.employee.create">
-          <Button className="rounded-full" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add employee
+          <Button className="rounded-full" asChild>
+            <Link to="/hr/employees/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add employee
+            </Link>
           </Button>
         </PermissionGate>
       </div>
@@ -267,11 +255,15 @@ export function EmployeesPage() {
             </TableHeader>
             <TableBody>
               {items.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/hr/employees/${row.id}`)}
+                >
                   <TableCell className="font-mono text-xs">{row.employee_code}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{row.full_name}</p>
+                      <p className="font-medium text-[#E11D48]">{row.full_name}</p>
                       {row.phone ? <p className="text-xs text-[#6B7280]">{row.phone}</p> : null}
                     </div>
                   </TableCell>
@@ -299,10 +291,14 @@ export function EmployeesPage() {
                       {row.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
                       <PermissionGate permission="hr.employee.update">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(row)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => navigate(`/hr/employees/${row.id}`)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </PermissionGate>

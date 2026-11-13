@@ -69,6 +69,7 @@ export type EmployeeAdvanceRow = {
   remaining_amount: number
   status: string
   reason: string | null
+  recovery_per_payroll?: number | null
   created_at: string
   employees: { full_name: string; employee_code: string } | null
 }
@@ -361,7 +362,7 @@ export async function saveSalaryStructure(input: {
 export async function listEmployeeAdvances(): Promise<EmployeeAdvanceRow[]> {
   const { data, error } = await untypedFrom('employee_advances')
     .select(
-      'id, employee_id, amount, recovered_amount, remaining_amount, status, reason, created_at, employees(full_name, employee_code)',
+      'id, employee_id, amount, recovered_amount, remaining_amount, status, reason, recovery_per_payroll, created_at, employees(full_name, employee_code)',
     )
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
@@ -371,6 +372,38 @@ export async function listEmployeeAdvances(): Promise<EmployeeAdvanceRow[]> {
     throw error
   }
   return (data ?? []) as EmployeeAdvanceRow[]
+}
+
+export async function createEmployeeAdvance(payload: {
+  employee_id: string
+  amount: number
+  recovery_per_payroll?: number | null
+  reason?: string | null
+}) {
+  const { data, error } = await supabase.rpc(
+    'create_employee_advance' as never,
+    { payload: payload as unknown as Json } as never,
+  )
+  if (error) throw error
+  return data as { id: string; status: string }
+}
+
+export async function approveEmployeeAdvance(advanceId: string) {
+  const { data, error } = await supabase.rpc(
+    'approve_employee_advance' as never,
+    { p_advance_id: advanceId } as never,
+  )
+  if (error) throw error
+  return data as { id: string; status: string }
+}
+
+export async function disburseEmployeeAdvance(advanceId: string) {
+  const { data, error } = await supabase.rpc(
+    'disburse_employee_advance' as never,
+    { p_advance_id: advanceId } as never,
+  )
+  if (error) throw error
+  return data as { id: string; status: string }
 }
 
 export async function listEmployeeLoans(): Promise<EmployeeLoanRow[]> {
@@ -508,6 +541,9 @@ export const payrollRepository = {
   listSalaryStructures,
   saveSalaryStructure,
   listEmployeeAdvances,
+  createEmployeeAdvance,
+  approveEmployeeAdvance,
+  disburseEmployeeAdvance,
   listEmployeeLoans,
   submitPayrollForReview,
   listPayrollReportRows,

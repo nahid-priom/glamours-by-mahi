@@ -1,4 +1,6 @@
 export { EmployeesPage as HrEmployeesPage } from './pages/EmployeesPage'
+export { EmployeeCreatePage as HrEmployeeCreatePage } from './pages/EmployeeCreatePage'
+export { EmployeeDetailPage as HrEmployeeDetailPage } from './pages/EmployeeDetailPage'
 export { AttendancePage as HrAttendancePage } from './pages/AttendancePage'
 export { LeavesPage as HrLeavesPage } from './pages/LeavesPage'
 export { PayrollPage as HrPayrollPage } from './pages/PayrollPage'

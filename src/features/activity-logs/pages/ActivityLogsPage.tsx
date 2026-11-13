@@ -142,8 +142,20 @@ export function ActivityLogsPage() {
         </div>
       ) : null}
       {error ? (
-        <p className="text-sm text-[#E11D48]">
-          {(error as Error).message || 'Failed to load activity.'}
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <p className="font-semibold">Could not load activity</p>
+          <p className="mt-1">{(error as Error).message || 'Failed to load activity.'}</p>
+          <p className="mt-2 text-xs text-rose-600/80">
+            If you see a missing relation named &quot;scoped&quot;, apply migration
+            <code className="mx-1 rounded bg-white/70 px-1">20260315000124_fix_list_activity_feed_scoped_cte.sql</code>
+            on the linked Supabase project, then refresh.
+          </p>
+        </div>
+      ) : null}
+
+      {!error && !isLoading && (data?.items?.length ?? 0) === 0 ? (
+        <p className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+          No activity matches these filters.
         </p>
       ) : null}
 

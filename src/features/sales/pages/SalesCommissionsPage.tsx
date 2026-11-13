@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { commissionsRepository } from '../repositories/commissions.repository'
 import { listEmployees } from '@/features/hr/repositories/employees.repository'
+import { AppDateField } from '@/components/date-picker'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/toast'
-import { formatBDT } from '@/lib/format'
+import { formatBDT, formatDateShort } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { cn } from '@/lib/utils'
 
@@ -27,22 +28,28 @@ function employeeName(row: Awaited<ReturnType<typeof commissionsRepository.listC
 }
 
 function isPayable(status: string) {
-  return status === 'approved' || status === 'pending'
+  return status === 'approved'
+}
+
+function isApprovable(status: string) {
+  return status === 'pending'
 }
 
 function statusLabel(status: string, reversedAmount = 0) {
+  if (status === 'cancelled') return 'rejected'
   if (status === 'reversed') return 'reversed'
   if (reversedAmount > 0 && (status === 'pending' || status === 'approved' || status === 'paid')) {
     return 'partially reversed'
   }
-  if (status === 'pending' || status === 'approved') return 'unpaid'
   return status
 }
 
 function commissionStatusClass(status: string, reversedAmount = 0) {
+  if (status === 'cancelled') return 'bg-rose-50 text-rose-800'
   if (status === 'reversed') return 'bg-rose-100 text-rose-900'
   if (reversedAmount > 0) return 'bg-amber-100 text-amber-900'
-  if (status === 'pending' || status === 'approved') return 'bg-blue-100 text-blue-900'
+  if (status === 'pending') return 'bg-amber-50 text-amber-800'
+  if (status === 'approved') return 'bg-blue-100 text-blue-900'
   if (status === 'paid') return 'bg-emerald-100 text-emerald-900'
   return 'bg-[#F3F4F6] text-[#374151]'
 }
@@ -61,16 +68,29 @@ function eventTypeLabel(eventType: string | null | undefined) {
   }
 }
 
+function invalidateCommissionCaches(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ['sales-commissions'] })
+  void qc.invalidateQueries({ queryKey: ['staff-commission-summary'] })
+  void qc.invalidateQueries({ queryKey: ['staff-commission-entries'] })
+  void qc.invalidateQueries({ queryKey: queryKeys.dashboard({}) })
+}
+
 export function SalesCommissionsPage() {
   const { toast } = useToast()
   const qc = useQueryClient()
   const [payAccountId, setPayAccountId] = useState<string>('')
   const [employeeId, setEmployeeId] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [selected, setSelected] = useState<string[]>([])
+  const [detailId, setDetailId] = useState<string | null>(null)
 
   const filters = {
     employeeId: employeeId === 'all' ? null : employeeId,
     status: statusFilter === 'all' ? null : statusFilter,
+    dateFrom: dateFrom || null,
+    dateTo: dateTo || null,
   }
 
   const { data = [], isLoading, error } = useQuery({
@@ -89,6 +109,7 @@ export function SalesCommissionsPage() {
   })
 
   const employees = employeesData?.items ?? []
+  const detail = data.find((r) => r.id === detailId) ?? null
 
   const kpis = useMemo(() => {
     const sum = (statuses: string[]) =>
@@ -96,7 +117,8 @@ export function SalesCommissionsPage() {
         .filter((r) => statuses.includes(r.status))
         .reduce((s, r) => s + Number(r.commission_amount), 0)
     return {
-      unpaid: sum(['approved', 'pending']),
+      pending: sum(['pending']),
+      approved: sum(['approved']),
       paid: sum(['paid']),
       reversed: data.reduce((s, r) => s + Number(r.reversed_amount ?? 0), 0),
       month: data
@@ -105,31 +127,122 @@ export function SalesCommissionsPage() {
     }
   }, [data])
 
+  const pendingIds = data.filter((r) => isApprovable(r.status)).map((r) => r.id)
+  const selectedPending = selected.filter((id) => pendingIds.includes(id))
+
+  const approve = useMutation({
+    mutationFn: (id: string) => commissionsRepository.approveCommission(id),
+    onSuccess: () => {
+      toast('Commission approved')
+      invalidateCommissionCaches(qc)
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : 'Could not approve', 'error'),
+  })
+
+  const bulkApprove = useMutation({
+    mutationFn: (ids: string[]) => commissionsRepository.approveCommissionsBulk(ids),
+    onSuccess: (results) => {
+      const ok = results.filter((r) => r.ok).length
+      const fail = results.length - ok
+      toast(
+        fail ? `Approved ${ok}, failed ${fail}` : `Approved ${ok} commission(s)`,
+        fail ? 'error' : 'success',
+      )
+      setSelected([])
+      invalidateCommissionCaches(qc)
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : 'Bulk approve failed', 'error'),
+  })
+
+  const reject = useMutation({
+    mutationFn: (id: string) =>
+      commissionsRepository.rejectCommission(id, window.prompt('Reject reason (optional)') ?? undefined),
+    onSuccess: () => {
+      toast('Commission rejected')
+      invalidateCommissionCaches(qc)
+    },
+    onError: (e) => toast(e instanceof Error ? e.message : 'Could not reject', 'error'),
+  })
+
   const pay = useMutation({
     mutationFn: ({ id, accountId }: { id: string; accountId: string }) =>
       commissionsRepository.payCommission(id, accountId),
     onSuccess: () => {
       toast('Commission paid')
-      void qc.invalidateQueries({ queryKey: ['sales-commissions'] })
+      invalidateCommissionCaches(qc)
     },
     onError: (e) => toast(e instanceof Error ? e.message : 'Could not pay', 'error'),
   })
 
   const defaultAccount = payAccountId || accounts[0]?.id || ''
 
+  function toggleSelected(id: string) {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  function renderActions(row: (typeof data)[number], fullWidth = false) {
+    return (
+      <div className={cn('flex flex-wrap gap-1', fullWidth && 'flex-col')}>
+        {isApprovable(row.status) ? (
+          <PermissionGate permission={['sales.commission.manage', 'sales.commission.approve']}>
+            <Button
+              size="sm"
+              variant="outline"
+              className={fullWidth ? 'min-h-11 w-full' : undefined}
+              disabled={approve.isPending}
+              onClick={() => approve.mutate(row.id)}
+            >
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={fullWidth ? 'min-h-11 w-full text-[#E11D48]' : 'text-[#E11D48]'}
+              disabled={reject.isPending}
+              onClick={() => reject.mutate(row.id)}
+            >
+              Reject
+            </Button>
+          </PermissionGate>
+        ) : null}
+        {isPayable(row.status) ? (
+          <PermissionGate permission="sales.commission.pay">
+            <Button
+              size="sm"
+              className={fullWidth ? 'min-h-11 w-full' : undefined}
+              disabled={!defaultAccount || pay.isPending}
+              onClick={() => pay.mutate({ id: row.id, accountId: defaultAccount })}
+            >
+              Pay
+            </Button>
+          </PermissionGate>
+        ) : null}
+        <Button
+          size="sm"
+          variant="ghost"
+          className={fullWidth ? 'min-h-11 w-full' : undefined}
+          onClick={() => setDetailId(row.id)}
+        >
+          Detail
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl min-w-0 space-y-4">
       <div>
         <h1 className="text-xl font-bold text-[#111827]">Commissions</h1>
         <p className="text-sm text-[#6B7280]">
-          Employee commissions from POS sales — auto-assigned from commission rules, pay directly or
-          include in payroll.
+          Accrued → Pending → Approved → Paid. Reject cancels pending only. Never pay twice —
+          RPC enforces status.
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
-          { label: 'Unpaid', value: kpis.unpaid },
+          { label: 'Pending', value: kpis.pending },
+          { label: 'Approved', value: kpis.approved },
           { label: 'Paid', value: kpis.paid },
           { label: 'Reversed', value: kpis.reversed },
           { label: 'This month', value: kpis.month },
@@ -167,13 +280,23 @@ export function SalesCommissionsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="reversed">Reversed</SelectItem>
+              <SelectItem value="cancelled">Rejected</SelectItem>
             </SelectContent>
           </Select>
         </label>
+
+        <div className="space-y-1 text-sm">
+          <span className="text-[#6B7280]">From</span>
+          <AppDateField value={dateFrom} onChange={setDateFrom} />
+        </div>
+        <div className="space-y-1 text-sm">
+          <span className="text-[#6B7280]">To</span>
+          <AppDateField value={dateTo} onChange={setDateTo} />
+        </div>
 
         {accounts.length > 0 ? (
           <label className="space-y-1 text-sm">
@@ -191,6 +314,24 @@ export function SalesCommissionsPage() {
             </select>
           </label>
         ) : null}
+
+        <PermissionGate permission={['sales.commission.manage', 'sales.commission.approve']}>
+          <Button
+            size="sm"
+            disabled={!selectedPending.length || bulkApprove.isPending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Approve ${selectedPending.length} pending commission(s)? This calls the server for each row.`,
+                )
+              ) {
+                bulkApprove.mutate(selectedPending)
+              }
+            }}
+          >
+            Bulk approve ({selectedPending.length})
+          </Button>
+        </PermissionGate>
       </div>
 
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
@@ -201,9 +342,20 @@ export function SalesCommissionsPage() {
       ) : null}
 
       <div className="hidden overflow-x-auto rounded-xl border border-border bg-white md:block">
-        <table className="w-full min-w-[960px] text-sm">
+        <table className="w-full min-w-[1040px] text-sm">
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
             <tr>
+              <th className="px-3 py-2 text-left">
+                <input
+                  type="checkbox"
+                  aria-label="Select all pending"
+                  checked={pendingIds.length > 0 && pendingIds.every((id) => selected.includes(id))}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelected(pendingIds)
+                    else setSelected((prev) => prev.filter((id) => !pendingIds.includes(id)))
+                  }}
+                />
+              </th>
               <th className="px-3 py-2 text-left">Employee</th>
               <th className="px-3 py-2 text-left">Product</th>
               <th className="px-3 py-2 text-left">Event</th>
@@ -211,12 +363,23 @@ export function SalesCommissionsPage() {
               <th className="px-3 py-2 text-left">Base</th>
               <th className="px-3 py-2 text-left">Commission</th>
               <th className="px-3 py-2 text-left">Status</th>
+              <th className="px-3 py-2 text-left">Date</th>
               <th className="px-3 py-2 text-left" />
             </tr>
           </thead>
           <tbody>
             {data.map((row) => (
               <tr key={row.id} className="border-b last:border-0">
+                <td className="px-3 py-2">
+                  {isApprovable(row.status) ? (
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(row.id)}
+                      onChange={() => toggleSelected(row.id)}
+                      aria-label={`Select ${row.id}`}
+                    />
+                  ) : null}
+                </td>
                 <td className="px-3 py-2">{employeeName(row)}</td>
                 <td className="px-3 py-2">
                   <p className="font-medium">{row.product_name ?? '—'}</p>
@@ -248,19 +411,10 @@ export function SalesCommissionsPage() {
                     {statusLabel(row.status, Number(row.reversed_amount ?? 0))}
                   </span>
                 </td>
-                <td className="px-3 py-2">
-                  {isPayable(row.status) ? (
-                    <PermissionGate permission="sales.commission.pay">
-                      <Button
-                        size="sm"
-                        disabled={!defaultAccount}
-                        onClick={() => pay.mutate({ id: row.id, accountId: defaultAccount })}
-                      >
-                        Pay
-                      </Button>
-                    </PermissionGate>
-                  ) : null}
+                <td className="px-3 py-2 text-xs text-[#6B7280]">
+                  {formatDateShort(row.created_at)}
                 </td>
+                <td className="px-3 py-2">{renderActions(row)}</td>
               </tr>
             ))}
           </tbody>
@@ -272,6 +426,16 @@ export function SalesCommissionsPage() {
           <div key={row.id} className="rounded-xl border border-border bg-white p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
+                {isApprovable(row.status) ? (
+                  <label className="mb-1 flex items-center gap-2 text-xs text-[#6B7280]">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(row.id)}
+                      onChange={() => toggleSelected(row.id)}
+                    />
+                    Select for bulk approve
+                  </label>
+                ) : null}
                 <p className="truncate font-semibold">{employeeName(row)}</p>
                 <p className="truncate text-xs text-[#6B7280]">
                   {row.product_name ?? '—'}
@@ -287,32 +451,67 @@ export function SalesCommissionsPage() {
             </div>
             <p className="mt-2 text-xs text-[#6B7280] capitalize">
               Status: {statusLabel(row.status, Number(row.reversed_amount ?? 0))}
-              {Number(row.reversed_amount ?? 0) > 0
-                ? ` · −${formatBDT(Number(row.reversed_amount))} reversed`
-                : ''}
             </p>
-            {isPayable(row.status) ? (
-              <div className="mt-3">
-                <PermissionGate permission="sales.commission.pay">
-                  <Button
-                    className="min-h-11 w-full"
-                    disabled={!defaultAccount}
-                    onClick={() => pay.mutate({ id: row.id, accountId: defaultAccount })}
-                  >
-                    Pay
-                  </Button>
-                </PermissionGate>
-              </div>
-            ) : null}
+            <div className="mt-3">{renderActions(row, true)}</div>
           </div>
         ))}
       </div>
 
       {!isLoading && data.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-[#6B7280]">
-          No commissions yet. Complete a POS sale as a user linked to an employee with an active
-          commission structure.
+          No commissions for these filters.
         </p>
+      ) : null}
+
+      {detail ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl">
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <h2 className="text-lg font-semibold">Commission detail</h2>
+              <Button size="sm" variant="ghost" onClick={() => setDetailId(null)}>
+                Close
+              </Button>
+            </div>
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-2">
+                <dt className="text-[#6B7280]">Employee</dt>
+                <dd className="text-right font-medium">{employeeName(detail)}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-[#6B7280]">Invoice</dt>
+                <dd>{detail.sales?.invoice_no ?? '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-[#6B7280]">Amount</dt>
+                <dd className="font-semibold">{formatBDT(Number(detail.commission_amount))}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-[#6B7280]">Status</dt>
+                <dd className="capitalize">{statusLabel(detail.status, Number(detail.reversed_amount ?? 0))}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-[#6B7280]">Created</dt>
+                <dd>{formatDateShort(detail.created_at)}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-[#6B7280]">Approved</dt>
+                <dd>{detail.approved_at ? formatDateShort(detail.approved_at) : '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-[#6B7280]">Paid</dt>
+                <dd>{detail.paid_at ? formatDateShort(detail.paid_at) : '—'}</dd>
+              </div>
+              {detail.notes ? (
+                <div>
+                  <dt className="text-[#6B7280]">Notes / history</dt>
+                  <dd className="mt-1 whitespace-pre-wrap rounded-lg bg-[#F9FAFB] p-2 text-xs">
+                    {detail.notes}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+        </div>
       ) : null}
     </div>
   )

@@ -39,11 +39,11 @@ const tiles: Array<{
     permission: 'administration.permissions.read' as const,
   },
   {
-    to: '/activity-logs',
+    to: '/administration/activity',
     title: 'Activity',
     description: 'Org-wide audit and activity feed',
     icon: Activity,
-    permission: 'administration.activity.read' as const,
+    permission: ['administration.activity.read', 'audit.read'],
   },
   {
     to: '/settings/data-reset',

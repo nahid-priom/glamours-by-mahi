@@ -85,6 +85,10 @@ export function MyCommissionPage() {
             { label: 'Today', value: s.today },
             { label: 'This Week', value: s.week },
             { label: 'This Month', value: s.month },
+            {
+              label: 'Accrued',
+              value: Number(s.pending ?? 0) + Number(s.approved ?? 0),
+            },
             { label: 'Pending', value: s.pending },
             { label: 'Approved', value: s.approved },
             { label: 'Paid', value: s.paid },

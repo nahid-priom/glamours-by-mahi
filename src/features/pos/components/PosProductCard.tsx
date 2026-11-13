@@ -66,35 +66,33 @@ function PosProductCardComponent({ variant, onAdd, onPreview, className }: PosPr
           <Badge variant="danger" className="pointer-events-none absolute left-1.5 top-1.5 text-[10px]">
             Out of stock
           </Badge>
-        ) : lowStock ? (
-          <Badge variant="warning" className="pointer-events-none absolute left-1.5 top-1.5 text-[10px]">
-            Low · {variant.availableStock}
-          </Badge>
         ) : (
-          <Badge variant="success" className="pointer-events-none absolute left-1.5 top-1.5 text-[10px]">
-            {variant.availableStock}
+          <Badge
+            variant={lowStock ? 'warning' : 'success'}
+            className="pointer-events-none absolute left-1.5 top-1.5 text-[10px]"
+          >
+            Stock: {variant.availableStock}
           </Badge>
         )}
       </button>
 
-      <div className="space-y-0.5 px-2.5 py-2">
+      <div className="space-y-1 px-2.5 py-2">
         <h3
-          className="line-clamp-1 text-sm font-medium leading-snug text-text-primary"
+          className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900"
           title={variant.productName}
         >
           {variant.productName}
         </h3>
-        <p className="line-clamp-1 text-xs text-text-muted" title={variant.variantLabel}>
-          {variant.variantLabel}
+        {variant.variantLabel ? (
+          <p className="line-clamp-1 text-xs text-slate-500" title={variant.variantLabel}>
+            {variant.variantLabel}
+          </p>
+        ) : null}
+        <p className="truncate font-mono text-[10px] tracking-tight text-slate-400" title={variant.sku ?? variant.barcode ?? undefined}>
+          SKU: {variant.sku || variant.barcode || '—'}
         </p>
-        <p className="text-sm font-semibold tabular-nums">
+        <p className="text-base font-bold tabular-nums text-[#E11D48]">
           {formatBDT(variant.unitPrice)}
-        </p>
-        <p
-          className="truncate font-mono text-[10px] tracking-tight text-text-muted"
-          title={variant.barcode ?? undefined}
-        >
-          {variant.barcode || 'No barcode'}
         </p>
       </div>
 
@@ -102,8 +100,11 @@ function PosProductCardComponent({ variant, onAdd, onPreview, className }: PosPr
         <Button
           type="button"
           size="sm"
-          variant={justAdded ? 'success' : 'default'}
-          className="h-9 w-full"
+          variant={justAdded ? 'success' : 'outline'}
+          className={cn(
+            'h-9 w-full',
+            !justAdded && !outOfStock && 'border-[#E11D48]/40 text-[#E11D48] hover:bg-[#E11D48]/5',
+          )}
           disabled={outOfStock || processing}
           onClick={handleAdd}
         >

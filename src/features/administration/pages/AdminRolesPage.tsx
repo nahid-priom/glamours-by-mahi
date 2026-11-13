@@ -18,7 +18,15 @@ export function AdminRolesPage() {
           Administration
         </Link>
       </Button>
-      <h1 className="text-xl font-bold">Roles</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-bold">Roles</h1>
+        <Button asChild size="sm">
+          <Link to="/settings">Edit roles in Settings</Link>
+        </Button>
+      </div>
+      <p className="text-sm text-[#6B7280]">
+        Role templates are listed here. Create and edit permission bundles under Settings → Roles.
+      </p>
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
       <ul className="divide-y rounded-xl border bg-white">
         {data.map((r) => (
@@ -29,7 +37,12 @@ export function AdminRolesPage() {
                 <span className="mt-0.5 block text-xs text-[#6B7280]">{r.description}</span>
               ) : null}
             </span>
-            <span className="text-xs text-[#6B7280]">{r.permission_count} permissions</span>
+            <span className="flex items-center gap-2">
+              <span className="text-xs text-[#6B7280]">{r.permission_count} permissions</span>
+              <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+                <Link to="/settings">Manage</Link>
+              </Button>
+            </span>
           </li>
         ))}
       </ul>

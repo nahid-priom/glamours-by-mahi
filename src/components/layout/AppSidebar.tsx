@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -21,6 +22,7 @@ import { PoweredByCodeBondhu } from '@/components/brand/PoweredByCodeBondhu'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/auth-session'
 import { hasAnyModuleAccess, hasPermission, type Permission } from '@/lib/permissions'
+import { supabase } from '@/lib/supabase/client'
 
 type NavItem = { to: string; label: string; end?: boolean; permission?: Permission | Permission[]; module?: string }
 type NavGroup = {
@@ -276,11 +278,6 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
     children: [
       { to: '/settings', label: 'General', end: true, permission: 'settings.manage' },
       {
-        to: '/activity-logs',
-        label: 'Activity logs',
-        permission: 'audit.read',
-      },
-      {
         to: '/settings/website',
         label: 'Website',
         permission: ['website.hero.read', 'website.manage', 'settings.manage'],
@@ -310,13 +307,39 @@ interface AppSidebarProps {
   className?: string
 }
 
+function isOwnerOrSuperAdmin(roleName: string | null | undefined) {
+  const n = (roleName ?? '').trim().toLowerCase()
+  return n === 'super admin' || n === 'owner'
+}
+
 export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
   const location = useLocation()
-  const { permissions } = useAuth()
+  const { permissions, profile } = useAuth()
+
+  const { data: linkedEmployeeId } = useQuery({
+    queryKey: ['sidebar-linked-employee', profile?.id],
+    enabled: Boolean(profile?.id) && !isOwnerOrSuperAdmin(profile?.role_name),
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('profile_id', profile!.id)
+        .is('deleted_at', null)
+        .maybeSingle()
+      if (error) throw error
+      return data?.id ?? null
+    },
+  })
 
   const visibleGroups = useMemo(() => {
+    // Hide for owners; also hide once we know the user has no linked employee row.
+    const hidePersonalWorkspace =
+      isOwnerOrSuperAdmin(profile?.role_name) || linkedEmployeeId === null
     return SIDEBAR_NAV_GROUPS
       .map((group) => {
+        // My Workspace is a personal employee portal — not for Super Admin / Owner chrome.
+        if (group.id === 'staff' && hidePersonalWorkspace) return null
         if (!itemAllowed(permissions, group)) return null
         if (!group.children) return group
         const children = group.children.filter((c) => itemAllowed(permissions, c, group.module))
@@ -324,7 +347,7 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
         return { ...group, children }
       })
       .filter(Boolean) as NavGroup[]
-  }, [permissions])
+  }, [permissions, profile?.role_name, linkedEmployeeId])
 
   const activeGroup = useMemo(() => {
     return visibleGroups.find((g) => {
@@ -340,7 +363,7 @@ export function AppSidebar({ onNavigate, className }: AppSidebarProps) {
   return (
     <aside
       className={cn('flex h-full w-[260px] min-w-0 flex-col bg-sidebar text-white', className)}
-      style={{ background: 'linear-gradient(180deg, #0B0F15 0%, #111827 100%)' }}
+      style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e2139 100%)' }}
     >
       <div className="flex items-center gap-2.5 border-b border-white/10 px-5 py-4">
         <div className="brand-gradient-border flex h-9 w-9 items-center justify-center rounded-xl bg-[#E11D48]">

@@ -1,70 +1,84 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { ShoppingBag, Truck, FileText, RotateCcw, Wallet, BarChart3 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import {
+  BarChart3,
+  PackagePlus,
+  ShoppingBag,
+  Truck,
+  UserPlus,
+  Warehouse,
+} from 'lucide-react'
+import { useAuth } from '@/features/auth/auth-session'
+import { hasPermission, type Permission } from '@/lib/permissions'
 import { QuickActionCard, type QuickActionCardProps } from './QuickActionCard'
+import { DashboardSectionCard } from './DashboardSectionCard'
 
-const QUICK_ACTIONS: QuickActionCardProps[] = [
+type ActionDef = QuickActionCardProps & { permission?: Permission | Permission[] }
+
+const QUICK_ACTIONS: ActionDef[] = [
   {
-    title: 'Open POS',
+    title: 'New Sale (POS)',
     route: '/sales/pos',
     icon: ShoppingBag,
     color: 'red',
+    permission: 'pos.create',
   },
   {
-    title: 'Book Parcel',
-    route: '/couriers/parcels',
-    icon: Truck,
+    title: 'Add Product',
+    route: '/products/new',
+    icon: PackagePlus,
     color: 'blue',
+    permission: ['products.create', 'products.read'],
   },
   {
-    title: 'Sales History',
-    route: '/sales',
-    icon: FileText,
+    title: 'New Purchase',
+    route: '/purchases/new',
+    icon: Truck,
     color: 'indigo',
+    permission: 'purchases.create',
   },
   {
-    title: 'Sales Returns',
-    route: '/sales/returns',
-    icon: RotateCcw,
+    title: 'Add Customer',
+    route: '/customers/new',
+    icon: UserPlus,
     color: 'cyan',
+    permission: ['customers.manage', 'customers.read'],
   },
   {
-    title: 'Due Collect',
-    route: '/sales/collections',
-    icon: Wallet,
+    title: 'Stock Update',
+    route: '/inventory/adjustments',
+    icon: Warehouse,
     color: 'orange',
+    permission: 'inventory.adjust',
   },
   {
-    title: 'Reports',
+    title: 'View Reports',
     route: '/reports',
     icon: BarChart3,
     color: 'purple',
+    permission: 'reports.read',
   },
 ]
 
 export function QuickActions() {
-  const actions = useMemo(() => QUICK_ACTIONS, [])
+  const { permissions } = useAuth()
+
+  const actions = useMemo(
+    () =>
+      QUICK_ACTIONS.filter((a) =>
+        a.permission ? hasPermission(permissions, a.permission) : true,
+      ),
+    [permissions],
+  )
+
+  if (!actions.length) return null
 
   return (
-    <section>
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Quick Actions</h2>
-          <p className="mt-0.5 text-xs text-slate-500">Daily retail operations</p>
-        </div>
-        <Link to="/sales" className="shrink-0">
-          <Button variant="ghost" size="sm" className="text-xs text-slate-600">
-            View Sales
-          </Button>
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <DashboardSectionCard title="Quick Actions">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {actions.map((action) => (
           <QuickActionCard key={action.title} {...action} />
         ))}
       </div>
-    </section>
+    </DashboardSectionCard>
   )
 }

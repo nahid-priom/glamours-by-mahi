@@ -5,6 +5,12 @@ import { getTodayAttendanceSummary } from '@/features/hr/repositories/attendance
 
 export type DashboardBranch = { id: string; name: string; code: string }
 
+function numOrNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
 export type DashboardOverview = {
   kpis: {
     todaySales: number
@@ -19,14 +25,20 @@ export type DashboardOverview = {
     onlineOrders?: number
     returnsToday?: number
     profitToday?: number
+    grossProfit?: number
+    cogsToday?: number
+    totalProducts?: number
     trends: {
-      sales: number
-      collection: number
-      expenses: number
-      netCashFlow: number
+      sales: number | null
+      collection: number | null
+      expenses: number | null
+      profit: number | null
+      netCashFlow: number | null
     }
   }
   salesOverview: Array<{ date: string; label: string; sales: number; collection: number }>
+  salesByCategory: Array<{ category: string; sales: number; count: number; percent: number }>
+  categoryTotal: number
   channelPerformance: Array<{ channel: string; sales: number; count: number }>
   channelTotal: number
   orderStatuses: {
@@ -85,6 +97,10 @@ export type DashboardOverview = {
     userName: string
     details: string
     created_at: string
+    invoiceNo?: string
+    customerName?: string
+    amount?: number
+    paymentStatus?: string
   }>
   accounts: Array<{ id: string; name: string; balance: number }>
   refreshedAt?: string
@@ -121,8 +137,8 @@ function dayLabel(isoDate: string) {
   return new Date(isoDate + 'T12:00:00').toLocaleDateString('en-BD', { weekday: 'short' })
 }
 
-function pctChange(current: number, previous: number): number {
-  if (previous === 0) return current > 0 ? 100 : 0
+function pctChange(current: number, previous: number): number | null {
+  if (previous <= 0) return null
   return Math.round(((current - previous) / previous) * 1000) / 10
 }
 
@@ -148,11 +164,15 @@ function mapRpcOverview(raw: Record<string, unknown>): DashboardOverview {
       onlineOrders: num(kpis.onlineOrders),
       returnsToday: num(kpis.returnsToday),
       profitToday: num(kpis.profitToday),
+      grossProfit: numOrNull(kpis.grossProfit) ?? undefined,
+      cogsToday: numOrNull(kpis.cogsToday) ?? undefined,
+      totalProducts: num(kpis.totalProducts),
       trends: {
-        sales: num(trends.sales),
-        collection: num(trends.collection),
-        expenses: num(trends.expenses),
-        netCashFlow: num(trends.netCashFlow),
+        sales: numOrNull(trends.sales),
+        collection: numOrNull(trends.collection),
+        expenses: numOrNull(trends.expenses),
+        profit: numOrNull(trends.profit),
+        netCashFlow: numOrNull(trends.netCashFlow),
       },
     },
     salesOverview: ((raw.salesOverview ?? []) as Array<Record<string, unknown>>).map((d) => ({
@@ -161,6 +181,13 @@ function mapRpcOverview(raw: Record<string, unknown>): DashboardOverview {
       sales: num(d.sales),
       collection: num(d.collection),
     })),
+    salesByCategory: ((raw.salesByCategory ?? []) as Array<Record<string, unknown>>).map((c) => ({
+      category: String(c.category ?? 'Uncategorized'),
+      sales: num(c.sales),
+      count: num(c.count),
+      percent: num(c.percent),
+    })),
+    categoryTotal: num(raw.categoryTotal),
     channelPerformance: ((raw.channelPerformance ?? []) as Array<Record<string, unknown>>).map((c) => ({
       channel: String(c.channel ?? 'other'),
       sales: num(c.sales),
@@ -223,6 +250,10 @@ function mapRpcOverview(raw: Record<string, unknown>): DashboardOverview {
       userName: String(a.userName ?? ''),
       details: String(a.details ?? ''),
       created_at: String(a.created_at ?? ''),
+      invoiceNo: a.invoiceNo != null ? String(a.invoiceNo) : undefined,
+      customerName: a.customerName != null ? String(a.customerName) : undefined,
+      amount: a.amount != null ? num(a.amount) : undefined,
+      paymentStatus: a.paymentStatus != null ? String(a.paymentStatus) : undefined,
     })),
     accounts: ((raw.accounts ?? []) as Array<Record<string, unknown>>).map((a) => ({
       id: String(a.id ?? ''),
@@ -305,7 +336,7 @@ async function getDashboardOverviewClient(params: DashboardQueryParams = {}): Pr
     (async () => {
       let q = supabase
         .from('sales')
-        .select('id, invoice_no, grand_total, paid_total, created_at, customers(name)')
+        .select('id, invoice_no, grand_total, paid_total, due_total, created_at, customers(name)')
         .eq('status', 'completed')
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
@@ -340,6 +371,15 @@ async function getDashboardOverviewClient(params: DashboardQueryParams = {}): Pr
   const recentSales = recentSalesRes.data ?? []
   const netCashFlow = today.collection - todayExpenses
   const yesterdayNet = yesterday.collection - yesterdayExpenses
+  // Client fallback cannot compute COGS without line joins; approximate net profit as sales − expenses.
+  const profitToday = today.sales - todayExpenses
+  const prevProfit = yesterday.sales - yesterdayExpenses
+
+  const { count: productCount } = await supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .is('deleted_at', null)
 
   const salesOverview = await Promise.all(
     Array.from({ length: 7 }, async (_, i) => {
@@ -366,14 +406,21 @@ async function getDashboardOverviewClient(params: DashboardQueryParams = {}): Pr
       lowStockCount: lowStockRes.total,
       stockValuation: valuationRes?.total_stock_value ?? null,
       stockCost: valuationRes?.total_stock_purchase_cost ?? null,
+      profitToday,
+      totalProducts: productCount ?? 0,
+      onlineOrders: 0,
+      returnsToday: 0,
       trends: {
         sales: pctChange(today.sales, yesterday.sales),
         collection: pctChange(today.collection, yesterday.collection),
         expenses: pctChange(todayExpenses, yesterdayExpenses),
+        profit: pctChange(profitToday, prevProfit),
         netCashFlow: pctChange(netCashFlow, yesterdayNet),
       },
     },
     salesOverview,
+    salesByCategory: [],
+    categoryTotal: today.sales,
     channelPerformance: [],
     channelTotal: today.sales,
     orderStatuses: {
@@ -403,12 +450,17 @@ async function getDashboardOverviewClient(params: DashboardQueryParams = {}): Pr
     attendanceToday: attendanceRes,
     recentActivity: recentSales.map((s) => {
       const cust = s.customers as unknown as { name: string } | null
+      const due = Number((s as { due_total?: number }).due_total ?? 0) > 0.009
       return {
         id: s.id,
         action: 'Sale completed',
         userName: cust?.name ?? 'Walk-in',
         details: `${s.invoice_no} · ৳${Number(s.grand_total).toFixed(0)}`,
         created_at: s.created_at,
+        invoiceNo: s.invoice_no ?? undefined,
+        customerName: cust?.name ?? 'Walk-in',
+        amount: Number(s.grand_total ?? 0),
+        paymentStatus: due ? 'Due' : 'Paid',
       }
     }),
     accounts: (accountsRes.data ?? []).map((a) => ({

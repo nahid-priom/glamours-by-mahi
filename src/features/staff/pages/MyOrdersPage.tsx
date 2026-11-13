@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { MySalesPage } from './MySalesPage'
 
-/** Online/staff orders — reuses My Sales list with status chips in the URL. */
+/** Online/moderator order lifecycle — not a duplicate of all POS sales. */
 export function MyOrdersPage() {
   const [params, setParams] = useSearchParams()
   const status = params.get('status') ?? ''
@@ -10,7 +10,9 @@ export function MyOrdersPage() {
     <div className="space-y-3">
       <div>
         <h1 className="text-xl font-bold">My Orders</h1>
-        <p className="text-sm text-[#6B7280]">Pending ও Online Order স্ট্যাটাস</p>
+        <p className="text-sm text-[#6B7280]">
+          Online / ecommerce / moderator fulfilment only — POS walk-in sales stay under My Sales
+        </p>
       </div>
       <div className="flex flex-wrap gap-2">
         {['', 'pending_approval', 'approved', 'delivered', 'cancelled'].map((s) => (
@@ -32,7 +34,7 @@ export function MyOrdersPage() {
           </button>
         ))}
       </div>
-      <MySalesPage embedded />
+      <MySalesPage embedded orderOnly />
     </div>
   )
 }

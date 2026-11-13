@@ -13,7 +13,9 @@ import { DashboardKpiCard } from '@/features/dashboard/components/DashboardKpiCa
 import { Button } from '@/components/ui/button'
 import { BranchSwitcher } from '@/components/layout/BranchSwitcher'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { useQuery } from '@tanstack/react-query'
 import { useStaffDashboard } from '../hooks/use-staff-dashboard'
+import { getStaffCommissionSummary } from '../repositories/staff.repository'
 import { getStaffPerformanceMessage } from '../lib/performance-message'
 import { TargetProgressCard } from '../components/TargetProgressCard'
 
@@ -29,6 +31,11 @@ export function StaffDashboardPage() {
   const { data, isLoading, error, dataUpdatedAt, refetch } = useStaffDashboard(
     branchFromUrl ?? activeBranchId,
   )
+  const commissionSummary = useQuery({
+    queryKey: ['staff-commission-summary'],
+    queryFn: getStaffCommissionSummary,
+  })
+  const cs = commissionSummary.data
 
   const message = data
     ? getStaffPerformanceMessage({
@@ -120,12 +127,12 @@ export function StaffDashboardPage() {
               to={`/staff/my-orders${qs}`}
             />
             <DashboardKpiCard
-              title="Commission"
+              title="Commission today"
               value={Number(data.kpis.commission_today)}
               icon={Wallet}
               tone="green"
               trend={0}
-              trendLabel="আজ · Estimated"
+              trendLabel="accrued today"
               to="/staff/my-commission"
             />
             <DashboardKpiCard
@@ -166,6 +173,29 @@ export function StaffDashboardPage() {
           </p>
 
           <TargetProgressCard target={data.target} />
+
+          {cs ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                { label: 'Pending approval', value: cs.pending },
+                { label: 'Approved', value: cs.approved },
+                { label: 'Paid', value: cs.paid },
+                {
+                  label: 'Accrued (open)',
+                  value: Number(cs.pending ?? 0) + Number(cs.approved ?? 0),
+                },
+              ].map((c) => (
+                <Link
+                  key={c.label}
+                  to="/staff/my-commission"
+                  className="rounded-xl border bg-white px-3 py-3 hover:border-[#E11D48]/40"
+                >
+                  <p className="text-[11px] uppercase text-[#6B7280]">{c.label}</p>
+                  <p className="mt-1 text-lg font-semibold">{formatBDT(Number(c.value))}</p>
+                </Link>
+              ))}
+            </div>
+          ) : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded-2xl border border-border bg-white">

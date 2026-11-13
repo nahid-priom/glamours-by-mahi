@@ -2,27 +2,21 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/features/auth/auth.context'
+import { todayYmd, toQueryBounds } from '@/lib/datetime/bd'
 import { queryKeys } from '@/lib/query/keys'
 import { getDashboardOverview } from '../repositories/dashboard.repository'
-
-function dayStartIso(d = new Date()) {
-  const x = new Date(d)
-  x.setHours(0, 0, 0, 0)
-  return x.toISOString()
-}
-
-function dayEndIso(d = new Date()) {
-  const x = new Date(d)
-  x.setHours(23, 59, 59, 999)
-  return x.toISOString()
-}
 
 export function useDashboardOverview(branchId: string) {
   const { profile } = useAuth()
   const [searchParams] = useSearchParams()
 
-  const dateFrom = searchParams.get('date_from') ?? dayStartIso()
-  const dateTo = searchParams.get('date_to') ?? dayEndIso()
+  const rawFrom = searchParams.get('date_from')
+  const rawTo = searchParams.get('date_to')
+  const fromYmd = rawFrom && /^\d{4}-\d{2}-\d{2}/.test(rawFrom) ? rawFrom.slice(0, 10) : todayYmd()
+  const toYmd = rawTo && /^\d{4}-\d{2}-\d{2}/.test(rawTo) ? rawTo.slice(0, 10) : todayYmd()
+  const bounds = toQueryBounds(fromYmd, toYmd)
+  const dateFrom = bounds.fromIso ?? new Date().toISOString()
+  const dateTo = bounds.toIso ?? new Date().toISOString()
 
   const queryKey = useMemo(
     () =>

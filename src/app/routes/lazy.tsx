@@ -451,6 +451,12 @@ export const SupplierImportPage = lazy(() =>
 export const HrEmployeesPage = lazy(() =>
   import('@/features/hr/HrPages').then((m) => ({ default: m.HrEmployeesPage })),
 )
+export const HrEmployeeCreatePage = lazy(() =>
+  import('@/features/hr/HrPages').then((m) => ({ default: m.HrEmployeeCreatePage })),
+)
+export const HrEmployeeDetailPage = lazy(() =>
+  import('@/features/hr/HrPages').then((m) => ({ default: m.HrEmployeeDetailPage })),
+)
 export const HrAttendancePage = lazy(() =>
   import('@/features/hr/HrPages').then((m) => ({ default: m.HrAttendancePage })),
 )

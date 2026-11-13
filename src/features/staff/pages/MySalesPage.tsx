@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDataView, MobileEntityCard } from '@/components/data-view'
 import { listStaffSales } from '../repositories/staff.repository'
 
-export function MySalesPage({ embedded = false }: { embedded?: boolean } = {}) {
+export function MySalesPage({
+  embedded = false,
+  orderOnly = false,
+}: { embedded?: boolean; orderOnly?: boolean } = {}) {
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState(params.get('q') ?? '')
   const page = Number(params.get('page') ?? '1') || 1
@@ -25,8 +28,9 @@ export function MySalesPage({ embedded = false }: { embedded?: boolean } = {}) {
       date_from: dateFrom,
       date_to: dateTo,
       status: status || null,
+      order_only: orderOnly || undefined,
     }),
-    [page, search, branchId, dateFrom, dateTo, status],
+    [page, search, branchId, dateFrom, dateTo, status, orderOnly],
   )
 
   const { data, isLoading, error } = useQuery({

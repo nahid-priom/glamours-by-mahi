@@ -19,6 +19,10 @@ export function TargetProgressCard({ target }: { target: StaffDashboardSummary['
   const days = Number(target.days_remaining) || 0
   const dailyPace = days > 0 ? remaining / days : remaining
   const status = targetStatusLabel(pct, days)
+  const orderTarget = Number(target.order_count) || 0
+  const ordersAchieved = Number(target.achieved_orders) || 0
+  const orderPct =
+    orderTarget > 0 ? Math.min(100, Math.round((ordersAchieved / orderTarget) * 100)) : null
 
   return (
     <div className="rounded-2xl border border-border bg-white p-4">
@@ -52,6 +56,11 @@ export function TargetProgressCard({ target }: { target: StaffDashboardSummary['
           aria-valuemax={100}
         />
       </div>
+      {orderPct != null ? (
+        <p className="mt-2 text-xs text-[#6B7280]">
+          Orders {ordersAchieved} / {orderTarget} ({orderPct}%)
+        </p>
+      ) : null}
       <p className="mt-3 text-sm text-[#4B5563]">
         {days} Days Remaining
         {remaining > 0

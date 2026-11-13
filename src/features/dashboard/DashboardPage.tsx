@@ -12,39 +12,32 @@ import {
   ShoppingBag,
   TrendingUp,
   Users,
-  Wallet,
 } from 'lucide-react'
+import { AppDateField } from '@/components/date-picker'
 import { useAuth } from '@/features/auth/auth.context'
-import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { todayYmd } from '@/lib/datetime/bd'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DashboardKpiCard } from './components/DashboardKpiCard'
-import { CourierStatusCard } from './components/CourierStatusCard'
-import { TopSellingProductsCard } from './components/TopSellingProductsCard'
-import { BranchPerformanceCard } from './components/BranchPerformanceCard'
 import { LowStockCard } from './components/LowStockCard'
-import { AttendanceSummaryCard } from './components/AttendanceSummaryCard'
-import { RecentActivityCard } from './components/RecentActivityCard'
-import { DashboardSectionCard } from './components/DashboardSectionCard'
+import { QuickActions } from './components/QuickActions'
+import { RecentSalesTable } from './components/RecentSalesTable'
 import { useDashboardOverview } from './hooks/use-dashboard-overview'
 import { listDashboardBranches } from './repositories/dashboard.repository'
 
 const SalesOverviewChart = lazy(() =>
   import('./components/SalesOverviewChart').then((m) => ({ default: m.SalesOverviewChart })),
 )
-const SalesChannelChart = lazy(() =>
-  import('./components/SalesChannelChart').then((m) => ({ default: m.SalesChannelChart })),
-)
-const CashFlowChart = lazy(() =>
-  import('./components/CashFlowChart').then((m) => ({ default: m.CashFlowChart })),
+const SalesByCategoryChart = lazy(() =>
+  import('./components/SalesByCategoryChart').then((m) => ({ default: m.SalesByCategoryChart })),
 )
 
 function ChartBlock({ children }: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="flex h-[260px] items-center justify-center rounded-2xl border border-[#E5E7EB] bg-white">
-          <Loader2 className="h-6 w-6 animate-spin text-[#6B7280]" aria-hidden />
+        <div className="flex h-[280px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" aria-hidden />
         </div>
       }
     >
@@ -53,14 +46,18 @@ function ChartBlock({ children }: { children: React.ReactNode }) {
   )
 }
 
-function KpiSkeletonGrid() {
-  return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <Skeleton key={i} className="h-[88px] rounded-xl" />
-      ))}
-    </div>
-  )
+function greetingForNow(d = new Date()) {
+  const h = d.getHours()
+  if (h < 12) return 'Good Morning'
+  if (h < 17) return 'Good Afternoon'
+  return 'Good Evening'
+}
+
+/** Hide fabricated 0% trends when both current value and reported delta are zero. */
+function meaningfulTrend(trend: number | null | undefined, current: number): number | null {
+  if (trend == null || !Number.isFinite(trend)) return null
+  if (trend === 0 && current === 0) return null
+  return trend
 }
 
 function buildFilterQuery(branchId: string, dateFrom: string | null, dateTo: string | null) {
@@ -102,6 +99,14 @@ export function DashboardPage() {
 
   const salesSpark = data?.salesOverview.map((d) => d.sales) ?? []
   const collectionSpark = data?.salesOverview.map((d) => d.collection) ?? []
+  const firstName = profile?.full_name?.split(/\s+/)[0] ?? 'there'
+  const todayLabel = new Date().toLocaleDateString('en-BD', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'Asia/Dhaka',
+  })
 
   function onBranchChange(next: string) {
     setActiveBranchId(next || null)
@@ -111,18 +116,36 @@ export function DashboardPage() {
     setSearchParams(params, { replace: true })
   }
 
+  function onDateChange(key: 'date_from' | 'date_to', value: string) {
+    const params = new URLSearchParams(searchParams)
+    if (value) params.set(key, value)
+    else params.delete(key)
+    setSearchParams(params, { replace: true })
+  }
+
+  const rangeLabel =
+    dateFrom || dateTo
+      ? `${dateFrom ?? '…'} → ${dateTo ?? '…'}`
+      : `Today, ${todayLabel}`
+
   if (!profile) {
     return (
-      <p className="p-4 text-sm text-[#6B7280]">Sign in to load live dashboard metrics from Supabase.</p>
+      <p className="p-4 text-sm text-slate-500">Sign in to load live dashboard metrics from Supabase.</p>
     )
   }
 
   return (
-    <div className="mx-auto max-w-[1366px] space-y-4 pb-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="mx-auto max-w-[1366px] space-y-4 pb-6">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[1.45rem] font-bold tracking-tight text-slate-900 sm:text-[1.6rem]">
+            {greetingForNow()}, {firstName}
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500">Glamorous Gallery By Mahi</p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
-            className="h-9 rounded-full border border-[#E5E7EB] bg-white px-3 text-xs font-medium text-[#111111]"
+            className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800"
             value={branchId}
             onChange={(e) => onBranchChange(e.target.value)}
             aria-label="Filter dashboard by branch"
@@ -134,64 +157,130 @@ export function DashboardPage() {
               </option>
             ))}
           </select>
-          <span className="rounded-full border border-[#E5E7EB] bg-white px-3 py-2 text-[11px] text-[#6B7280]">
-            {isFetching ? 'Refreshing…' : 'Live Supabase'}
+          <div className="flex items-center gap-1.5">
+            <AppDateField
+              value={dateFrom ?? ''}
+              onChange={(v) => onDateChange('date_from', v)}
+              aria-label="Dashboard date from"
+            />
+            <span className="text-[11px] text-slate-400">→</span>
+            <AppDateField
+              value={dateTo ?? ''}
+              onChange={(v) => onDateChange('date_to', v)}
+              aria-label="Dashboard date to"
+            />
+            {dateFrom || dateTo ? (
+              <button
+                type="button"
+                className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[11px] text-slate-600"
+                onClick={() => {
+                  const params = new URLSearchParams(searchParams)
+                  params.delete('date_from')
+                  params.delete('date_to')
+                  setSearchParams(params, { replace: true })
+                }}
+              >
+                Today
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-[11px] text-slate-600"
+                onClick={() => {
+                  const t = todayYmd()
+                  const params = new URLSearchParams(searchParams)
+                  params.set('date_from', t)
+                  params.set('date_to', t)
+                  setSearchParams(params, { replace: true })
+                }}
+              >
+                Set today
+              </button>
+            )}
+          </div>
+          <span className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-500">
+            {rangeLabel}
+          </span>
+          <span className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-500">
+            {isFetching ? 'Refreshing…' : 'Live'}
             {data?.refreshedAt || dataUpdatedAt ? (
               <> · {new Date(data?.refreshedAt ?? dataUpdatedAt).toLocaleTimeString()}</>
             ) : null}
           </span>
         </div>
-      </div>
+      </header>
 
       {error ? (
-        <p className="text-sm text-[#E11D48]">Failed to load dashboard metrics.</p>
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          Failed to load dashboard metrics. Retry or check permissions.
+        </div>
       ) : null}
 
-      {isLoading ? <KpiSkeletonGrid /> : null}
+      {isLoading ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[120px] rounded-2xl" />
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-[88px] rounded-2xl" />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {data ? (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <DashboardKpiCard
+              size="primary"
               title="Today's Sales"
               value={data.kpis.todaySales}
               icon={Banknote}
               tone="rose"
-              trend={data.kpis.trends.sales}
+              trend={meaningfulTrend(data.kpis.trends.sales, data.kpis.todaySales)}
               sparkline={salesSpark}
               to={`/sales${filterSuffix}`}
             />
             <DashboardKpiCard
+              size="primary"
               title="Today's Collection"
               value={data.kpis.todayCollection}
               icon={ArrowDownRight}
               tone="green"
-              trend={data.kpis.trends.collection}
+              trend={meaningfulTrend(data.kpis.trends.collection, data.kpis.todayCollection)}
               sparkline={collectionSpark}
               to={`/sales/collections${filterSuffix}`}
             />
             <DashboardKpiCard
+              size="primary"
               title="Today's Expenses"
               value={data.kpis.todayExpenses}
               icon={ArrowUpRight}
               tone="amber"
-              trend={data.kpis.trends.expenses}
+              trend={meaningfulTrend(data.kpis.trends.expenses, data.kpis.todayExpenses)}
               to={`/accounts/expenses${filterSuffix}`}
             />
             <DashboardKpiCard
-              title="Net Cash Flow"
-              value={data.kpis.netCashFlow}
-              icon={Wallet}
+              size="primary"
+              title="Today's Net Profit"
+              value={data.kpis.profitToday ?? 0}
+              icon={TrendingUp}
               tone="blue"
-              trend={data.kpis.trends.netCashFlow}
-              to={`/accounts${filterSuffix}`}
+              trend={meaningfulTrend(data.kpis.trends.profit, data.kpis.profitToday ?? 0)}
+              trendLabel="gross − expenses"
+              to={`/reports/profit${filterSuffix}`}
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <DashboardKpiCard
               title="Customer Due"
               value={data.kpis.customerDue}
               icon={Users}
               tone="slate"
-              trend={0}
               trendLabel="outstanding"
               to={`/customers?due=1${filterSuffix ? `&${filterSuffix.slice(1)}` : ''}`}
             />
@@ -200,7 +289,6 @@ export function DashboardPage() {
               value={data.kpis.supplierDue}
               icon={Building2}
               tone="slate"
-              trend={0}
               trendLabel="outstanding"
               to={`/suppliers?due=1${filterSuffix ? `&${filterSuffix.slice(1)}` : ''}`}
             />
@@ -209,115 +297,78 @@ export function DashboardPage() {
               value={data.kpis.lowStockCount}
               icon={Package}
               tone="amber"
-              trend={0}
+              valueAsCount
               trendLabel="items"
               to={`/inventory/low-stock${filterSuffix}`}
             />
-            {data.kpis.onlineOrders != null ? (
-              <DashboardKpiCard
-                title="Online Orders"
-                value={data.kpis.onlineOrders}
-                icon={ShoppingBag}
-                tone="blue"
-                trend={0}
-                trendLabel="in range"
-                to={`/sales/online-orders${filterSuffix}`}
-              />
-            ) : null}
-            {data.kpis.returnsToday != null ? (
-              <DashboardKpiCard
-                title="Returns"
-                value={data.kpis.returnsToday}
-                icon={RotateCcw}
-                tone="rose"
-                trend={0}
-                trendLabel="in range"
-                to={`/sales/returns${filterSuffix}`}
-              />
-            ) : null}
-            {data.kpis.profitToday != null ? (
-              <DashboardKpiCard
-                title="Profit"
-                value={data.kpis.profitToday}
-                icon={TrendingUp}
-                tone="green"
-                trend={0}
-                trendLabel="collection − expenses"
-                to={`/reports/profit${filterSuffix}`}
-              />
-            ) : null}
-            {data.kpis.stockValuation != null ? (
-              <DashboardKpiCard
-                title="Stock Value"
-                value={data.kpis.stockValuation}
-                icon={Building2}
-                tone="green"
-                trend={0}
-                trendLabel={
-                  data.kpis.stockCost != null
-                    ? `cost ${formatBDT(data.kpis.stockCost)}`
-                    : 'valuation'
-                }
-                to={`/inventory${filterSuffix}`}
-              />
-            ) : null}
+            <DashboardKpiCard
+              title="Online Orders"
+              value={data.kpis.onlineOrders ?? 0}
+              icon={ShoppingBag}
+              tone="blue"
+              valueAsCount
+              trendLabel="in range"
+              to={`/sales/online-orders${filterSuffix}`}
+            />
+            <DashboardKpiCard
+              title="Returns"
+              value={data.kpis.returnsToday ?? 0}
+              icon={RotateCcw}
+              tone="rose"
+              valueAsCount
+              trendLabel="in range"
+              to={`/sales/returns${filterSuffix}`}
+            />
+            <DashboardKpiCard
+              title="Total Products"
+              value={data.kpis.totalProducts ?? 0}
+              icon={Package}
+              tone="slate"
+              valueAsCount
+              trendLabel="active"
+              to={`/products${filterSuffix}`}
+            />
           </div>
 
           <div className="grid gap-3 lg:grid-cols-12">
-            <div className="lg:col-span-6">
+            <div className="lg:col-span-8">
               <ChartBlock>
                 <SalesOverviewChart data={data.salesOverview} />
               </ChartBlock>
             </div>
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-4">
               <ChartBlock>
-                <SalesChannelChart data={data.channelPerformance} total={data.channelTotal} />
+                <SalesByCategoryChart
+                  data={
+                    data.salesByCategory.length
+                      ? data.salesByCategory
+                      : data.channelPerformance.map((c) => ({
+                          category: c.channel,
+                          sales: c.sales,
+                          count: c.count,
+                          percent:
+                            data.channelTotal > 0
+                              ? Math.round((c.sales / data.channelTotal) * 1000) / 10
+                              : 0,
+                        }))
+                  }
+                  total={data.categoryTotal || data.channelTotal || data.kpis.todaySales}
+                />
               </ChartBlock>
             </div>
-            <div className="lg:col-span-3">
-              <CourierStatusCard statuses={data.orderStatuses} />
-            </div>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-3">
-            <TopSellingProductsCard products={data.topProducts} />
-            <BranchPerformanceCard branches={data.branchPerformance} />
-            <LowStockCard products={data.lowStockProducts} />
           </div>
 
           <div className="grid gap-3 lg:grid-cols-12">
-            <div className="lg:col-span-5">
-              <ChartBlock>
-                <CashFlowChart data={data.cashFlowTrend} />
-              </ChartBlock>
+            <div className="min-w-0 lg:col-span-5">
+              <RecentSalesTable sales={data.recentActivity} />
             </div>
-            <div className="lg:col-span-4">
-              <AttendanceSummaryCard
-                present={data.attendanceToday.present}
-                late={data.attendanceToday.late}
-                absent={data.attendanceToday.absent}
-                leave={data.attendanceToday.leave}
-                employees={data.attendanceToday.employees}
-              />
+            <div className="min-w-0 lg:col-span-4">
+              <LowStockCard products={data.lowStockProducts} />
             </div>
-            <div className="lg:col-span-3">
-              <RecentActivityCard activities={data.recentActivity} />
+            <div className="min-w-0 lg:col-span-3">
+              <QuickActions />
             </div>
           </div>
-
-          <DashboardSectionCard title="Primary Accounts" action={{ label: 'View accounts', to: '/accounts' }}>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {data.accounts.map((a) => (
-                <div key={a.id} className="rounded-xl bg-[#F8F6F2] px-3 py-3">
-                  <p className="text-[11px] text-[#6B7280]">{a.name}</p>
-                  <p className="mt-1 text-sm font-semibold text-[#111111]">{formatBDT(a.balance)}</p>
-                </div>
-              ))}
-              {data.accounts.length === 0 && (
-                <p className="col-span-full text-sm text-[#6B7280]">No primary accounts configured.</p>
-              )}
-            </div>
-          </DashboardSectionCard>
         </>
       ) : null}
     </div>

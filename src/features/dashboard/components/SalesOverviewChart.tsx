@@ -17,7 +17,7 @@ interface SalesOverviewChartProps {
 
 export function SalesOverviewChart({ data }: SalesOverviewChartProps) {
   return (
-    <DashboardSectionCard title="Sales Overview" action={{ label: 'View reports', to: '/reports/sales' }}>
+    <DashboardSectionCard title="Sales & Collection Overview" action={{ label: 'View reports', to: '/reports/sales' }}>
       <p className="mb-3 text-[11px] text-[#6B7280]">Sales vs Collection · Last 7 days</p>
       <div className="h-[260px] w-full min-w-0">
         <ResponsiveContainer width="100%" height="100%">

@@ -42,7 +42,7 @@ function activityTone(action: string) {
 
 export function RecentActivityCard({ activities }: RecentActivityCardProps) {
   return (
-    <DashboardSectionCard title="Recent Activity" action={{ label: 'View all', to: '/activity-logs' }}>
+    <DashboardSectionCard title="Recent Activity" action={{ label: 'View all', to: '/administration/activity' }}>
       <ul className="space-y-3">
         {activities.slice(0, 5).map((a) => {
           const Icon = activityIcon(a.action)

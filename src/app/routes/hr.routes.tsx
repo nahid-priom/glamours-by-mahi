@@ -3,6 +3,8 @@ import { Navigate } from 'react-router-dom'
 import { PermissionRoute } from '@/app/guards/PermissionRoute'
 import {
   HrAttendancePage,
+  HrEmployeeCreatePage,
+  HrEmployeeDetailPage,
   HrEmployeesPage,
   HrLeavesPage,
   HrPayrollAdvancesPage,
@@ -23,8 +25,8 @@ export const hrRoutes: RouteObject[] = [
     element: <PermissionRoute permission={['hr.read', 'hr.employee.create', 'hr.employee.update']} />,
     children: [
       { path: '/hr/employees', element: withSuspense(HrEmployeesPage) },
-      { path: '/hr/employees/new', element: withSuspense(HrEmployeesPage) },
-      { path: '/hr/employees/:id', element: withSuspense(HrEmployeesPage) },
+      { path: '/hr/employees/new', element: withSuspense(HrEmployeeCreatePage) },
+      { path: '/hr/employees/:id', element: withSuspense(HrEmployeeDetailPage) },
     ],
   },
   {

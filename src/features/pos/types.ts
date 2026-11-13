@@ -54,6 +54,8 @@ export type PosVariant = {
   thumbnailUrl?: string | null
   unitPrice: number
   availableStock: number
+  categoryId?: string | null
+  categoryName?: string | null
 }
 
 export type CartTotals = {

@@ -90,6 +90,8 @@ export function PosPage() {
   const [completedPreview, setCompletedPreview] = useState<CompletedSalePreview | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [productPreview, setProductPreview] = useState<PosVariant | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [catalogSearch, setCatalogSearch] = useState('')
   const previewTriggerRef = useRef<HTMLElement | null>(null)
 
   const catalogue = usePosCatalogue(branchId)
@@ -101,6 +103,30 @@ export function PosPage() {
     () => catalogue.data?.pages.flatMap((p) => p.items) ?? [],
     [catalogue.data],
   )
+
+  const categories = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const v of variants) {
+      if (v.categoryId && v.categoryName) map.set(v.categoryId, v.categoryName)
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [variants])
+
+  const visibleVariants = useMemo(() => {
+    const q = catalogSearch.trim().toLowerCase()
+    return variants.filter((v) => {
+      if (categoryFilter !== 'all' && v.categoryId !== categoryFilter) return false
+      if (!q) return true
+      return (
+        v.productName.toLowerCase().includes(q) ||
+        v.sku.toLowerCase().includes(q) ||
+        (v.barcode ?? '').toLowerCase().includes(q) ||
+        v.variantLabel.toLowerCase().includes(q)
+      )
+    })
+  }, [variants, categoryFilter, catalogSearch])
 
   const methods = useMemo(
     () =>
@@ -551,13 +577,16 @@ export function PosPage() {
         </Button>
         <Button
           type="button"
-          className="flex-1"
+          className="flex-1 bg-[#E11D48] hover:bg-[#be123c]"
           disabled={checkoutDisabled}
           onClick={() => void handleComplete()}
+          aria-keyshortcuts="F8"
         >
-          {cart.state.payments.length === 0 && cart.totals.grandTotal > 0
-            ? `${methodLabel(payMethod)} · ${formatBDT(cart.totals.grandTotal)}`
-            : 'Complete'}
+          {busy
+            ? 'Posting…'
+            : cart.state.payments.length === 0 && cart.totals.grandTotal > 0
+              ? `Pay & Complete · ${formatBDT(cart.totals.grandTotal)}`
+              : 'Pay & Complete (F8)'}
         </Button>
       </div>
     </>
@@ -601,13 +630,54 @@ export function PosPage() {
           loading={scanLoading}
         />
 
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            className="h-9 sm:max-w-xs"
+            placeholder="Search name, SKU, barcode…"
+            value={catalogSearch}
+            onChange={(e) => setCatalogSearch(e.target.value)}
+            aria-label="Filter catalogue"
+          />
+          {categories.length > 0 ? (
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+              <button
+                type="button"
+                className={cn(
+                  'shrink-0 rounded-full border px-3 py-1 text-xs font-medium',
+                  categoryFilter === 'all'
+                    ? 'border-[#E11D48] bg-[#FFF1F2] text-[#E11D48]'
+                    : 'border-border bg-white text-[#374151]',
+                )}
+                onClick={() => setCategoryFilter('all')}
+              >
+                All
+              </button>
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={cn(
+                    'shrink-0 rounded-full border px-3 py-1 text-xs font-medium',
+                    categoryFilter === c.id
+                      ? 'border-[#E11D48] bg-[#FFF1F2] text-[#E11D48]'
+                      : 'border-border bg-white text-[#374151]',
+                  )}
+                  onClick={() => setCategoryFilter(c.id)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="grid content-start items-start grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {catalogue.isLoading
               ? Array.from({ length: 10 }).map((_, i) => (
                   <Skeleton key={i} className="h-[264px] w-full rounded-xl" />
                 ))
-              : variants.map((v) => (
+              : visibleVariants.map((v) => (
                   <PosProductCard
                     key={v.variantId}
                     variant={v}
@@ -619,6 +689,9 @@ export function PosPage() {
 
           {!catalogue.isLoading && variants.length === 0 ? (
             <p className="py-12 text-center text-sm text-text-muted">No products in catalogue</p>
+          ) : null}
+          {!catalogue.isLoading && variants.length > 0 && visibleVariants.length === 0 ? (
+            <p className="py-12 text-center text-sm text-text-muted">No products match this filter</p>
           ) : null}
 
           {catalogue.hasNextPage ? (

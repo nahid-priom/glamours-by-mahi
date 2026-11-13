@@ -41,6 +41,8 @@
     "cleanup:legacy-demo": "node scripts/cleanup-legacy-multibranch-demo.mjs",
     "verify:unified-core": "powershell -ExecutionPolicy Bypass -File scripts/verify-unified-core.ps1",
     "db:reset": "npx supabase db reset --yes",
+    "db:push": "node scripts/db-push-remote.mjs",
+    "db:push:dry": "node scripts/db-push-remote.mjs --dry-run",
     "db:types": "npx supabase gen types typescript --local -o src/types/database.ts"
   },
   "dependencies": {
