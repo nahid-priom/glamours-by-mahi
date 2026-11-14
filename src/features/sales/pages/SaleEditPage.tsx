@@ -160,14 +160,37 @@ export function SaleEditPage() {
     }
   }, [saleQuery.data])
 
+  const effectiveCustomerId = watched.customer_id ?? saleQuery.data?.customer_id ?? null
+  const dueRequiresCustomer = afterTotals.due > 0.009 && !effectiveCustomerId
+
+  function validateCorrectionPayments(values: EditForm): string | null {
+    const paid = values.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+    const subtotal = values.items.reduce(
+      (sum, i) => sum + lineTotal(Number(i.qty || 0), Number(i.unit_price || 0), Number(i.line_discount || 0)),
+      0,
+    )
+    const grand = Math.max(
+      0,
+      subtotal - Number(values.discount || 0) + Number(values.tax || 0) + Number(values.shipping || 0),
+    )
+    const due = Math.max(0, grand - paid)
+    const customerId = values.customer_id ?? saleQuery.data?.customer_id ?? null
+    if (due > 0.009 && !customerId) {
+      return 'Due amount requires a customer. Select a customer, or increase payments to cover the total.'
+    }
+    return null
+  }
+
   const mutation = useMutation({
-    mutationFn: (values: EditForm) =>
-      editSale({
+    mutationFn: (values: EditForm) => {
+      const validationError = validateCorrectionPayments(values)
+      if (validationError) throw new Error(validationError)
+      return editSale({
         sale_id: id,
         reason: values.reason,
         note: values.note || null,
         client_txn_key: clientTxnKeyRef.current,
-        customer_id: values.customer_id,
+        customer_id: values.customer_id ?? saleQuery.data?.customer_id ?? null,
         discount: values.discount,
         tax: values.tax,
         shipping: values.shipping,
@@ -183,14 +206,25 @@ export function SaleEditPage() {
           financial_account_id: p.financial_account_id ?? null,
           reference: p.reference ?? null,
         })),
-      }),
+      })
+    },
     onSuccess: (result) => {
       toast('Sale corrected')
       invalidate(id)
       if (result.new_sale_id) invalidate(result.new_sale_id)
       navigate(`/sales/${result.new_sale_id ?? id}`)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => {
+      const msg = e.message || ''
+      if (/Payments do not cover grand_total/i.test(msg)) {
+        toast(
+          'Payments do not cover the total. Select a customer for the due amount, or increase payments to match the total.',
+          'error',
+        )
+        return
+      }
+      toast(msg, 'error')
+    },
   })
 
   const addByBarcode = async () => {
@@ -272,7 +306,14 @@ export function SaleEditPage() {
 
       <form
         className="space-y-4"
-        onSubmit={form.handleSubmit(() => setConfirmOpen(true))}
+        onSubmit={form.handleSubmit((values) => {
+          const validationError = validateCorrectionPayments(values)
+          if (validationError) {
+            toast(validationError, 'error')
+            return
+          }
+          setConfirmOpen(true)
+        })}
       >
         <div className="rounded-xl border border-border bg-white p-4 space-y-3">
           <div className="space-y-1.5">
@@ -478,6 +519,12 @@ export function SaleEditPage() {
           <div className="flex justify-between font-semibold"><span>Total</span><span>{formatBDT(afterTotals.grand)}</span></div>
           <div className="flex justify-between"><span>Paid</span><span>{formatBDT(afterTotals.paid)}</span></div>
           <div className="flex justify-between text-danger"><span>Due</span><span>{formatBDT(afterTotals.due)}</span></div>
+          {dueRequiresCustomer ? (
+            <p className="mt-2 text-xs text-danger">
+              Due {formatBDT(afterTotals.due)} needs a customer. Select one above, or raise payments to{' '}
+              {formatBDT(afterTotals.grand)}.
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -508,11 +555,19 @@ export function SaleEditPage() {
                 <p className="text-xs text-text-muted">After</p>
                 <p className="font-semibold">{formatBDT(afterTotals.grand)}</p>
                 <p className="text-xs">Paid {formatBDT(afterTotals.paid)}</p>
+                {afterTotals.due > 0.009 ? (
+                  <p className="text-xs text-danger">Due {formatBDT(afterTotals.due)}</p>
+                ) : null}
               </div>
             </div>
+            {dueRequiresCustomer ? (
+              <p className="text-xs text-danger">
+                Select a customer for the due amount, or increase payments to cover the total.
+              </p>
+            ) : null}
             <Button
               className="w-full"
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || dueRequiresCustomer}
               onClick={() => mutation.mutate(form.getValues())}
             >
               {mutation.isPending ? 'Submitting…' : 'Confirm correction'}
