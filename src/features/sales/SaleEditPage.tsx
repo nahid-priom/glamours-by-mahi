@@ -129,7 +129,7 @@ export function SaleEditPage() {
   return (
     <PageShell
       title={`Edit ${sale.saleNo}`}
-      description="Changes reverse previous stock, ledger, and commission before applying new values."
+      description="Correction reverses stock, ledger, and remaining commission on the original invoice, then posts a linked replacement sale (commission accrues once on the new sale)."
       actions={
         <Link to={`/sales/${sale.id}`}>
           <Button variant="outline" className="rounded-full gap-1">

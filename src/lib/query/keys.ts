@@ -77,6 +77,9 @@ export const queryKeys = {
   payrollStats: (filters: Record<string, unknown> = {}) => ['payroll-stats', filters] as const,
   commissionRules: (branchId?: string | null) => ['commission-rules', branchId ?? null] as const,
   salesCommissions: (filters: Record<string, unknown> = {}) => ['sales-commissions', filters] as const,
+  salesCommissionsSummary: (filters: Record<string, unknown> = {}) =>
+    ['sales-commissions-summary', filters] as const,
+  saleCommissionAudit: (saleId: string) => ['sale-commission-audit', saleId] as const,
   commissionAccounts: ['commission-accounts'] as const,
   commissionEmployees: (branchId?: string | null, query?: string) =>
     ['commission-employees', branchId ?? null, query ?? ''] as const,

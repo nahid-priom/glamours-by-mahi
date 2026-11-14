@@ -84,6 +84,8 @@ export async function invalidateSaleCompletionCaches(
     qc.invalidateQueries({ queryKey: ['staff-commission-summary'] }),
     qc.invalidateQueries({ queryKey: ['staff-commission-entries'] }),
     qc.invalidateQueries({ queryKey: queryKeys.salesCommissions() }),
+    qc.invalidateQueries({ queryKey: ['sales-commissions-summary'] }),
+    qc.invalidateQueries({ queryKey: ['sale-commission-audit'] }),
   ]
   invalidateInventoryQueries(qc)
 

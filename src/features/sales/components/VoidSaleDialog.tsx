@@ -54,8 +54,8 @@ export function VoidSaleDialog({
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-text-muted">
-            Completed invoices are never hard-deleted. Voiding restores stock and reverses financial
-            impact while preserving the original invoice.
+            Completed invoices are never hard-deleted. Voiding restores stock, reverses ledger
+            impact, and reverses remaining commission while preserving the original invoice.
           </p>
           <div className="space-y-1.5">
             <Label htmlFor="void-reason">Reason *</Label>

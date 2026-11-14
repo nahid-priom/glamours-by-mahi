@@ -118,6 +118,79 @@ export type SalesCommissionRow = {
   sales?: { invoice_no: string } | null
 }
 
+export type SaleCommissionAuditRow = {
+  id: string
+  profile_id: string | null
+  employee_id: string | null
+  base_amount: number
+  commission_amount: number
+  reversed_amount: number | null
+  original_commission_amount: number | null
+  recoverable_amount: number | null
+  status: string
+  rule_snapshot: unknown
+  notes: string | null
+  created_at: string
+  approved_at: string | null
+  paid_at: string | null
+  profile_name: string | null
+  employee_name: string | null
+  employee_code: string | null
+}
+
+export type SaleCommissionAudit = {
+  sale_id: string
+  invoice_no: string
+  sale_status: string
+  summary: {
+    accrued: number
+    reversed: number
+    net_earned: number
+    paid: number
+    outstanding: number
+    recoverable: number
+    row_count: number
+  }
+  commissions: SaleCommissionAuditRow[]
+  exceptions: Array<{
+    id: string
+    reason: string
+    created_at: string
+    resolved_at: string | null
+  }>
+}
+
+export type SalesCommissionsSummary = {
+  accrued: number
+  pending: number
+  approved: number
+  paid: number
+  reversed: number
+  net_earned: number
+  outstanding: number
+  recoverable: number
+  exceptions: number
+  row_count: number
+}
+
+export type CommissionDiscrepancyReport = {
+  dry_run: boolean
+  organization_id: string
+  examined_categories: string[]
+  discrepancy_count: number
+  total_exposure: number
+  items: Array<{
+    category: string
+    severity: string
+    sale_id?: string
+    invoice_no?: string | null
+    actual_earning?: number
+    expected_earning?: number
+    difference?: number | null
+    reason?: string
+  }>
+}
+
 function normalizeTiers(raw: unknown): CommissionTier[] {
   if (!Array.isArray(raw)) return []
   return raw.map((t) => {
@@ -387,6 +460,81 @@ async function listFinancialAccounts() {
   return data ?? []
 }
 
+async function getSaleCommissionAudit(saleId: string): Promise<SaleCommissionAudit> {
+  const { data, error } = await untypedRpc('get_sale_commission_audit', {
+    p_sale_id: saleId,
+  })
+  if (error) throw error
+  const payload = (data ?? {}) as Record<string, unknown>
+  const summary = (payload.summary ?? {}) as Record<string, unknown>
+  return {
+    sale_id: String(payload.sale_id ?? saleId),
+    invoice_no: String(payload.invoice_no ?? ''),
+    sale_status: String(payload.sale_status ?? ''),
+    summary: {
+      accrued: Number(summary.accrued ?? 0),
+      reversed: Number(summary.reversed ?? 0),
+      net_earned: Number(summary.net_earned ?? 0),
+      paid: Number(summary.paid ?? 0),
+      outstanding: Number(summary.outstanding ?? 0),
+      recoverable: Number(summary.recoverable ?? 0),
+      row_count: Number(summary.row_count ?? 0),
+    },
+    commissions: Array.isArray(payload.commissions)
+      ? (payload.commissions as SaleCommissionAuditRow[])
+      : [],
+    exceptions: Array.isArray(payload.exceptions)
+      ? (payload.exceptions as SaleCommissionAudit['exceptions'])
+      : [],
+  }
+}
+
+async function summarizeSalesCommissions(
+  filters: Pick<CommissionFilters, 'status' | 'employeeId' | 'dateFrom' | 'dateTo'> = {},
+): Promise<SalesCommissionsSummary> {
+  const { data, error } = await untypedRpc('summarize_sales_commissions', {
+    p_status: filters.status ?? null,
+    p_profile_id: null,
+    p_employee_id: filters.employeeId ?? null,
+    p_from: filters.dateFrom ?? null,
+    p_to: filters.dateTo ?? null,
+  })
+  if (error) throw error
+  const payload = (data ?? {}) as Record<string, unknown>
+  return {
+    accrued: Number(payload.accrued ?? 0),
+    pending: Number(payload.pending ?? 0),
+    approved: Number(payload.approved ?? 0),
+    paid: Number(payload.paid ?? 0),
+    reversed: Number(payload.reversed ?? 0),
+    net_earned: Number(payload.net_earned ?? 0),
+    outstanding: Number(payload.outstanding ?? 0),
+    recoverable: Number(payload.recoverable ?? 0),
+    exceptions: Number(payload.exceptions ?? 0),
+    row_count: Number(payload.row_count ?? 0),
+  }
+}
+
+async function auditCommissionDiscrepancies(limit = 200): Promise<CommissionDiscrepancyReport> {
+  const { data, error } = await untypedRpc('audit_commission_discrepancies', {
+    p_limit: limit,
+  })
+  if (error) throw error
+  const payload = (data ?? {}) as Record<string, unknown>
+  return {
+    dry_run: Boolean(payload.dry_run ?? true),
+    organization_id: String(payload.organization_id ?? ''),
+    examined_categories: Array.isArray(payload.examined_categories)
+      ? (payload.examined_categories as string[])
+      : [],
+    discrepancy_count: Number(payload.discrepancy_count ?? 0),
+    total_exposure: Number(payload.total_exposure ?? 0),
+    items: Array.isArray(payload.items)
+      ? (payload.items as CommissionDiscrepancyReport['items'])
+      : [],
+  }
+}
+
 export const commissionsRepository = {
   listCommissions,
   listCommissionRules,
@@ -400,4 +548,7 @@ export const commissionsRepository = {
   rejectCommission,
   payCommission,
   listFinancialAccounts,
+  getSaleCommissionAudit,
+  summarizeSalesCommissions,
+  auditCommissionDiscrepancies,
 }

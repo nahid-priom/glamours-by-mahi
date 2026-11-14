@@ -46,25 +46,39 @@ export function TopHeader() {
   }
 
   return (
-    <header className="sticky top-14 z-30 border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 lg:top-0">
-      <div className="flex max-w-full items-center justify-end gap-3 px-4 py-3 sm:px-5 sm:py-4">
-        <div className="hidden shrink-0 items-center gap-2 lg:flex">
+    <header className="sticky top-0 z-30 hidden border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 lg:block">
+      <div className="flex max-w-full items-center justify-between gap-4 px-4 py-2.5 sm:px-5 sm:py-3">
+        {/* Left: workspace context */}
+        <div className="flex min-w-0 items-center gap-1.5">
           <BranchSwitcher />
-          <QuickActionsMenu />
           <div className="flex items-center gap-1.5 rounded-xl border border-border bg-slate-50 px-3 py-1.5 text-xs text-text-muted">
-            <Calendar className="h-3.5 w-3.5" />
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
             <span className="max-w-[180px] truncate">{formatDate()}</span>
           </div>
-          <Button variant="ghost" size="icon" aria-label="Search">
-            <Search className="h-4 w-4" />
-          </Button>
-          <PWAInstallButton />
-          <Button variant="ghost" size="icon" onClick={toggleFullscreen} aria-label="Fullscreen">
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-            <Bell className="h-4 w-4" />
-          </Button>
+        </div>
+
+        {/* Right: actions | tools | user */}
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="flex items-center">
+            <QuickActionsMenu />
+          </div>
+
+          <div className="h-5 w-px bg-border" aria-hidden />
+
+          <div className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon" aria-label="Search">
+              <Search className="h-4 w-4" />
+            </Button>
+            <PWAInstallButton />
+            <Button variant="ghost" size="icon" onClick={toggleFullscreen} aria-label="Fullscreen">
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+              <Bell className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="h-5 w-px bg-border" aria-hidden />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

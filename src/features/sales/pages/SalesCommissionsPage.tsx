@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { commissionsRepository } from '../repositories/commissions.repository'
@@ -81,6 +81,8 @@ function eventTypeLabel(eventType: string | null | undefined) {
 
 function invalidateCommissionCaches(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['sales-commissions'] })
+  void qc.invalidateQueries({ queryKey: ['sales-commissions-summary'] })
+  void qc.invalidateQueries({ queryKey: ['sale-commission-audit'] })
   void qc.invalidateQueries({ queryKey: ['staff-commission-summary'] })
   void qc.invalidateQueries({ queryKey: ['staff-commission-entries'] })
   void qc.invalidateQueries({ queryKey: ['employee-commissions'] })
@@ -126,6 +128,18 @@ export function SalesCommissionsPage() {
     queryFn: () => commissionsRepository.listCommissions(filters),
   })
 
+  const summaryFilters = {
+    status: filters.status,
+    employeeId: filters.employeeId,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+  }
+
+  const { data: summary } = useQuery({
+    queryKey: queryKeys.salesCommissionsSummary(summaryFilters),
+    queryFn: () => commissionsRepository.summarizeSalesCommissions(summaryFilters),
+  })
+
   const rows = data?.items ?? []
   const total = data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
@@ -143,21 +157,15 @@ export function SalesCommissionsPage() {
   const employees = employeesData?.items ?? []
   const detail = rows.find((r) => r.id === detailId) ?? null
 
-  const kpis = useMemo(() => {
-    const sum = (statuses: string[]) =>
-      rows
-        .filter((r) => statuses.includes(r.status))
-        .reduce((s, r) => s + Number(r.commission_amount), 0)
-    return {
-      pending: sum(['pending']),
-      approved: sum(['approved']),
-      paid: sum(['paid']),
-      reversed: rows.reduce((s, r) => s + Number(r.reversed_amount ?? 0), 0),
-      month: rows
-        .filter((r) => r.created_at.slice(0, 7) === new Date().toISOString().slice(0, 7))
-        .reduce((s, r) => s + Number(r.commission_amount), 0),
-    }
-  }, [rows])
+  const kpis = {
+    pending: Number(summary?.pending ?? 0),
+    approved: Number(summary?.approved ?? 0),
+    paid: Number(summary?.paid ?? 0),
+    reversed: Number(summary?.reversed ?? 0),
+    recoverable: Number(summary?.recoverable ?? 0),
+    net: Number(summary?.net_earned ?? 0),
+    exceptions: Number(summary?.exceptions ?? 0),
+  }
 
   const pendingIds = rows.filter((r) => isApprovable(r.status)).map((r) => r.id)
   const selectedPending = selected.filter((id) => pendingIds.includes(id))
@@ -288,17 +296,21 @@ export function SalesCommissionsPage() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {[
-          { label: 'Pending (page)', value: kpis.pending },
-          { label: 'Approved (page)', value: kpis.approved },
-          { label: 'Paid (page)', value: kpis.paid },
-          { label: 'Reversed (page)', value: kpis.reversed },
-          { label: 'This month (page)', value: kpis.month },
+          { label: 'Pending', value: kpis.pending },
+          { label: 'Approved', value: kpis.approved },
+          { label: 'Paid', value: kpis.paid },
+          { label: 'Reversed', value: kpis.reversed },
+          { label: 'Net earned', value: kpis.net },
+          { label: 'Recoverable', value: kpis.recoverable },
+          { label: 'Open exceptions', value: kpis.exceptions, raw: true },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-xl border border-border bg-white p-3">
             <p className="text-xs text-[#6B7280]">{kpi.label}</p>
-            <p className="text-lg font-bold tabular-nums">{formatBDT(kpi.value)}</p>
+            <p className="text-lg font-bold tabular-nums">
+              {'raw' in kpi && kpi.raw ? kpi.value : formatBDT(kpi.value)}
+            </p>
           </div>
         ))}
       </div>

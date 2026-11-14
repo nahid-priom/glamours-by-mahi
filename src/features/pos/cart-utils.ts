@@ -4,6 +4,25 @@ export function normalizeBarcode(input: string): string {
   return input.trim().replace(/[\s\-_]/g, '').toUpperCase()
 }
 
+/**
+ * Size / color / option text for POS display.
+ * Strips a leading product name from composite labels like "Tee / Black / M".
+ */
+export function formatPosVariantAttrs(
+  productName: string,
+  variantLabel: string | null | undefined,
+): string {
+  const raw = (variantLabel ?? '').trim()
+  if (!raw) return ''
+  const name = productName.trim()
+  let attrs = raw
+  if (name && raw.toLowerCase().startsWith(name.toLowerCase())) {
+    attrs = raw.slice(name.length).replace(/^[\s|/·\-–—]+/, '').trim()
+  }
+  if (!attrs || /^default$/i.test(attrs)) return ''
+  return attrs
+}
+
 export function calcLineTotal(line: Pick<CartLine, 'unitPrice' | 'qty' | 'lineDiscount'>): number {
   return Math.max(0, roundMoney(line.unitPrice * line.qty - line.lineDiscount))
 }
@@ -61,9 +80,16 @@ export function assertSaleReady(state: CartState): void {
     if (payment.amount < 0) throw new Error('Payment amounts cannot be negative')
     if (!payment.method?.trim()) throw new Error('Payment method is required')
   }
-  const methods = state.payments.map((p) => p.method.trim().toLowerCase())
-  if (new Set(methods).size !== methods.length) {
-    throw new Error('Duplicate payment methods are not allowed')
+  // Uniqueness by account (or due), not method code — split pay across accounts is allowed.
+  const accountIds = state.payments
+    .map((p) => p.financialAccountId)
+    .filter((id): id is string => Boolean(id))
+  if (new Set(accountIds).size !== accountIds.length) {
+    throw new Error('Duplicate payment accounts are not allowed')
+  }
+  const dueCount = state.payments.filter((p) => /due|credit|receivable/i.test(p.method)).length
+  if (dueCount > 1) {
+    throw new Error('Due / Credit can only be added once')
   }
 }
 

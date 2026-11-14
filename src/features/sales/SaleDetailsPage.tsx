@@ -341,7 +341,7 @@ export function SaleDetailsPage() {
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title="Delete this sale?"
-        description="Soft delete restores stock and reverses finance, customer due, and commission."
+        description="Soft delete removes the list record only. Use Void on a completed sale to reverse stock, ledger, and residual commission."
         confirmLabel="Delete Sale"
         variant="danger"
         loading={deleteMutation.isPending}

@@ -300,7 +300,8 @@ export function SaleEditPage() {
         </p>
         <h1 className="text-xl font-bold">Correct sale</h1>
         <p className="text-sm text-text-muted">
-          Edits reverse the original invoice and create a linked corrected sale atomically.
+          Correction reverses stock, ledger, and remaining commission on the original invoice, then
+          creates a linked replacement sale (replacement commission accrues once).
         </p>
       </div>
 

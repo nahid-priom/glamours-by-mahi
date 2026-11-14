@@ -10,7 +10,6 @@ import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
-import { resolvePaymentAccount } from '@/lib/payments/resolve-payment-account'
 import { queryKeys } from '@/lib/query/keys'
 import { cn } from '@/lib/utils'
 import type { AccountKind, FinancialAccountRow } from '@/features/accounting/repositories/simple-accounting.repository'
@@ -35,7 +34,6 @@ import { usePosBarcodeLookup } from '../hooks/use-pos-barcode-lookup'
 import {
   usePosCatalogue,
   usePosFinancialAccounts,
-  usePosPaymentMethods,
 } from '../hooks/use-pos-catalogue'
 import {
   completeSale,
@@ -45,6 +43,20 @@ import {
 } from '../repositories/pos.repository'
 import type { PosVariant } from '../types'
 import { usePosCart } from '../use-pos-cart'
+
+/** Map financial account kind → sale payment method code for RPC. */
+function methodFromAccountKind(kind: AccountKind): string {
+  switch (kind) {
+    case 'cash':
+      return 'cash'
+    case 'bank':
+      return 'bank'
+    case 'mobile_money':
+      return 'bkash'
+    default:
+      return 'other'
+  }
+}
 
 function playScanSuccess() {
   try {
@@ -87,7 +99,9 @@ export function PosPage() {
 
   const [busy, setBusy] = useState(false)
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
-  const [payMethod, setPayMethod] = useState('cash')
+  /** Selected financial account id, or `null` for Due / Credit. */
+  const [payAccountId, setPayAccountId] = useState<string | null>(null)
+  const payAccountDefaultedRef = useRef(false)
   const [payAmount, setPayAmount] = useState('')
   const [completedPreview, setCompletedPreview] = useState<CompletedSalePreview | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -98,7 +112,6 @@ export function PosPage() {
 
   const catalogue = usePosCatalogue(branchId)
   const { lookup, loading: scanLoading } = usePosBarcodeLookup(branchId)
-  const methodsQuery = usePosPaymentMethods()
   const accountsQuery = usePosFinancialAccounts(branchId)
 
   const variants = useMemo(
@@ -130,19 +143,6 @@ export function PosPage() {
     })
   }, [variants, categoryFilter, catalogSearch])
 
-  const methods = useMemo(
-    () =>
-      (methodsQuery.data ?? []).map((r) => ({
-        code: r.code,
-        name: r.name,
-        financialAccountId: r.financial_account_id,
-        financial_account_id: r.financial_account_id,
-        isDue: r.is_due === true,
-        is_due: r.is_due === true,
-      })),
-    [methodsQuery.data],
-  )
-
   const posAccounts = useMemo((): FinancialAccountRow[] => {
     return (accountsQuery.data ?? []).map((a) => ({
       id: a.id,
@@ -156,18 +156,6 @@ export function PosPage() {
       chart_account_id: null,
     }))
   }, [accountsQuery.data])
-
-  /** Account is derived from method + branch — no manual account picking at POS. */
-  const resolveAccountId = useCallback(
-    (methodCode: string) =>
-      resolvePaymentAccount({
-        methodCode,
-        branchId,
-        methods,
-        accounts: posAccounts,
-      })?.account.id ?? undefined,
-    [methods, posAccounts, branchId],
-  )
 
   useEffect(() => {
     if (!branchId || !resumeId) return
@@ -199,10 +187,18 @@ export function PosPage() {
   }, [branchId, resumeId, toast, setSearchParams])
 
   useEffect(() => {
-    if (methods[0] && !methods.some((m) => m.code === payMethod)) {
-      setPayMethod(methods[0].code)
+    if (accountsQuery.isLoading) return
+    if (!payAccountDefaultedRef.current) {
+      const def = posAccounts.find((a) => a.is_default) ?? posAccounts[0]
+      setPayAccountId(def?.id ?? null)
+      payAccountDefaultedRef.current = true
+      return
     }
-  }, [methods, payMethod])
+    if (payAccountId !== null && !posAccounts.some((a) => a.id === payAccountId)) {
+      const def = posAccounts.find((a) => a.is_default) ?? posAccounts[0]
+      setPayAccountId(def?.id ?? null)
+    }
+  }, [accountsQuery.isLoading, posAccounts, payAccountId])
 
   const refocusBarcode = useCallback(() => {
     barcodeRef.current?.focus()
@@ -320,22 +316,35 @@ export function PosPage() {
 
   const addPayment = () => {
     const amount = Math.min(Number(payAmount), remainingDue)
-    if (!payMethod || !(amount > 0)) {
+    if (!(amount > 0)) {
       toast('Enter a valid payment amount', 'error')
       return
     }
-    if (cart.state.payments.some((p) => p.method.toLowerCase() === payMethod.toLowerCase())) {
-      toast('Duplicate payment methods are not allowed', 'error')
-      return
+    if (payAccountId === null) {
+      if (cart.state.payments.some((p) => /due|credit|receivable/i.test(p.method))) {
+        toast('Due / Credit can only be added once', 'error')
+        return
+      }
+      cart.setPayments([...cart.state.payments, { method: 'due', amount }])
+    } else {
+      if (cart.state.payments.some((p) => p.financialAccountId === payAccountId)) {
+        toast('This account is already added', 'error')
+        return
+      }
+      const account = posAccounts.find((a) => a.id === payAccountId)
+      if (!account) {
+        toast('Select a payment account', 'error')
+        return
+      }
+      cart.setPayments([
+        ...cart.state.payments,
+        {
+          method: methodFromAccountKind(account.account_kind),
+          amount,
+          financialAccountId: account.id,
+        },
+      ])
     }
-    cart.setPayments([
-      ...cart.state.payments,
-      {
-        method: payMethod,
-        amount,
-        financialAccountId: resolveAccountId(payMethod),
-      },
-    ])
     setPayAmount('')
     refocusBarcode()
   }
@@ -375,18 +384,21 @@ export function PosPage() {
       const { state, totals } = cart
       let payments = state.payments
       if (payments.length === 0 && totals.grandTotal > 0) {
-        const selected = methods.find((m) => m.code === payMethod)
-        const isDueMethod =
-          selected?.isDue === true || /due|credit|receivable/i.test(payMethod || '')
-        payments = [
-          {
-            method: payMethod || 'cash',
-            amount: totals.grandTotal,
-            financialAccountId: isDueMethod
-              ? undefined
-              : resolveAccountId(payMethod || 'cash'),
-          },
-        ]
+        if (payAccountId === null) {
+          payments = [{ method: 'due', amount: totals.grandTotal }]
+        } else {
+          const account =
+            posAccounts.find((a) => a.id === payAccountId) ??
+            posAccounts.find((a) => a.is_default) ??
+            posAccounts[0]
+          payments = [
+            {
+              method: methodFromAccountKind(account?.account_kind ?? 'cash'),
+              amount: totals.grandTotal,
+              financialAccountId: account?.id,
+            },
+          ]
+        }
       }
       assertSaleReady({ ...state, payments })
 
@@ -465,41 +477,30 @@ export function PosPage() {
 
   const checkoutDisabled = busy || cart.state.lines.length === 0
 
-  const methodOptions = methods.length ? methods : [{ code: 'cash', name: 'Cash' }]
   const fullyPaid = cart.state.lines.length > 0 && remainingDue <= 0
-  const methodLabel = (code: string) =>
-    methodOptions.find((m) => m.code === code)?.name ?? code
+  const paymentLabel = (p: { method: string; financialAccountId?: string }) => {
+    if (!p.financialAccountId && /due|credit|receivable/i.test(p.method)) {
+      return 'Due / Credit'
+    }
+    return posAccounts.find((a) => a.id === p.financialAccountId)?.name ?? p.method
+  }
 
   const paymentSection = (
     <>
-      <div className="space-y-2 rounded-xl border border-border bg-white p-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-text-muted">Payment</p>
-          {cart.state.lines.length > 0 ? (
-            <span
-              className={cn(
-                'rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums',
-                fullyPaid ? 'bg-success/10 text-success' : 'bg-amber-50 text-amber-700',
-              )}
-            >
-              {fullyPaid ? 'Fully paid' : `Due ${formatBDT(remainingDue)}`}
-            </span>
-          ) : null}
-        </div>
-
+      <div className="space-y-1 rounded-xl border border-border bg-white p-1.5">
         {cart.state.payments.map((p, i) => (
           <div
-            key={`${p.method}-${i}`}
-            className="flex items-center justify-between rounded-lg bg-slate-50 px-2 py-1 text-sm"
+            key={`${p.financialAccountId ?? p.method}-${i}`}
+            className="flex items-center justify-between rounded-lg bg-slate-50 px-2 py-0.5 text-xs"
           >
             <span>
-              {methodLabel(p.method)} · <span className="tabular-nums">{formatBDT(p.amount)}</span>
+              {paymentLabel(p)} · <span className="tabular-nums">{formatBDT(p.amount)}</span>
             </span>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 text-danger"
+              className="h-6 px-1.5 text-xs text-danger"
               onClick={withFocus(() =>
                 cart.setPayments(cart.state.payments.filter((_, j) => j !== i)),
               )}
@@ -511,26 +512,44 @@ export function PosPage() {
 
         {!fullyPaid ? (
           <>
-            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Payment method">
-              {methodOptions.map((m) => (
+            <div
+              className="flex flex-nowrap items-center gap-1 overflow-x-auto pb-0.5"
+              role="radiogroup"
+              aria-label="Payment account"
+            >
+              {posAccounts.map((a) => (
                 <button
-                  key={m.code}
+                  key={a.id}
                   type="button"
                   role="radio"
-                  aria-checked={payMethod === m.code}
+                  aria-checked={payAccountId === a.id}
                   className={cn(
-                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                    payMethod === m.code
+                    'h-7 shrink-0 rounded-full border px-2.5 text-[11px] font-medium transition-colors',
+                    payAccountId === a.id
                       ? 'border-primary bg-primary text-white'
                       : 'border-border bg-white text-text-primary hover:bg-slate-50',
                   )}
-                  onClick={() => setPayMethod(m.code)}
+                  onClick={() => setPayAccountId(a.id)}
                 >
-                  {m.name}
+                  {a.name}
                 </button>
               ))}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={payAccountId === null}
+                className={cn(
+                  'h-7 shrink-0 rounded-full border px-2.5 text-[11px] font-medium transition-colors',
+                  payAccountId === null
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-border bg-white text-text-primary hover:bg-slate-50',
+                )}
+                onClick={() => setPayAccountId(null)}
+              >
+                Due / Credit
+              </button>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1.5">
               <div className="relative min-w-0 flex-1">
                 <Input
                   type="number"
@@ -546,7 +565,7 @@ export function PosPage() {
                     }
                   }}
                   placeholder="Amount"
-                  className="pr-14"
+                  className="h-8 pr-14 text-xs"
                   aria-label="Payment amount"
                   disabled={cart.state.lines.length === 0}
                 />
@@ -563,6 +582,7 @@ export function PosPage() {
               <Button
                 type="button"
                 variant="secondary"
+                className="h-8 shrink-0 px-3 text-xs"
                 onClick={addPayment}
                 disabled={!(Number(payAmount) > 0)}
               >
@@ -578,22 +598,23 @@ export function PosPage() {
         onChange={(e) => cart.setNote(e.target.value)}
         placeholder="Note"
         aria-label="Sale note"
+        className="h-8 text-xs"
       />
 
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         <Button
           type="button"
           variant="outline"
-          className="flex-1"
+          className="h-9 flex-1 text-sm"
           disabled={checkoutDisabled}
           onClick={() => void handleHold()}
         >
-          <Pause className="h-4 w-4" />
+          <Pause className="h-3.5 w-3.5" />
           Hold
         </Button>
         <Button
           type="button"
-          className="flex-1 bg-[#E11D48] hover:bg-[#be123c]"
+          className="h-9 flex-1 bg-[#E11D48] text-sm hover:bg-[#be123c]"
           disabled={checkoutDisabled}
           onClick={() => void handleComplete()}
           aria-keyshortcuts="F8"

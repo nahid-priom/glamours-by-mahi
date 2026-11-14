@@ -305,7 +305,7 @@ export function SalesListPage() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="Delete sale?"
-        description="Soft delete will restore stock, reverse finance, customer due, and commission. This cannot be undone easily."
+        description="This soft-deletes the list record only. For completed invoices use Void (stock, ledger, residual commission) or Correct sale — soft delete does not post financial reversals."
         confirmLabel="Delete Sale"
         variant="danger"
         loading={deleteMutation.isPending}
@@ -316,7 +316,7 @@ export function SalesListPage() {
         open={bulkDeleteOpen}
         onOpenChange={setBulkDeleteOpen}
         title={`Delete ${selectedIds.size} sales?`}
-        description="Each sale will be soft-deleted with full stock and ledger reversal."
+        description="Soft-deletes list records only. Completed sales requiring financial reversal must be Voided or Corrected individually."
         confirmLabel="Delete Selected"
         variant="danger"
         loading={bulkDeleteMutation.isPending}

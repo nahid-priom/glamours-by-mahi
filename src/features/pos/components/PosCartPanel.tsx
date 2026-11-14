@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatBDT } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { calcLineTotal } from '../cart-utils'
+import { calcLineTotal, formatPosVariantAttrs } from '../cart-utils'
 import type { CartLine, CartTotals } from '../types'
 
 export type PosCartPanelProps = {
@@ -33,6 +33,8 @@ function CartRow({
   onSetLineDiscount?: (variantId: string, discount: number) => void
   onRemove: (variantId: string) => void
 }) {
+  const variantAttrs = formatPosVariantAttrs(line.productName, line.variantLabel)
+
   return (
     <div className="flex gap-2 rounded-xl border border-border bg-white p-2">
       <ProductImage
@@ -52,9 +54,11 @@ function CartRow({
             <p className="truncate text-sm font-medium" title={line.productName}>
               {line.productName}
             </p>
-            <p className="truncate text-xs text-text-muted" title={line.variantLabel}>
-              {line.variantLabel}
-            </p>
+            {variantAttrs ? (
+              <p className="truncate text-xs text-text-muted" title={variantAttrs}>
+                {variantAttrs}
+              </p>
+            ) : null}
             {line.barcode ? (
               <p className="truncate font-mono text-[10px] text-text-muted" title={line.barcode}>
                 {line.barcode}
@@ -157,8 +161,10 @@ export function PosCartPanel({
         )}
       </div>
 
-      <div className="shrink-0 space-y-1.5 border-t border-border bg-white pt-3 text-sm">
-        <Row label="Subtotal" value={formatBDT(totals.subtotal)} />
+      <div className="shrink-0 space-y-0.5 border-t border-border bg-white pt-2 text-xs leading-tight">
+        {totals.discount > 0 || totals.tax > 0 || totals.shipping > 0 ? (
+          <Row label="Subtotal" value={formatBDT(totals.subtotal)} />
+        ) : null}
         {totals.discount > 0 ? (
           <Row label="Discount" value={`−${formatBDT(totals.discount)}`} />
         ) : null}
@@ -167,12 +173,14 @@ export function PosCartPanel({
           <Row label="Shipping" value={formatBDT(totals.shipping)} />
         ) : null}
         <Row label="Total" value={formatBDT(totals.grandTotal)} strong />
-        <Row label="Paid" value={formatBDT(totals.paid)} />
-        <Row label="Due" value={formatBDT(totals.due)} />
+        {totals.paid > 0 ? <Row label="Paid" value={formatBDT(totals.paid)} /> : null}
+        {totals.due > 0 ? <Row label="Due" value={formatBDT(totals.due)} /> : null}
         {totals.change > 0 ? <Row label="Change" value={formatBDT(totals.change)} /> : null}
       </div>
 
-      {children ? <div className="mt-3 shrink-0 space-y-2 border-t border-border pt-3">{children}</div> : null}
+      {children ? (
+        <div className="mt-2 shrink-0 space-y-1.5 border-t border-border pt-2">{children}</div>
+      ) : null}
     </div>
   )
 }
@@ -187,7 +195,7 @@ function Row({
   strong?: boolean
 }) {
   return (
-    <div className={cn('flex justify-between gap-2', strong && 'text-base font-semibold')}>
+    <div className={cn('flex justify-between gap-2', strong && 'text-sm font-semibold')}>
       <span className="text-text-muted">{label}</span>
       <span className="tabular-nums">{value}</span>
     </div>

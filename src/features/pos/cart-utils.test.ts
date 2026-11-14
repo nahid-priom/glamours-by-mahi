@@ -5,6 +5,7 @@ import {
   calcLineTotal,
   canAddQty,
   emptyCartState,
+  formatPosVariantAttrs,
   mergeOrAddLine,
   normalizeBarcode,
 } from './cart-utils'
@@ -30,6 +31,25 @@ describe('normalizeBarcode', () => {
   it('trims, strips separators, and uppercases', () => {
     expect(normalizeBarcode('  abc-12_3 ')).toBe('ABC123')
     expect(normalizeBarcode('890\t123')).toBe('890123')
+  })
+})
+
+describe('formatPosVariantAttrs', () => {
+  it('strips product name from composite labels', () => {
+    expect(formatPosVariantAttrs('Breeze Boys Twin Set', 'Breeze Boys Twin Set / Black / M')).toBe(
+      'Black / M',
+    )
+  })
+
+  it('keeps bare size or color labels', () => {
+    expect(formatPosVariantAttrs('Tee', 'M')).toBe('M')
+    expect(formatPosVariantAttrs('Tee', 'Black / L')).toBe('Black / L')
+  })
+
+  it('hides empty or Default labels', () => {
+    expect(formatPosVariantAttrs('Bag', 'Bag')).toBe('')
+    expect(formatPosVariantAttrs('Bag', 'Default')).toBe('')
+    expect(formatPosVariantAttrs('Bag', '')).toBe('')
   })
 })
 
@@ -92,17 +112,43 @@ describe('assertSaleReady', () => {
     expect(() => assertSaleReady(state)).not.toThrow()
   })
 
-  it('throws on duplicate payment methods', () => {
+  it('throws on duplicate payment accounts', () => {
     const state: CartState = {
       ...emptyCartState(),
       lines: [line({ variantId: 'v1' })],
       customerId: 'c1',
       payments: [
-        { method: 'cash', amount: 50 },
-        { method: 'Cash', amount: 50 },
+        { method: 'cash', amount: 50, financialAccountId: 'fa1' },
+        { method: 'cash', amount: 50, financialAccountId: 'fa1' },
       ],
     }
     expect(() => assertSaleReady(state)).toThrow(/duplicate/i)
+  })
+
+  it('allows same method on different accounts', () => {
+    const state: CartState = {
+      ...emptyCartState(),
+      lines: [line({ variantId: 'v1', qty: 1, unitPrice: 100 })],
+      customerId: 'c1',
+      payments: [
+        { method: 'cash', amount: 40, financialAccountId: 'fa1' },
+        { method: 'cash', amount: 60, financialAccountId: 'fa2' },
+      ],
+    }
+    expect(() => assertSaleReady(state)).not.toThrow()
+  })
+
+  it('throws when Due / Credit added twice', () => {
+    const state: CartState = {
+      ...emptyCartState(),
+      lines: [line({ variantId: 'v1' })],
+      customerId: 'c1',
+      payments: [
+        { method: 'due', amount: 40 },
+        { method: 'Due / Credit', amount: 60 },
+      ],
+    }
+    expect(() => assertSaleReady(state)).toThrow(/due/i)
   })
 
   it('throws when line exceeds stock', () => {

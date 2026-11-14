@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { UserMinus, UserPlus } from 'lucide-react'
+import { UserPlus } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { Button } from '@/components/ui/button'
@@ -54,10 +54,10 @@ export function PosCustomerSelect({
   }
 
   return (
-    <div className={cn('shrink-0 space-y-2', className)}>
-      {/* Search + actions stay on one row; combobox never overlaps buttons */}
+    <div className={cn('relative z-20 shrink-0 space-y-2', className)}>
+      {/* Search + Add only — suggestions open on click via EntityCombobox */}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-        <div className="min-w-0 overflow-hidden">
+        <div className="min-w-0">
           <EntityCombobox
             value={value}
             onChange={(id, opt) => {
@@ -73,35 +73,22 @@ export function PosCustomerSelect({
           />
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          {canCreate ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 shrink-0 gap-1 border-[#E11D48]/45 px-2.5 text-[#E11D48] hover:bg-[#FFF1F2]"
-              onClick={() => setDialogOpen(true)}
-              aria-label="Add Customer"
-            >
-              <UserPlus className="h-4 w-4" />
-              <span className="text-xs font-semibold">+ Add</span>
-            </Button>
-          ) : null}
+        {canCreate ? (
           <Button
             type="button"
             variant="outline"
-            className="h-9 shrink-0 gap-1 px-2.5 text-slate-600"
-            disabled={!value}
-            onClick={clearCustomer}
-            aria-label="Remove customer"
+            className="h-9 shrink-0 gap-1 border-[#E11D48]/45 px-2.5 text-[#E11D48] hover:bg-[#FFF1F2]"
+            onClick={() => setDialogOpen(true)}
+            aria-label="Add Customer"
           >
-            <UserMinus className="h-4 w-4" />
-            <span className="text-xs font-semibold">Remove</span>
+            <UserPlus className="h-4 w-4" />
+            <span className="text-xs font-semibold">+ Add</span>
           </Button>
-        </div>
+        ) : null}
       </div>
 
       {showSummary && value ? (
-        <CustomerSummaryCard customerId={value} onClear={clearCustomer} />
+        <CustomerSummaryCard customerId={value} onClear={clearCustomer} variant="chip" />
       ) : null}
 
       {canCreate ? (

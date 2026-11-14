@@ -2,10 +2,13 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronsUpDown, Loader2, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -72,9 +75,12 @@ export function EntityCombobox({
   const [activeIndex, setActiveIndex] = useState(0)
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchGen = useRef(0)
   const skipNextDebounce = useRef(false)
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>()
 
   const runSearch = useCallback(
     async (q: string) => {
@@ -109,6 +115,30 @@ export function EntityCombobox({
     setQuery('')
   }, [])
 
+  const updatePanelPosition = useCallback(() => {
+    const el = triggerRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setPanelStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: Math.max(rect.width, 240),
+      zIndex: 80,
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!open || isMobile) return
+    updatePanelPosition()
+    window.addEventListener('resize', updatePanelPosition)
+    window.addEventListener('scroll', updatePanelPosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePanelPosition)
+      window.removeEventListener('scroll', updatePanelPosition, true)
+    }
+  }, [open, isMobile, updatePanelPosition])
+
   useEffect(() => {
     if (!open) return
     if (skipNextDebounce.current) {
@@ -131,8 +161,10 @@ export function EntityCombobox({
   useEffect(() => {
     if (!open || isMobile) return
     const onDoc = (e: MouseEvent) => {
+      const target = e.target as Node
       const root = document.getElementById(`entity-cb-${listId}`)
-      if (root && !root.contains(e.target as Node)) closePanel()
+      if (root?.contains(target) || panelRef.current?.contains(target)) return
+      closePanel()
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
@@ -249,7 +281,7 @@ export function EntityCombobox({
   )
 
   const trigger = (
-    <div className={cn('flex w-full min-w-0 gap-1', className)}>
+    <div ref={triggerRef} className={cn('flex w-full min-w-0 gap-1', className)}>
       <Button
         type="button"
         variant="outline"
@@ -303,12 +335,19 @@ export function EntityCombobox({
   return (
     <div id={`entity-cb-${listId}`} className={cn('relative', className)}>
       {trigger}
-      {open ? (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-border bg-white shadow-lg">
-          {searchField}
-          {listBody}
-        </div>
-      ) : null}
+      {open && panelStyle
+        ? createPortal(
+            <div
+              ref={panelRef}
+              style={panelStyle}
+              className="overflow-hidden rounded-xl border border-border bg-white shadow-lg"
+            >
+              {searchField}
+              {listBody}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

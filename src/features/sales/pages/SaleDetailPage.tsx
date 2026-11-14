@@ -13,6 +13,7 @@ import { VoidSaleDialog } from '../components/VoidSaleDialog'
 import { CollectDueDialog, type CollectDueTarget } from '../components/CollectDueDialog'
 import { enterpriseReadable } from '@/components/enterprise-readable'
 import { SaleItemsSection } from '../components/sale-items'
+import { SaleCommissionPanel } from '../components/sale-commission'
 import { getSale, getSaleTimeline, requestCorrection } from '../repositories/sales.repository'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -183,6 +184,8 @@ export function SaleDetailPage() {
       ) : null}
 
       <SaleItemsSection items={items} grandTotal={Number(sale.grand_total)} />
+
+      <SaleCommissionPanel saleId={sale.id} />
 
       <div className="rounded-xl border border-border bg-white">
         <div className="border-b border-border px-4 py-2 text-sm font-semibold">Payments</div>
