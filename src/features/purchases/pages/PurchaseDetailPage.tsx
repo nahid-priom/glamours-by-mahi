@@ -3,9 +3,10 @@ import { Link, useParams } from 'react-router-dom'
 import { Download, Loader2, Printer } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { enterpriseReadable } from '@/components/enterprise-readable'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { TransactionLineItemsSection } from '@/components/transaction-line-items'
 import { openPurchasePrint } from '@/features/print/print.service'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { purchasesRepository } from '../repositories/purchases.repository'
@@ -123,7 +124,9 @@ export function PurchaseDetailPage() {
         </div>
         <div className="rounded-xl border border-border bg-white p-3 text-sm">
           <p className="text-text-muted">Totals</p>
-          <p className="font-medium">{formatBDT(Number(purchase.grand_total))}</p>
+          <p className={enterpriseReadable.grandTotal}>
+            {formatBDT(Number(purchase.grand_total))}
+          </p>
           <p className="text-success">Paid {formatBDT(Number(purchase.paid_total))}</p>
           {Number(purchase.due_total) > 0 ? (
             <p className="text-danger">Due {formatBDT(Number(purchase.due_total))}</p>
@@ -138,49 +141,29 @@ export function PurchaseDetailPage() {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-border bg-white">
-        <div className="border-b border-border px-4 py-2 text-sm font-semibold">Items</div>
-        {items.length === 0 ? (
-          <p className="p-4 text-sm text-text-muted">No line items recorded.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Unit cost</TableHead>
-                <TableHead className="text-right">Discount</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => {
-                const variant = item.product_variants
-                const productName = variant?.products?.name ?? 'Item'
-                return (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div className="min-w-0">
-                        <p className="font-medium">{productName}</p>
-                        <p className="text-xs text-text-muted">
-                          {variant?.sku}
-                          {variant?.name ? ` · ${variant.name}` : ''}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">{item.qty}</TableCell>
-                    <TableCell className="text-right">{formatBDT(Number(item.unit_cost))}</TableCell>
-                    <TableCell className="text-right">
-                      {Number(item.line_discount) > 0 ? formatBDT(Number(item.line_discount)) : '—'}
-                    </TableCell>
-                    <TableCell className="text-right">{formatBDT(Number(item.line_total))}</TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+      <TransactionLineItemsSection
+        items={items.map((item) => {
+          const variant = item.product_variants
+          const parts = [variant?.sku, variant?.name].filter(Boolean)
+          return {
+            id: item.id,
+            productName: variant?.products?.name ?? 'Item',
+            metadata: parts.length ? parts.join(' · ') : undefined,
+            qty: Number(item.qty),
+            unitPrice: Number(item.unit_cost),
+            lineDiscount: Number(item.line_discount),
+            lineTotal: Number(item.line_total),
+          }
+        })}
+        grandTotal={Number(purchase.grand_total)}
+        showImage={false}
+        showDiscount
+        labels={{
+          unitPrice: 'Unit cost',
+          empty: 'No line items recorded.',
+        }}
+        headingId="purchase-items-heading"
+      />
 
       <div className="rounded-xl border border-border bg-white">
         <div className="border-b border-border px-4 py-2 text-sm font-semibold">Payments</div>

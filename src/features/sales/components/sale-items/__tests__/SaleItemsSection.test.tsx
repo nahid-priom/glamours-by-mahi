@@ -132,7 +132,7 @@ describe('SaleItemsSection', () => {
 
   it('mounts both layout roots for container-query switching', () => {
     render(<SaleItemsSection items={[makeItem()]} />)
-    expect(screen.getByTestId('sale-items-cards')).toBeInTheDocument()
-    expect(screen.getByTestId('sale-items-table')).toBeInTheDocument()
+    expect(screen.getByTestId('transaction-items-cards')).toBeInTheDocument()
+    expect(screen.getByTestId('transaction-items-table')).toBeInTheDocument()
   })
 })

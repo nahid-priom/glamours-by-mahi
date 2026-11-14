@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { formatDate } from '@/lib/format'
-import { brandConfig } from '@/config/brand'
 import { useAuth } from '@/features/auth/auth.context'
 import { PWAInstallButton } from '@/features/pwa/components/PWAInstallButton'
 import { QuickActionsMenu } from '@/features/dashboard/components/QuickActionsMenu'
@@ -35,8 +34,6 @@ export function TopHeader() {
 
   const name = session?.name ?? profile?.full_name ?? 'Staff'
   const role = session?.role ?? profile?.role_name ?? 'User'
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening'
   const initials = name
     .split(' ')
     .map((p) => p[0])
@@ -50,18 +47,7 @@ export function TopHeader() {
 
   return (
     <header className="sticky top-14 z-30 border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 lg:top-0">
-      <div className="flex max-w-full items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4">
-        {/* Desktop greeting only — mobile uses MobileTopBar brand + page-level greeting (Dashboard). */}
-        <div className="hidden min-w-0 flex-1 lg:block">
-          <h2 className="truncate text-lg font-bold sm:text-xl">
-            {greeting}, {name.split(' ')[0]}
-          </h2>
-          <p className="truncate text-xs text-text-muted sm:text-sm">
-            <span className="brand-gradient-text font-medium">{brandConfig.name}</span>
-          </p>
-        </div>
-        <div className="min-w-0 flex-1 lg:hidden" aria-hidden />
-
+      <div className="flex max-w-full items-center justify-end gap-3 px-4 py-3 sm:px-5 sm:py-4">
         <div className="hidden shrink-0 items-center gap-2 lg:flex">
           <BranchSwitcher />
           <QuickActionsMenu />

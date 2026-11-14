@@ -13,6 +13,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { PageShell } from '@/components/layout/PageShell'
+import { TransactionLineItemsSection } from '@/components/transaction-line-items'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -202,32 +203,25 @@ export function SaleDetailsPage() {
             </TabsContent>
 
             <TabsContent value="items">
-              <Section title="Product List">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-[#F8F6F2] text-left text-[11px] uppercase text-[#6B7280]">
-                      <tr>
-                        <th className="px-3 py-2">Product</th>
-                        <th className="px-3 py-2">Qty</th>
-                        <th className="px-3 py-2">Price</th>
-                        <th className="px-3 py-2">Discount</th>
-                        <th className="px-3 py-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sale.items.map((item) => (
-                        <tr key={item.productId} className="border-t">
-                          <td className="px-3 py-2 font-medium">{item.name}</td>
-                          <td className="px-3 py-2">{item.quantity}</td>
-                          <td className="px-3 py-2">{formatBDT(item.unitPrice)}</td>
-                          <td className="px-3 py-2">{formatBDT(item.discount)}</td>
-                          <td className="px-3 py-2 font-semibold">{formatBDT(item.total)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Section>
+              <TransactionLineItemsSection
+                items={sale.items.map((item) => ({
+                  id: item.productId,
+                  productName: item.name,
+                  productId: item.productId,
+                  qty: item.quantity,
+                  unitPrice: item.unitPrice,
+                  lineDiscount: item.discount,
+                  lineTotal: item.total,
+                }))}
+                grandTotal={sale.total}
+                showImage={false}
+                showDiscount
+                labels={{
+                  unitPrice: 'Price',
+                  empty: 'No items on this sale.',
+                }}
+                headingId="legacy-sale-items-heading"
+              />
             </TabsContent>
 
             <TabsContent value="payments">

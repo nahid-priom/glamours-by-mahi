@@ -17,7 +17,6 @@ import {
 } from 'lucide-react'
 import { AppDateField } from '@/components/date-picker'
 import { useAuth } from '@/features/auth/auth.context'
-import { brandConfig } from '@/config/brand'
 import { queryKeys } from '@/lib/query/keys'
 import { addDaysYmd, formatDisplayYmd, startOfMonthYmd, todayYmd } from '@/lib/datetime/bd'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -48,13 +47,6 @@ function ChartBlock({ children }: { children: React.ReactNode }) {
       {children}
     </Suspense>
   )
-}
-
-function greetingForNow(d = new Date()) {
-  const h = d.getHours()
-  if (h < 12) return 'Good Morning'
-  if (h < 17) return 'Good Afternoon'
-  return 'Good Evening'
 }
 
 /** Hide fabricated 0% trends when both current value and reported delta are zero. */
@@ -104,8 +96,6 @@ export function DashboardPage() {
 
   const salesSpark = data?.salesOverview.map((d) => d.sales) ?? []
   const collectionSpark = data?.salesOverview.map((d) => d.collection) ?? []
-  const firstName = profile?.full_name?.split(/\s+/)[0] ?? 'there'
-
   function onBranchChange(next: string) {
     setActiveBranchId(next || null)
     const params = new URLSearchParams(searchParams)
@@ -282,18 +272,6 @@ export function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1366px] space-y-4 pb-6 [--dash-pink:#E11D48]">
-      {/* Mobile greeting — TopHeader already greets on desktop */}
-      <section className="relative overflow-hidden rounded-2xl border border-[#FCE7F3] bg-gradient-to-br from-[#FFF1F2] via-white to-white px-4 py-4 lg:hidden">
-        <div
-          className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-[#FBCFE8]/40 blur-2xl"
-          aria-hidden
-        />
-        <h1 className="relative text-xl font-bold tracking-tight text-slate-900">
-          {greetingForNow()}, {firstName}
-        </h1>
-        <p className="relative mt-0.5 text-sm text-slate-500">{brandConfig.name}</p>
-      </section>
-
       {/* Mobile branch + period chips */}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:hidden">
         <label className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm shadow-sm">

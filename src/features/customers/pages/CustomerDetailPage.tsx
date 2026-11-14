@@ -3,7 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { enterpriseReadable } from '@/components/enterprise-readable'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { cn } from '@/lib/utils'
 import { formatBDT } from '@/lib/format'
 import { partyLedgerEntryLabel } from '@/lib/party-ledger'
 import { queryKeys } from '@/lib/query/keys'
@@ -146,32 +148,48 @@ export function CustomerDetailPage() {
             Could not load ledger. Check customers.read or accounts.read permission.
           </p>
         ) : null}
-        <div className="rounded-xl border border-border bg-white">
+        <div className="@container min-w-0 rounded-xl border border-border bg-white">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Debit</TableHead>
-                <TableHead className="text-right">Credit</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
+                <TableHead className={enterpriseReadable.tableHeader}>Date</TableHead>
+                <TableHead className={enterpriseReadable.tableHeader}>Type</TableHead>
+                <TableHead className={cn(enterpriseReadable.tableHeader, 'text-right')}>
+                  Debit
+                </TableHead>
+                <TableHead className={cn(enterpriseReadable.tableHeader, 'text-right')}>
+                  Credit
+                </TableHead>
+                <TableHead className={cn(enterpriseReadable.tableHeader, 'text-right')}>
+                  Balance
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {ledger.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="text-[#6B7280]">
+                <TableRow key={row.id} className="min-h-16">
+                  <TableCell className={cn(enterpriseReadable.metadata, 'whitespace-nowrap')}>
                     {new Date(row.occurred_at).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Badge variant="info">{partyLedgerEntryLabel(row.entry_type)}</Badge>
                     {row.notes ? (
-                      <p className="mt-0.5 text-xs text-[#9CA3AF]">{row.notes}</p>
+                      <p className={cn(enterpriseReadable.metadata, 'mt-0.5')}>{row.notes}</p>
                     ) : null}
                   </TableCell>
-                  <TableCell className="text-right">{formatBDT(Number(row.debit))}</TableCell>
-                  <TableCell className="text-right">{formatBDT(Number(row.credit))}</TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell
+                    className={cn(enterpriseReadable.ledgerPrimary, 'text-right whitespace-nowrap')}
+                  >
+                    {formatBDT(Number(row.debit))}
+                  </TableCell>
+                  <TableCell
+                    className={cn(enterpriseReadable.ledgerPrimary, 'text-right whitespace-nowrap')}
+                  >
+                    {formatBDT(Number(row.credit))}
+                  </TableCell>
+                  <TableCell
+                    className={cn(enterpriseReadable.ledgerBalance, 'text-right whitespace-nowrap')}
+                  >
                     {formatBDT(Number(row.balance_after))}
                   </TableCell>
                 </TableRow>
