@@ -249,7 +249,7 @@ export function EntityCombobox({
   )
 
   const trigger = (
-    <div className={cn('flex gap-1', className)}>
+    <div className={cn('flex w-full min-w-0 gap-1', className)}>
       <Button
         type="button"
         variant="outline"
@@ -257,7 +257,7 @@ export function EntityCombobox({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="h-9 flex-1 justify-between font-normal"
+        className="h-9 min-w-0 flex-1 justify-between overflow-hidden font-normal"
         onClick={() => (open ? closePanel() : openPanel())}
       >
         <span className={cn('truncate', !value && 'text-text-muted')}>

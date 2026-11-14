@@ -4,14 +4,15 @@ import { Link, useParams } from 'react-router-dom'
 import { Loader2, Pencil, Printer } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ProductImage } from '@/components/common/ProductImage'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { useBreadcrumbLabel } from '@/components/breadcrumbs'
 import { PrintFormatDialog } from '@/features/print/PrintFormatDialog'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { VoidSaleDialog } from '../components/VoidSaleDialog'
 import { CollectDueDialog, type CollectDueTarget } from '../components/CollectDueDialog'
+import { SaleItemsSection } from '../components/sale-items'
+import { enterpriseReadable } from '../components/sale-items/enterprise-readable'
 import { getSale, getSaleTimeline, requestCorrection } from '../repositories/sales.repository'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -34,6 +35,8 @@ export function SaleDetailPage() {
     queryFn: () => getSale(id),
     enabled: Boolean(id),
   })
+
+  useBreadcrumbLabel(id, sale?.invoice_no)
 
   const { data: timeline = [] } = useQuery({
     queryKey: [...queryKeys.sale(id), 'timeline'],
@@ -162,7 +165,9 @@ export function SaleDetailPage() {
         </div>
         <div className="rounded-xl border border-border bg-white p-3 text-sm">
           <p className="text-text-muted">Totals</p>
-          <p className="font-medium">{formatBDT(Number(sale.grand_total))}</p>
+          <p className={enterpriseReadable.grandTotal}>
+            {formatBDT(Number(sale.grand_total))}
+          </p>
           <p className="text-success">Paid {formatBDT(Number(sale.paid_total))}</p>
           {Number(sale.due_total) > 0 ? (
             <p className="text-danger">Due {formatBDT(Number(sale.due_total))}</p>
@@ -177,52 +182,7 @@ export function SaleDetailPage() {
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-border bg-white">
-        <div className="border-b border-border px-4 py-2 text-sm font-semibold">Items</div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <ProductImage
-                      product={{
-                        id: item.product_variants?.products?.id ?? item.variant_id,
-                        name: item.product_variants?.products?.name ?? 'Item',
-                        image_url: item.product_variants?.products?.image_url,
-                      }}
-                      className="h-11 w-11 shrink-0 rounded-lg"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-medium">
-                        {item.product_variants?.products?.name ?? 'Item'}
-                      </p>
-                      <p className="text-xs text-text-muted">
-                        {item.product_variants?.sku}
-                        {item.product_variants?.name ? ` · ${item.product_variants.name}` : ''}
-                        {(item as { line_origin?: string | null }).line_origin
-                          ? ` · ${(item as { line_origin?: string }).line_origin}`
-                          : ''}
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">{item.qty}</TableCell>
-                <TableCell className="text-right">{formatBDT(Number(item.unit_price))}</TableCell>
-                <TableCell className="text-right">{formatBDT(Number(item.line_total))}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <SaleItemsSection items={items} grandTotal={Number(sale.grand_total)} />
 
       <div className="rounded-xl border border-border bg-white">
         <div className="border-b border-border px-4 py-2 text-sm font-semibold">Payments</div>

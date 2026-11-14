@@ -5,6 +5,16 @@ export type BreadcrumbCrumb = {
 
 export type BreadcrumbResolver = (params: Record<string, string>) => BreadcrumbCrumb[] | null
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+/** Never surface raw UUIDs / opaque ids in breadcrumb UI. */
+export function readableLabel(label: string | null | undefined, fallback: string): string {
+  const value = label?.trim() ?? ''
+  if (!value || UUID_RE.test(value)) return fallback
+  return value
+}
+
 /** Static route → crumb trail (last crumb is current page, usually without `to`). */
 const STATIC_TRAILS: Array<{ pattern: RegExp; crumbs: BreadcrumbCrumb[] }> = [
   { pattern: /^\/dashboard\/?$/, crumbs: [{ label: 'Dashboard' }] },
@@ -369,7 +379,7 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     pattern: /^\/sales\/([^/]+)\/return\/?$/,
     resolve: (p) => [
       { label: 'Sales', to: '/sales' },
-      { label: p.id ? `Invoice` : 'Sale', to: `/sales/${p.id}` },
+      { label: readableLabel(p.label, 'Invoice'), to: `/sales/${p.id}` },
       { label: 'Return' },
     ],
   },
@@ -377,7 +387,7 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     pattern: /^\/sales\/([^/]+)\/collections\/?$/,
     resolve: (p) => [
       { label: 'Sales', to: '/sales' },
-      { label: 'Sale', to: `/sales/${p.id}` },
+      { label: readableLabel(p.label, 'Invoice'), to: `/sales/${p.id}` },
       { label: 'Collections' },
     ],
   },
@@ -385,7 +395,7 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     pattern: /^\/sales\/([^/]+)\/edit\/?$/,
     resolve: (p) => [
       { label: 'Sales', to: '/sales' },
-      { label: 'Sale', to: `/sales/${p.id}` },
+      { label: readableLabel(p.label, 'Invoice'), to: `/sales/${p.id}` },
       { label: 'Edit' },
     ],
   },
@@ -393,7 +403,7 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     pattern: /^\/sales\/([^/]+)\/?$/,
     resolve: (p) => [
       { label: 'Sales', to: '/sales' },
-      { label: p.label || p.id || 'Sale details' },
+      { label: readableLabel(p.label, 'Sale details') },
     ],
   },
   {
@@ -401,21 +411,21 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     resolve: (p) => [
       { label: 'Inventory', to: '/products' },
       { label: 'Products', to: '/products' },
-      { label: p.label || 'Edit Product' },
+      { label: readableLabel(p.label, 'Edit Product') },
     ],
   },
   {
     pattern: /^\/products\/([^/]+)\/?$/,
     resolve: (p) => [
       { label: 'Inventory', to: '/products' },
-      { label: p.label || 'Product Details' },
+      { label: readableLabel(p.label, 'Product Details') },
     ],
   },
   {
     pattern: /^\/purchases\/([^/]+)\/?$/,
     resolve: (p) => [
       { label: 'Purchases', to: '/purchases' },
-      { label: p.label || 'Purchase' },
+      { label: readableLabel(p.label, 'Purchase') },
     ],
   },
   {
@@ -423,7 +433,7 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     resolve: (p) => [
       { label: 'Accounts', to: '/accounts' },
       { label: 'Suppliers', to: '/suppliers' },
-      { label: p.label || 'Supplier', to: `/suppliers/${p.id}` },
+      { label: readableLabel(p.label, 'Supplier'), to: `/suppliers/${p.id}` },
       { label: 'Ledger' },
     ],
   },
@@ -432,7 +442,7 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     resolve: (p) => [
       { label: 'Accounts', to: '/accounts' },
       { label: 'Suppliers', to: '/suppliers' },
-      { label: p.label || 'Edit' },
+      { label: readableLabel(p.label, 'Edit') },
     ],
   },
   {
@@ -440,14 +450,14 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     resolve: (p) => [
       { label: 'Accounts', to: '/accounts' },
       { label: 'Suppliers', to: '/suppliers' },
-      { label: p.label || 'Supplier' },
+      { label: readableLabel(p.label, 'Supplier') },
     ],
   },
   {
     pattern: /^\/customers\/([^/]+)\/ledger\/?$/,
     resolve: (p) => [
       { label: 'Customers', to: '/customers' },
-      { label: p.label || 'Customer', to: `/customers/${p.id}` },
+      { label: readableLabel(p.label, 'Customer'), to: `/customers/${p.id}` },
       { label: 'Ledger' },
     ],
   },
@@ -455,23 +465,29 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     pattern: /^\/customers\/([^/]+)\/edit\/?$/,
     resolve: (p) => [
       { label: 'Customers', to: '/customers' },
-      { label: p.label || 'Edit' },
+      { label: readableLabel(p.label, 'Edit') },
     ],
   },
   {
     pattern: /^\/customers\/([^/]+)\/?$/,
-    resolve: (p) => [{ label: 'Customers', to: '/customers' }, { label: p.label || 'Customer' }],
+    resolve: (p) => [
+      { label: 'Customers', to: '/customers' },
+      { label: readableLabel(p.label, 'Customer') },
+    ],
   },
   {
     pattern: /^\/couriers\/([^/]+)\/?$/,
-    resolve: (p) => [{ label: 'Courier', to: '/couriers' }, { label: p.label || 'Company' }],
+    resolve: (p) => [
+      { label: 'Courier', to: '/couriers' },
+      { label: readableLabel(p.label, 'Company') },
+    ],
   },
   {
     pattern: /^\/administration\/users\/([^/]+)\/?$/,
     resolve: (p) => [
       { label: 'Administration', to: '/administration' },
       { label: 'Users', to: '/administration/users' },
-      { label: p.label || 'User' },
+      { label: readableLabel(p.label, 'User') },
     ],
   },
   {
@@ -479,7 +495,7 @@ const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }>
     resolve: (p) => [
       { label: 'Administration', to: '/administration' },
       { label: 'Roles', to: '/administration/roles' },
-      { label: p.label || 'Role' },
+      { label: readableLabel(p.label, 'Role') },
     ],
   },
 ]
@@ -502,7 +518,13 @@ export function resolveBreadcrumbs(
     if (!params) continue
     if (dynamicLabels[params.id]) params.label = dynamicLabels[params.id]
     const crumbs = entry.resolve(params)
-    if (crumbs) return crumbs
+    if (crumbs) {
+      return crumbs.map((c) => ({
+        ...c,
+        // Safety net: never render a raw UUID even if a resolver forgets readableLabel()
+        label: readableLabel(c.label, 'Details'),
+      }))
+    }
   }
   return [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Page' }]
 }

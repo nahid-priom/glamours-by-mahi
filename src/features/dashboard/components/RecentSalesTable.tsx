@@ -1,3 +1,4 @@
+import { FileText } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { formatBDT, formatRelativeTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -16,11 +17,32 @@ export type RecentSaleRow = {
 
 interface RecentSalesTableProps {
   sales: RecentSaleRow[]
+  compact?: boolean
 }
 
-export function RecentSalesTable({ sales }: RecentSalesTableProps) {
+export function RecentSalesTable({ sales, compact = false }: RecentSalesTableProps) {
+  if (compact) {
+    return (
+      <Link
+        to="/sales"
+        className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+      >
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF1F2] text-[#E11D48]">
+          <FileText className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-slate-900">Recent Sales</p>
+          <p className="text-xs text-slate-500">
+            {sales.length ? `${sales.length} recent invoice(s)` : 'No recent sales'}
+          </p>
+        </div>
+        <span className="text-xs font-semibold text-[#E11D48]">View All ›</span>
+      </Link>
+    )
+  }
+
   return (
-    <DashboardSectionCard title="Recent Sales" action={{ label: 'View all', to: '/sales' }}>
+    <DashboardSectionCard title="Recent Sales" action={{ label: 'View All', to: '/sales' }}>
       {sales.length === 0 ? (
         <p className="py-8 text-center text-sm text-slate-500">No recent sales.</p>
       ) : (
@@ -50,13 +72,15 @@ export function RecentSalesTable({ sales }: RecentSalesTableProps) {
                     <td className="py-2.5">
                       <Link
                         to={`/sales/${s.id}`}
-                        className="font-semibold text-[#E11D48] hover:underline"
+                        className="inline-flex rounded-full bg-[#FFF1F2] px-2.5 py-0.5 text-xs font-semibold text-[#E11D48] hover:bg-[#FFE4E6]"
                       >
                         {invoice}
                       </Link>
                     </td>
                     <td className="py-2.5 text-slate-700">{customer}</td>
-                    <td className="py-2.5 font-medium text-slate-900">{formatBDT(amount)}</td>
+                    <td className="py-2.5 font-medium tabular-nums text-slate-900">
+                      {formatBDT(amount)}
+                    </td>
                     <td className="py-2.5">
                       <span
                         className={cn(

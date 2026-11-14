@@ -1,9 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { Loader2 } from 'lucide-react'
 import { purchasesRepository } from '../repositories/purchases.repository'
 import { getSupplier, listSupplierLedger } from '@/features/suppliers/repositories/suppliers.repository'
+import { simpleAccountingRepository } from '@/features/accounting/repositories/simple-accounting.repository'
+import { listPaymentMethods } from '@/features/sales/repositories/sales.repository'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { useAuth } from '@/features/auth/auth-session'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
@@ -14,23 +16,27 @@ import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
 import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { invalidateSupplierPaymentCaches } from '@/lib/mutations/party-finance-cache'
+import {
+  NO_PAYMENT_ACCOUNT_MESSAGE,
+  resolvePaymentAccount,
+} from '@/lib/payments/resolve-payment-account'
+import { queryKeys } from '@/lib/query/keys'
 import { supabase } from '@/lib/supabase/client'
 
 const paymentSchema = z.object({
   supplierId: z.string().uuid('Select a supplier'),
   amount: z.number().positive('Amount must be greater than zero'),
-  financialAccountId: z.string().uuid('Select a payment account'),
-  method: z.enum(['cash', 'bank', 'mobile']),
+  financialAccountId: z.string().uuid(NO_PAYMENT_ACCOUNT_MESSAGE),
+  method: z.string().min(1, 'Select a payment method'),
 })
 
 export function SupplierPaymentsPage() {
-  const { activeBranchId } = useAuth()
+  const { activeBranchId, profile } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
   const [supplierId, setSupplierId] = useState<string | null>(null)
   const [amount, setAmount] = useState(0)
-  const [method, setMethod] = useState<'cash' | 'bank' | 'mobile'>('cash')
-  const [financialAccountId, setFinancialAccountId] = useState<string | null>(null)
+  const [method, setMethod] = useState('cash')
   const [reference, setReference] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const clientTxnKeyRef = useRef(
@@ -43,10 +49,44 @@ export function SupplierPaymentsPage() {
     queryKey: ['supplier-payments'],
     queryFn: () => purchasesRepository.listSupplierPayments(),
   })
+
   const { data: accounts = [] } = useQuery({
-    queryKey: ['purchase-fa'],
-    queryFn: () => purchasesRepository.listFinancialAccounts(),
+    queryKey: [...queryKeys.accounts, 'fa', activeBranchId],
+    queryFn: () => simpleAccountingRepository.listFinancialAccounts(activeBranchId),
   })
+
+  const { data: methods = [] } = useQuery({
+    queryKey: queryKeys.paymentMethods,
+    queryFn: listPaymentMethods,
+  })
+
+  const { data: settings } = useQuery({
+    queryKey: [...queryKeys.accounts, 'settings', profile?.organization_id],
+    enabled: Boolean(profile?.organization_id),
+    queryFn: () => simpleAccountingRepository.getAccountSettings(profile!.organization_id),
+  })
+
+  const payMethods = useMemo(() => methods.filter((m) => !m.is_due), [methods])
+
+  useEffect(() => {
+    if (!payMethods.length) return
+    if (!payMethods.some((m) => m.code === method)) setMethod(payMethods[0]!.code)
+  }, [payMethods, method])
+
+  const resolved = useMemo(
+    () =>
+      resolvePaymentAccount({
+        methodCode: method,
+        branchId: activeBranchId,
+        methods: payMethods,
+        accounts,
+        settings: settings ?? null,
+      }),
+    [method, activeBranchId, payMethods, accounts, settings],
+  )
+
+  const financialAccountId = resolved?.account.id ?? null
+  const selectedMethod = payMethods.find((m) => m.code === method) ?? null
 
   const { data: supplier } = useQuery({
     queryKey: ['supplier-pay-context', supplierId],
@@ -78,23 +118,24 @@ export function SupplierPaymentsPage() {
     enabled: Boolean(supplierId),
   })
 
-  const selectedAccount = accounts.find((a) => a.id === financialAccountId)
-  const estimatedBalanceAfter = selectedAccount
-    ? Number(selectedAccount.current_balance) - amount
+  const estimatedBalanceAfter = resolved
+    ? Number(resolved.account.current_balance) - amount
     : null
 
-  const validation = useMemo(() => {
-    const parsed = paymentSchema.safeParse({
-      supplierId,
-      amount,
-      financialAccountId,
-      method,
-    })
-    return parsed
-  }, [supplierId, amount, financialAccountId, method])
+  const validation = useMemo(
+    () =>
+      paymentSchema.safeParse({
+        supplierId,
+        amount,
+        financialAccountId,
+        method,
+      }),
+    [supplierId, amount, financialAccountId, method],
+  )
 
   const pay = useMutation({
     mutationFn: () => {
+      if (!activeBranchId) throw new Error('Select an active branch first')
       const parsed = paymentSchema.parse({
         supplierId,
         amount,
@@ -129,6 +170,14 @@ export function SupplierPaymentsPage() {
   })
 
   function handleSubmit() {
+    if (!activeBranchId) {
+      toast('Select an active branch first', 'error')
+      return
+    }
+    if (!resolved) {
+      toast(NO_PAYMENT_ACCOUNT_MESSAGE, 'error')
+      return
+    }
     if (!validation.success) {
       toast(validation.error.issues[0]?.message ?? 'Invalid payment', 'error')
       return
@@ -144,7 +193,10 @@ export function SupplierPaymentsPage() {
     <div className="mx-auto w-full max-w-5xl space-y-4">
       <div>
         <h1 className="text-xl font-bold text-[#111827]">Supplier Payment</h1>
-        <p className="text-sm text-[#6B7280]">Pay what you owe a supplier from cash, bank, or mobile money.</p>
+        <p className="text-sm text-[#6B7280]">
+          Pay from the single Accounts ledger linked to the payment method for this branch — same
+          as POS and collections.
+        </p>
       </div>
 
       <PermissionGate permission={['supplier_due.pay', 'accounts.post', 'purchases.create', 'accounts.manage']}>
@@ -172,31 +224,33 @@ export function SupplierPaymentsPage() {
               />
             </div>
             <div>
-              <Label>Method</Label>
+              <Label>Payment method</Label>
               <select
                 className="flex h-9 w-full rounded-md border border-border bg-white px-2 text-sm"
                 value={method}
-                onChange={(e) => setMethod(e.target.value as 'cash' | 'bank' | 'mobile')}
+                onChange={(e) => {
+                  setMethod(e.target.value)
+                  setConfirmOpen(false)
+                }}
               >
-                <option value="cash">Cash</option>
-                <option value="bank">Bank</option>
-                <option value="mobile">Mobile money</option>
+                {(payMethods.length ? payMethods : [{ code: 'cash', name: 'Cash' }]).map((m) => (
+                  <option key={m.code} value={m.code}>
+                    {m.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="sm:col-span-2">
               <Label>Payment account</Label>
-              <select
-                className="flex h-9 w-full rounded-md border border-border bg-white px-2 text-sm"
-                value={financialAccountId ?? ''}
-                onChange={(e) => setFinancialAccountId(e.target.value || null)}
-              >
-                <option value="">Financial account…</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({formatBDT(Number(a.current_balance))})
-                  </option>
-                ))}
-              </select>
+              {resolved ? (
+                <div className="flex h-9 items-center rounded-md border border-border bg-[#F9FAFB] px-3 text-sm font-medium text-[#111827]">
+                  {resolved.account.name} ({formatBDT(Number(resolved.account.current_balance))})
+                </div>
+              ) : (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {NO_PAYMENT_ACCOUNT_MESSAGE}
+                </div>
+              )}
             </div>
             <div className="sm:col-span-2">
               <Label>Reference</Label>
@@ -226,15 +280,13 @@ export function SupplierPaymentsPage() {
                     {formatBDT(Number((supplier as { current_advance?: number }).current_advance ?? 0))}
                   </dd>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-[#6B7280]">Total purchased</dt>
-                  <dd className="font-medium">—</dd>
-                </div>
-                {selectedAccount ? (
+                {resolved ? (
                   <>
                     <div className="flex justify-between gap-2 border-t pt-2">
                       <dt className="text-[#6B7280]">Account balance</dt>
-                      <dd className="font-medium">{formatBDT(Number(selectedAccount.current_balance))}</dd>
+                      <dd className="font-medium">
+                        {formatBDT(Number(resolved.account.current_balance))}
+                      </dd>
                     </div>
                     {amount > 0 ? (
                       <div className="flex justify-between gap-2">
@@ -271,11 +323,12 @@ export function SupplierPaymentsPage() {
           )}
         </div>
 
-        {confirmOpen && validation.success ? (
+        {confirmOpen && validation.success && resolved ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
             <p className="font-medium text-[#111827]">Confirm supplier payment</p>
             <p className="mt-1 text-[#6B7280]">
-              Pay {formatBDT(amount)} to {supplier?.name} from {selectedAccount?.name}?
+              Pay {formatBDT(amount)} to {supplier?.name} via {selectedMethod?.name ?? method} from{' '}
+              {resolved.account.name}?
             </p>
             <div className="mt-3 flex gap-2">
               <Button size="sm" disabled={pay.isPending} onClick={() => pay.mutate()}>

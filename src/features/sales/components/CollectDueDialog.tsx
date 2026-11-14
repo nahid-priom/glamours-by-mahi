@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,10 @@ import { simpleAccountingRepository } from '@/features/accounting/repositories/s
 import { formatBDT } from '@/lib/format'
 import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
+import {
+  NO_PAYMENT_ACCOUNT_MESSAGE,
+  resolvePaymentAccount,
+} from '@/lib/payments/resolve-payment-account'
 import { queryKeys } from '@/lib/query/keys'
 import { collectDue, listPaymentMethods } from '../repositories/sales.repository'
 
@@ -33,7 +37,7 @@ export function CollectDueDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { activeBranchId } = useAuth()
+  const { activeBranchId, profile } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
   const clientTxnKeyRef = useRef(
@@ -43,7 +47,6 @@ export function CollectDueDialog({
   )
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('cash')
-  const [accountId, setAccountId] = useState<string | null>(null)
   const [reference, setReference] = useState('')
 
   const branchId = target?.branchId ?? activeBranchId
@@ -59,7 +62,25 @@ export function CollectDueDialog({
     enabled: open,
   })
 
-  const activeAccounts = accounts.filter((a) => a.is_active)
+  const { data: settings } = useQuery({
+    queryKey: [...queryKeys.accounts, 'settings', profile?.organization_id],
+    enabled: Boolean(profile?.organization_id) && open,
+    queryFn: () => simpleAccountingRepository.getAccountSettings(profile!.organization_id),
+  })
+
+  const payMethods = useMemo(() => methods.filter((m) => !m.is_due), [methods])
+
+  const resolved = useMemo(
+    () =>
+      resolvePaymentAccount({
+        methodCode: method,
+        branchId,
+        methods: payMethods,
+        accounts,
+        settings: settings ?? null,
+      }),
+    [method, branchId, payMethods, accounts, settings],
+  )
 
   useEffect(() => {
     if (open && target) {
@@ -71,13 +92,12 @@ export function CollectDueDialog({
   const mutation = useMutation({
     mutationFn: async () => {
       if (!target) throw new Error('No invoice selected')
+      if (!branchId) throw new Error('Select an active branch first')
       const amt = Number(amount)
       if (!amt || amt <= 0) throw new Error('Enter a valid amount')
       if (amt > target.dueTotal) throw new Error('Amount cannot exceed the current due')
-      const selected = methods.find((m) => m.code === method)
-      const receiveAccountId =
-        accountId ?? selected?.financial_account_id ?? activeAccounts[0]?.id ?? null
-      if (!receiveAccountId) throw new Error('Select a receive account')
+      const receiveAccountId = resolved?.account.id ?? null
+      if (!receiveAccountId) throw new Error(NO_PAYMENT_ACCOUNT_MESSAGE)
       return collectDue({
         customer_id: target.customerId,
         amount: amt,
@@ -105,9 +125,7 @@ export function CollectDueDialog({
     onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
   })
 
-  const payableMethods = methods.length
-    ? methods.filter((m) => !('is_due' in m && m.is_due))
-    : [{ code: 'cash', name: 'Cash' }]
+  const payableMethods = payMethods.length ? payMethods : [{ code: 'cash', name: 'Cash' }]
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -167,18 +185,13 @@ export function CollectDueDialog({
 
             <div className="space-y-1.5">
               <Label>Receiving Account</Label>
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-                value={accountId ?? ''}
-                onChange={(e) => setAccountId(e.target.value || null)}
-              >
-                <option value="">Auto Select</option>
-                {activeAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({formatBDT(a.current_balance)})
-                  </option>
-                ))}
-              </select>
+              {resolved ? (
+                <div className="flex h-9 items-center rounded-md border border-border bg-[#F9FAFB] px-3 text-sm font-medium">
+                  {resolved.account.name} ({formatBDT(resolved.account.current_balance)})
+                </div>
+              ) : (
+                <p className="text-xs text-amber-700">{NO_PAYMENT_ACCOUNT_MESSAGE}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -193,7 +206,7 @@ export function CollectDueDialog({
 
             <Button
               className="w-full"
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || !resolved}
               onClick={() => mutation.mutate()}
             >
               {mutation.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}

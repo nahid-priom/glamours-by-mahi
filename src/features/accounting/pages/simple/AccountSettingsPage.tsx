@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   simpleAccountingRepository,
@@ -14,7 +14,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
+import { methodCodeToAccountKind } from '@/lib/payments/resolve-payment-account'
 import { queryKeys } from '@/lib/query/keys'
+import { listPaymentMethods } from '@/features/sales/repositories/sales.repository'
 
 export function AccountSettingsPage() {
   const { profile, activeBranchId } = useAuth()
@@ -33,6 +35,13 @@ export function AccountSettingsPage() {
     queryKey: [...queryKeys.accounts, 'settings-fa', activeBranchId],
     queryFn: () => simpleAccountingRepository.listFinancialAccounts(activeBranchId),
   })
+
+  const { data: methods = [] } = useQuery({
+    queryKey: queryKeys.paymentMethods,
+    queryFn: listPaymentMethods,
+  })
+
+  const payMethods = useMemo(() => methods.filter((m) => !m.is_due), [methods])
 
   const { data: loadedSettings, isLoading: loadingSettings } = useQuery({
     queryKey: [...queryKeys.accounts, 'settings', orgId],
@@ -74,8 +83,9 @@ export function AccountSettingsPage() {
   const addAccount = useMutation({
     mutationFn: async () => {
       if (!orgId) throw new Error('Not signed in')
+      if (!activeBranchId) throw new Error('Select an active branch first')
       if (!name.trim()) throw new Error('Name required')
-      return simpleAccountingRepository.upsertAccount({
+      return simpleAccountingRepository.createAlignedFinancialAccount({
         organization_id: orgId,
         name: name.trim(),
         account_kind: kind,
@@ -86,8 +96,20 @@ export function AccountSettingsPage() {
     onSuccess: async () => {
       setName('')
       setOpening('0')
-      toast('Account added')
+      toast('Account added and linked for this branch')
       await qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      await qc.invalidateQueries({ queryKey: queryKeys.paymentMethods })
+    },
+    onError: (e: Error) => toast(e.message, 'error'),
+  })
+
+  const linkMethod = useMutation({
+    mutationFn: ({ code, accountId }: { code: string; accountId: string }) =>
+      simpleAccountingRepository.linkPaymentMethodAccount(code, accountId),
+    onSuccess: async () => {
+      toast('Payment method account updated')
+      await qc.invalidateQueries({ queryKey: queryKeys.paymentMethods })
+      await qc.invalidateQueries({ queryKey: queryKeys.posPaymentMethods })
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })
@@ -161,6 +183,57 @@ export function AccountSettingsPage() {
             ])}
           />
         ) : null}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-[#111827]">Payment method accounts</h2>
+        <p className="text-xs text-[#6B7280]">
+          Each POS / collection / supplier payment method uses one Accounts ledger. Prefer accounts
+          for the active branch; resolution also matches account type (cash / bank / mobile).
+        </p>
+        <PermissionGate permission={['accounts.manage', 'account_settings.manage']}>
+          {payMethods.length === 0 ? (
+            <EmptyState message="No payment methods configured." />
+          ) : (
+            <div className="grid gap-2 rounded-xl border border-border bg-white p-3 sm:grid-cols-2">
+              {payMethods.map((m) => {
+                const kind = methodCodeToAccountKind(m.code)
+                const options = accounts.filter(
+                  (a) =>
+                    a.is_active &&
+                    (a.account_kind === kind ||
+                      kind === 'other' ||
+                      (kind === 'mobile_money' && a.account_kind === 'bank')),
+                )
+                return (
+                  <div key={m.id} className="space-y-1">
+                    <Label>
+                      {m.name}{' '}
+                      <span className="font-normal text-[#6B7280]">({m.code})</span>
+                    </Label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                      value={m.financial_account_id ?? ''}
+                      disabled={linkMethod.isPending}
+                      onChange={(e) => {
+                        const accountId = e.target.value
+                        if (!accountId) return
+                        linkMethod.mutate({ code: m.code, accountId })
+                      }}
+                    >
+                      <option value="">Not linked</option>
+                      {(options.length ? options : accounts.filter((a) => a.is_active)).map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} · {a.account_kind.replace('_', ' ')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </PermissionGate>
       </section>
 
       {settings ? (

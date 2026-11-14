@@ -1,3 +1,4 @@
+import { PieChart as PieIcon } from 'lucide-react'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { formatBDT } from '@/lib/format'
 import { DashboardSectionCard } from './DashboardSectionCard'
@@ -20,9 +21,19 @@ export function SalesByCategoryChart({ data, total }: SalesByCategoryChartProps)
   const chartData = data.filter((d) => d.sales > 0)
 
   return (
-    <DashboardSectionCard title="Sales by Category">
+    <DashboardSectionCard title="Category Sales">
+      <div className="mb-2 flex items-center gap-2 text-[11px] text-[#6B7280]">
+        <PieIcon className="h-3.5 w-3.5 text-[#E11D48]" aria-hidden />
+        <span>By product category</span>
+      </div>
+
       {chartData.length === 0 ? (
-        <p className="py-10 text-center text-sm text-slate-500">No category sales in this period.</p>
+        <div className="flex h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 text-center">
+          <p className="text-sm font-medium text-slate-600">No category sales in this period.</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Posted sales with product categories will appear here.
+          </p>
+        </div>
       ) : (
         <>
           <div className="relative mx-auto h-[180px] w-full max-w-[200px]">
@@ -45,11 +56,11 @@ export function SalesByCategoryChart({ data, total }: SalesByCategoryChartProps)
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
               <p className="text-[10px] uppercase tracking-wide text-slate-500">Total Sales</p>
-              <p className="text-sm font-bold text-slate-900">{formatBDT(total)}</p>
+              <p className="text-sm font-bold tabular-nums text-slate-900">{formatBDT(total)}</p>
             </div>
           </div>
           <ul className="mt-3 space-y-1.5">
-            {data.map((row, i) => {
+            {chartData.map((row, i) => {
               const pct =
                 typeof row.percent === 'number'
                   ? row.percent
@@ -65,7 +76,7 @@ export function SalesByCategoryChart({ data, total }: SalesByCategoryChartProps)
                     />
                     <span className="truncate text-slate-500">{row.category}</span>
                   </span>
-                  <span className="shrink-0 font-medium text-slate-900">
+                  <span className="shrink-0 font-medium tabular-nums text-slate-900">
                     {pct}% · {formatBDT(row.sales)}
                   </span>
                 </li>

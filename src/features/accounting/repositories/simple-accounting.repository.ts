@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase/client'
 import { todayYmd, toQueryBounds } from '@/lib/datetime/bd'
+import {
+  accountKindToMethodCodes,
+} from '@/lib/payments/resolve-payment-account'
 import type { Json } from '@/types/database'
 
 export type TxnDirection = 'in' | 'out' | 'all'
@@ -254,6 +257,101 @@ async function setAccountActive(accountId: string, isActive: boolean) {
     .single()
   if (error) throw error
   return data
+}
+
+/** Link a payment method to a financial account (Accounts → method alignment). */
+async function linkPaymentMethodAccount(methodCode: string, financialAccountId: string) {
+  const { data, error } = await supabase
+    .from('payment_methods')
+    .update({ financial_account_id: financialAccountId })
+    .eq('code', methodCode)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .select('id, code, financial_account_id')
+  if (error) throw error
+  return data ?? []
+}
+
+/**
+ * Create a branch FA with auto default + payment-method alignment.
+ * Requires an active branch so money always posts against the right drawer.
+ */
+async function createAlignedFinancialAccount(input: {
+  organization_id: string
+  name: string
+  account_kind: AccountKind
+  branch_id: string
+  opening_balance?: number
+}) {
+  if (!input.branch_id) throw new Error('Select an active branch first')
+
+  const existing = await listFinancialAccounts(input.branch_id)
+  const sameKindOnBranch = existing.filter(
+    (a) =>
+      a.is_active &&
+      a.account_kind === input.account_kind &&
+      (a.branch_id === input.branch_id || a.branch_id == null),
+  )
+  const makeDefault = sameKindOnBranch.length === 0
+
+  const created = await upsertAccount({
+    organization_id: input.organization_id,
+    name: input.name,
+    account_kind: input.account_kind,
+    branch_id: input.branch_id,
+    opening_balance: input.opening_balance ?? 0,
+    is_default: makeDefault,
+    is_active: true,
+  })
+
+  // Auto-link payment methods of this kind when they have no usable account yet.
+  const codes = accountKindToMethodCodes(input.account_kind)
+  if (codes.length) {
+    const { data: methods, error: mErr } = await supabase
+      .from('payment_methods')
+      .select('id, code, financial_account_id')
+      .eq('is_active', true)
+      .is('deleted_at', null)
+      .in('code', codes)
+    if (mErr) throw mErr
+
+    const activeIds = new Set(existing.filter((a) => a.is_active).map((a) => a.id))
+    activeIds.add(created.id)
+
+    for (const m of methods ?? []) {
+      const linkedOk = m.financial_account_id && activeIds.has(m.financial_account_id)
+      if (!linkedOk) {
+        await linkPaymentMethodAccount(m.code, created.id)
+      }
+    }
+  }
+
+  // Fill empty org settings defaults for this kind.
+  try {
+    const settings = await getAccountSettings(input.organization_id)
+    let changed = false
+    const next = { ...settings }
+    if (input.account_kind === 'cash' && !next.defaultCashAccountId) {
+      next.defaultCashAccountId = created.id
+      changed = true
+    }
+    if (
+      (input.account_kind === 'bank' || input.account_kind === 'mobile_money') &&
+      !next.defaultBankAccountId
+    ) {
+      next.defaultBankAccountId = created.id
+      changed = true
+    }
+    if (!next.defaultPurchasePaymentAccountId) {
+      next.defaultPurchasePaymentAccountId = created.id
+      changed = true
+    }
+    if (changed) await saveAccountSettings(input.organization_id, next)
+  } catch {
+    /* settings sync is best-effort */
+  }
+
+  return created
 }
 
 function mapFinancialTxn(row: {
@@ -1064,6 +1162,8 @@ export const simpleAccountingRepository = {
   getDashboardKpis,
   listFinancialAccounts,
   upsertAccount,
+  createAlignedFinancialAccount,
+  linkPaymentMethodAccount,
   setAccountActive,
   listAccountTransactions,
   createIncome,

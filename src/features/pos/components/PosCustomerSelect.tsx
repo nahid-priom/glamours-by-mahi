@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { UserPlus } from 'lucide-react'
+import { UserMinus, UserPlus } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { Button } from '@/components/ui/button'
@@ -48,46 +48,60 @@ export function PosCustomerSelect({
     onAfterResolve?.()
   }
 
+  const clearCustomer = () => {
+    onChange(null, null)
+    onAfterResolve?.()
+  }
+
   return (
     <div className={cn('shrink-0 space-y-2', className)}>
-      <div
-        className={cn(
-          'grid gap-2',
-          canCreate ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-1',
-        )}
-      >
-        <EntityCombobox
-          value={value}
-          onChange={(id, opt) => {
-            onChange(id, opt?.label ?? null)
-            onAfterResolve?.()
-          }}
-          onSearch={searchCustomers}
-          placeholder="Search customer by name or mobile…"
-          emptyMessage="No customers found"
-          aria-label="Customer"
-        />
-        {canCreate ? (
+      {/* Search + actions stay on one row; combobox never overlaps buttons */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <div className="min-w-0 overflow-hidden">
+          <EntityCombobox
+            value={value}
+            onChange={(id, opt) => {
+              onChange(id, opt?.label ?? null)
+              onAfterResolve?.()
+            }}
+            onSearch={searchCustomers}
+            placeholder="Search customer…"
+            emptyMessage="No customers found"
+            aria-label="Customer"
+            allowClear={false}
+            className="w-full min-w-0"
+          />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          {canCreate ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 shrink-0 gap-1 border-[#E11D48]/45 px-2.5 text-[#E11D48] hover:bg-[#FFF1F2]"
+              onClick={() => setDialogOpen(true)}
+              aria-label="Add Customer"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span className="text-xs font-semibold">+ Add</span>
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"
-            className="shrink-0 whitespace-nowrap"
-            onClick={() => setDialogOpen(true)}
+            className="h-9 shrink-0 gap-1 px-2.5 text-slate-600"
+            disabled={!value}
+            onClick={clearCustomer}
+            aria-label="Remove customer"
           >
-            <UserPlus className="h-4 w-4" />
-            New customer
+            <UserMinus className="h-4 w-4" />
+            <span className="text-xs font-semibold">Remove</span>
           </Button>
-        ) : null}
+        </div>
       </div>
 
       {showSummary && value ? (
-        <CustomerSummaryCard
-          customerId={value}
-          onClear={() => {
-            onChange(null, null)
-            onAfterResolve?.()
-          }}
-        />
+        <CustomerSummaryCard customerId={value} onClear={clearCustomer} />
       ) : null}
 
       {canCreate ? (

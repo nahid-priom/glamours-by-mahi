@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { ChevronRight, Home } from 'lucide-react'
 import { resolveBreadcrumbs } from './breadcrumb-registry'
+import { useBreadcrumbLabels } from './breadcrumb-labels'
 import { cn } from '@/lib/utils'
 
 interface AppBreadcrumbsProps {
@@ -11,7 +12,9 @@ interface AppBreadcrumbsProps {
 
 export function AppBreadcrumbs({ labels, className }: AppBreadcrumbsProps) {
   const { pathname } = useLocation()
-  const crumbs = resolveBreadcrumbs(pathname, labels)
+  const ctx = useBreadcrumbLabels()
+  const mergedLabels = { ...(ctx?.labels ?? {}), ...(labels ?? {}) }
+  const crumbs = resolveBreadcrumbs(pathname, mergedLabels)
 
   if (pathname === '/dashboard' || pathname === '/sales/pos' || pathname === '/sales/new') {
     return null

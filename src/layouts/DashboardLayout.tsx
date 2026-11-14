@@ -5,7 +5,7 @@ import { TopHeader } from '@/components/layout/TopHeader'
 import { MobileTopBar } from '@/components/layout/MobileTopBar'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 import { AppFooter } from '@/components/layout/AppFooter'
-import { AppBreadcrumbs } from '@/components/breadcrumbs'
+import { AppBreadcrumbs, BreadcrumbLabelsProvider } from '@/components/breadcrumbs'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
@@ -47,52 +47,54 @@ export function DashboardLayout() {
   }, [isPosRoute])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <div className="hidden lg:block no-print">
-        <AppSidebar className="fixed left-0 top-0 z-40 h-screen" />
-      </div>
-
-      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="z-[70] w-[260px] border-0 p-0">
-          <AppSidebar onNavigate={() => setSidebarOpen(false)} className="h-full" />
-        </SheetContent>
-      </Sheet>
-
-      <div className="flex min-w-0 flex-1 flex-col lg:ml-[260px] print:ml-0">
-        <div ref={chromeRef} className="no-print shrink-0">
-          <MobileTopBar onMenuClick={() => setSidebarOpen(true)} />
-          <TopHeader />
+    <BreadcrumbLabelsProvider>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <div className="hidden lg:block no-print">
+          <AppSidebar className="fixed left-0 top-0 z-40 h-screen" />
         </div>
 
-        <main
-          className={cn(
-            'min-h-0 flex-1 overflow-x-hidden',
-            isPosRoute ? 'overflow-hidden pb-0 lg:pb-0' : 'overflow-y-auto pb-20 lg:pb-24',
-          )}
-        >
-          <div
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetContent side="left" className="z-[70] w-[260px] border-0 p-0">
+            <AppSidebar onNavigate={() => setSidebarOpen(false)} className="h-full" />
+          </SheetContent>
+        </Sheet>
+
+        <div className="flex min-w-0 flex-1 flex-col lg:ml-[260px] print:ml-0">
+          <div ref={chromeRef} className="no-print shrink-0">
+            <MobileTopBar onMenuClick={() => setSidebarOpen(true)} />
+            <TopHeader />
+          </div>
+
+          <main
             className={cn(
-              'mx-auto w-full max-w-[1366px]',
-              isPosRoute
-                ? 'h-[calc(100dvh-var(--app-header-height,4rem))] min-h-0 overflow-hidden px-3 py-2 sm:px-4'
-                : 'px-4 py-5 sm:px-5 sm:py-6',
+              'min-h-0 flex-1 overflow-x-hidden',
+              isPosRoute ? 'overflow-hidden pb-0 lg:pb-0' : 'overflow-y-auto pb-20 lg:pb-24',
             )}
           >
-            {!isPosRoute ? <AppBreadcrumbs /> : null}
-            <Outlet />
-          </div>
-        </main>
+            <div
+              className={cn(
+                'mx-auto w-full max-w-[1366px]',
+                isPosRoute
+                  ? 'h-[calc(100dvh-var(--app-header-height,4rem))] min-h-0 overflow-hidden px-3 py-2 sm:px-4'
+                  : 'px-4 py-5 sm:px-5 sm:py-6',
+              )}
+            >
+              {!isPosRoute ? <AppBreadcrumbs /> : null}
+              <Outlet />
+            </div>
+          </main>
 
-        {!isPosRoute ? (
+          {!isPosRoute ? (
+            <div className="no-print">
+              <AppFooter />
+            </div>
+          ) : null}
+
           <div className="no-print">
-            <AppFooter />
+            <MobileBottomNav />
           </div>
-        ) : null}
-
-        <div className="no-print">
-          <MobileBottomNav />
         </div>
       </div>
-    </div>
+    </BreadcrumbLabelsProvider>
   )
 }

@@ -3,7 +3,7 @@
 **Project:** Glamorous Gallery By Mahi  
 **Linked Supabase:** `vahqinuminrcjpussimn`  
 **Started:** 2026-11-14  
-**Last checkpoint:** 2026-11-14 — V2.3 gap closure implemented; migrations 130–131 dry-run only
+**Last checkpoint:** 2026-11-14 — Dashboard V3.1 UI shipped; local demo seed BLOCKED
 
 Statuses: `NOT_STARTED` | `IN_PROGRESS` | `IMPLEMENTED_UNVERIFIED` | `VERIFIED` | `BLOCKED` | `FAILED`
 

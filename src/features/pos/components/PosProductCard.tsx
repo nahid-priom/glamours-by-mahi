@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 import type { PosVariant } from '../types'
 
 const LOW_STOCK = 5
+/** Fixed card height so catalogue grid stays aligned regardless of title length. */
+export const POS_PRODUCT_CARD_HEIGHT_CLASS = 'h-[292px]'
 
 export type PosProductCardProps = {
   variant: PosVariant
@@ -40,7 +42,8 @@ function PosProductCardComponent({ variant, onAdd, onPreview, className }: PosPr
   return (
     <article
       className={cn(
-        'self-start overflow-hidden rounded-xl border border-border bg-white',
+        'flex w-full flex-col overflow-hidden rounded-xl border border-border bg-white',
+        POS_PRODUCT_CARD_HEIGHT_CLASS,
         outOfStock && 'opacity-70',
         className,
       )}
@@ -49,15 +52,15 @@ function PosProductCardComponent({ variant, onAdd, onPreview, className }: PosPr
         ref={imageButtonRef}
         type="button"
         onClick={() => onPreview(variant, imageButtonRef.current)}
-        className="group relative block h-32 w-full cursor-pointer overflow-hidden bg-slate-50 focus:outline-none sm:h-36"
+        className="group relative block h-32 w-full shrink-0 cursor-pointer overflow-hidden bg-slate-50 focus:outline-none"
         aria-label={`Preview ${variant.productName}`}
       >
         <ProductImage
-            product={{
-              id: variant.productId,
-              name: variant.productName,
-              imageUrl: variant.thumbnailUrl,
-            }}
+          product={{
+            id: variant.productId,
+            name: variant.productName,
+            imageUrl: variant.thumbnailUrl,
+          }}
           alt={variant.productName}
           imgClassName="transition-transform duration-200 group-hover:scale-[1.03] group-focus-visible:scale-[1.03]"
         />
@@ -76,27 +79,31 @@ function PosProductCardComponent({ variant, onAdd, onPreview, className }: PosPr
         )}
       </button>
 
-      <div className="space-y-1 px-2.5 py-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 px-2.5 py-2">
         <h3
-          className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900"
+          className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-slate-900"
           title={variant.productName}
         >
           {variant.productName}
         </h3>
-        {variant.variantLabel ? (
-          <p className="line-clamp-1 text-xs text-slate-500" title={variant.variantLabel}>
-            {variant.variantLabel}
-          </p>
-        ) : null}
-        <p className="truncate font-mono text-[10px] tracking-tight text-slate-400" title={variant.sku ?? variant.barcode ?? undefined}>
+        <p
+          className="line-clamp-1 min-h-[1rem] text-xs text-slate-500"
+          title={variant.variantLabel || undefined}
+        >
+          {variant.variantLabel || '\u00A0'}
+        </p>
+        <p
+          className="truncate font-mono text-[10px] tracking-tight text-slate-400"
+          title={variant.sku ?? variant.barcode ?? undefined}
+        >
           SKU: {variant.sku || variant.barcode || '—'}
         </p>
-        <p className="text-base font-bold tabular-nums text-[#E11D48]">
+        <p className="mt-auto text-base font-bold tabular-nums text-[#E11D48]">
           {formatBDT(variant.unitPrice)}
         </p>
       </div>
 
-      <div className="px-2.5 pb-2.5">
+      <div className="shrink-0 px-2.5 pb-2.5">
         <Button
           type="button"
           size="sm"

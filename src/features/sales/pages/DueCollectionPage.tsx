@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { EntityCombobox } from '@/components/entity-combobox'
@@ -14,19 +14,18 @@ import { formatBDT } from '@/lib/format'
 import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
 import {
-  collectDue,
-  listPaymentMethods,
-  searchCustomers,
-} from '../repositories/sales.repository'
+  NO_PAYMENT_ACCOUNT_MESSAGE,
+  resolvePaymentAccount,
+} from '@/lib/payments/resolve-payment-account'
+import { collectDue, listPaymentMethods, searchCustomers } from '../repositories/sales.repository'
 
 export function DueCollectionPage() {
-  const { activeBranchId } = useAuth()
+  const { activeBranchId, profile } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('cash')
-  const [accountId, setAccountId] = useState<string | null>(null)
   const [reference, setReference] = useState('')
   const [note, setNote] = useState('')
   const clientTxnKeyRef = useRef(
@@ -47,17 +46,34 @@ export function DueCollectionPage() {
     queryFn: () => simpleAccountingRepository.listFinancialAccounts(activeBranchId),
   })
 
-  const activeAccounts = accounts.filter((a) => a.is_active)
+  const { data: settings } = useQuery({
+    queryKey: [...queryKeys.accounts, 'settings', profile?.organization_id],
+    enabled: Boolean(profile?.organization_id),
+    queryFn: () => simpleAccountingRepository.getAccountSettings(profile!.organization_id),
+  })
+
+  const payMethods = useMemo(() => methods.filter((m) => !m.is_due), [methods])
+
+  const resolved = useMemo(
+    () =>
+      resolvePaymentAccount({
+        methodCode: method,
+        branchId: activeBranchId,
+        methods: payMethods,
+        accounts,
+        settings: settings ?? null,
+      }),
+    [method, activeBranchId, payMethods, accounts, settings],
+  )
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!customerId) throw new Error('Select a customer')
+      if (!activeBranchId) throw new Error('Select an active branch first')
       const amt = Number(amount)
       if (!amt || amt <= 0) throw new Error('Enter a valid amount')
-      const selected = methods.find((m) => m.code === method)
-      const receiveAccountId =
-        accountId ?? selected?.financial_account_id ?? activeAccounts[0]?.id ?? null
-      if (!receiveAccountId) throw new Error('Select a receive account')
+      const receiveAccountId = resolved?.account.id ?? null
+      if (!receiveAccountId) throw new Error(NO_PAYMENT_ACCOUNT_MESSAGE)
       return collectDue({
         customer_id: customerId,
         amount: amt,
@@ -69,7 +85,7 @@ export function DueCollectionPage() {
         client_txn_key: clientTxnKeyRef.current,
       })
     },
-    onSuccess: async (_data, _vars, _ctx) => {
+    onSuccess: async () => {
       await invalidateCustomerCollectionCaches(qc, {
         customerId,
         branchId: activeBranchId,
@@ -91,7 +107,8 @@ export function DueCollectionPage() {
       <div>
         <h1 className="text-xl font-bold text-[#111827]">Due Collection</h1>
         <p className="text-sm text-[#6B7280]">
-          Collect money a customer owes and update the receive account balance.
+          Collect money a customer owes into the Accounts ledger linked to the payment method for
+          this branch.
         </p>
       </div>
 
@@ -125,30 +142,22 @@ export function DueCollectionPage() {
               value={method}
               onChange={(e) => setMethod(e.target.value)}
             >
-              {(methods.length
-                ? methods.filter((m) => !('is_due' in m && m.is_due))
-                : [{ code: 'cash', name: 'Cash' }]
-              ).map((m) => (
-                  <option key={m.code} value={m.code}>
-                    {m.name}
-                  </option>
-                ))}
+              {(payMethods.length ? payMethods : [{ code: 'cash', name: 'Cash' }]).map((m) => (
+                <option key={m.code} value={m.code}>
+                  {m.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="space-y-1.5">
             <Label>Receive account</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              value={accountId ?? ''}
-              onChange={(e) => setAccountId(e.target.value || null)}
-            >
-              <option value="">Select account…</option>
-              {activeAccounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({formatBDT(a.current_balance)})
-                </option>
-              ))}
-            </select>
+            {resolved ? (
+              <div className="flex h-9 items-center rounded-md border border-border bg-[#F9FAFB] px-3 text-sm font-medium">
+                {resolved.account.name} ({formatBDT(resolved.account.current_balance)})
+              </div>
+            ) : (
+              <p className="text-xs text-amber-700">{NO_PAYMENT_ACCOUNT_MESSAGE}</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="due-ref">Reference</Label>
@@ -163,7 +172,11 @@ export function DueCollectionPage() {
             <Label htmlFor="due-note">Note</Label>
             <Input id="due-note" value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
-          <Button className="w-full" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
+          <Button
+            className="w-full"
+            disabled={mutation.isPending || !resolved}
+            onClick={() => mutation.mutate()}
+          >
             {mutation.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
             Collect due
           </Button>

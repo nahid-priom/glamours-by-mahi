@@ -121,8 +121,9 @@ export function CashBankPage() {
   const mutateAdd = useMutation({
     mutationFn: async () => {
       if (!profile?.organization_id) throw new Error('Not signed in')
+      if (!activeBranchId) throw new Error('Select an active branch first')
       if (!name.trim()) throw new Error('Name required')
-      return simpleAccountingRepository.upsertAccount({
+      return simpleAccountingRepository.createAlignedFinancialAccount({
         organization_id: profile.organization_id,
         name: name.trim(),
         account_kind: kind,
@@ -131,11 +132,13 @@ export function CashBankPage() {
       })
     },
     onSuccess: async () => {
-      toast('Account added')
+      toast('Account added and linked to payment methods for this branch')
       setMode(null)
       setName('')
       setOpening('0')
       await invalidate()
+      await qc.invalidateQueries({ queryKey: queryKeys.paymentMethods })
+      await qc.invalidateQueries({ queryKey: queryKeys.posPaymentMethods })
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })

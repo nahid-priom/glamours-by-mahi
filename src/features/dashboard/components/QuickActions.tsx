@@ -6,6 +6,7 @@ import {
   Truck,
   UserPlus,
   Warehouse,
+  Zap,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/auth-session'
 import { hasPermission, type Permission } from '@/lib/permissions'
@@ -20,6 +21,7 @@ const QUICK_ACTIONS: ActionDef[] = [
     route: '/sales/pos',
     icon: ShoppingBag,
     color: 'red',
+    featured: true,
     permission: 'pos.create',
   },
   {
@@ -73,8 +75,17 @@ export function QuickActions() {
   if (!actions.length) return null
 
   return (
-    <DashboardSectionCard title="Quick Actions">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <DashboardSectionCard
+      className="h-auto"
+      bodyClassName="!flex-none"
+      title={
+        <span className="inline-flex items-center gap-1.5">
+          <Zap className="h-3.5 w-3.5 text-[#E11D48]" aria-hidden />
+          Quick Actions
+        </span>
+      }
+    >
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2">
         {actions.map((action) => (
           <QuickActionCard key={action.title} {...action} />
         ))}

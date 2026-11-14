@@ -51,7 +51,8 @@ export function TopHeader() {
   return (
     <header className="sticky top-14 z-30 border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 lg:top-0">
       <div className="flex max-w-full items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4">
-        <div className="min-w-0 flex-1">
+        {/* Desktop greeting only — mobile uses MobileTopBar brand + page-level greeting (Dashboard). */}
+        <div className="hidden min-w-0 flex-1 lg:block">
           <h2 className="truncate text-lg font-bold sm:text-xl">
             {greeting}, {name.split(' ')[0]}
           </h2>
@@ -59,6 +60,7 @@ export function TopHeader() {
             <span className="brand-gradient-text font-medium">{brandConfig.name}</span>
           </p>
         </div>
+        <div className="min-w-0 flex-1 lg:hidden" aria-hidden />
 
         <div className="hidden shrink-0 items-center gap-2 lg:flex">
           <BranchSwitcher />

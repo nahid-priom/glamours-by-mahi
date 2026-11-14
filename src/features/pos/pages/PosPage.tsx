@@ -10,8 +10,10 @@ import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
+import { resolvePaymentAccount } from '@/lib/payments/resolve-payment-account'
 import { queryKeys } from '@/lib/query/keys'
 import { cn } from '@/lib/utils'
+import type { AccountKind, FinancialAccountRow } from '@/features/accounting/repositories/simple-accounting.repository'
 import { assertSaleReady, canAddQty } from '../cart-utils'
 import {
   PosBarcodeInput,
@@ -134,23 +136,37 @@ export function PosPage() {
         code: r.code,
         name: r.name,
         financialAccountId: r.financial_account_id,
+        financial_account_id: r.financial_account_id,
         isDue: r.is_due === true,
+        is_due: r.is_due === true,
       })),
     [methodsQuery.data],
   )
 
-  const defaultAccountId = useMemo(() => {
-    const rows = accountsQuery.data ?? []
-    return (rows.find((a) => a.is_default) ?? rows[0])?.id ?? null
+  const posAccounts = useMemo((): FinancialAccountRow[] => {
+    return (accountsQuery.data ?? []).map((a) => ({
+      id: a.id,
+      name: a.name,
+      account_kind: (a.account_kind as AccountKind) ?? 'other',
+      branch_id: a.branch_id ?? null,
+      opening_balance: 0,
+      current_balance: 0,
+      is_default: Boolean(a.is_default),
+      is_active: true,
+      chart_account_id: null,
+    }))
   }, [accountsQuery.data])
 
-  /** Account is derived from the chosen method — no manual account picking at POS. */
+  /** Account is derived from method + branch — no manual account picking at POS. */
   const resolveAccountId = useCallback(
     (methodCode: string) =>
-      methods.find((m) => m.code === methodCode)?.financialAccountId ??
-      defaultAccountId ??
-      undefined,
-    [methods, defaultAccountId],
+      resolvePaymentAccount({
+        methodCode,
+        branchId,
+        methods,
+        accounts: posAccounts,
+      })?.account.id ?? undefined,
+    [methods, posAccounts, branchId],
   )
 
   useEffect(() => {
@@ -678,10 +694,10 @@ export function PosPage() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="grid content-start items-start grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <div className="grid grid-cols-2 items-stretch gap-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {catalogue.isLoading
               ? Array.from({ length: 10 }).map((_, i) => (
-                  <Skeleton key={i} className="h-[264px] w-full rounded-xl" />
+                  <Skeleton key={i} className="h-[292px] w-full rounded-xl" />
                 ))
               : visibleVariants.map((v) => (
                   <PosProductCard
