@@ -69,7 +69,9 @@ export function LowStockPage() {
                 <TableCell className="font-medium">{row.productName}</TableCell>
                 <TableCell>{row.sku}</TableCell>
                 <TableCell className="text-[#6B7280]">{row.locationName}</TableCell>
-                <TableCell className="text-right font-medium text-[#E11D48]">{row.quantity}</TableCell>
+                <TableCell className="text-right font-medium text-[#E11D48]">
+                  {row.available ?? Math.max(row.quantity - (row.qtyReserved ?? 0), 0)}
+                </TableCell>
                 <TableCell className="text-right">{row.reorderLevel}</TableCell>
                 <TableCell className="text-right text-[#E11D48]">{row.shortage}</TableCell>
               </TableRow>

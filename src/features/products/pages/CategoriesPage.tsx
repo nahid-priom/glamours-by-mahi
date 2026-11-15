@@ -51,6 +51,8 @@ export function CategoriesPage() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['categories'] })
+      void qc.invalidateQueries({ queryKey: ['category-product-counts'] })
+      void qc.invalidateQueries({ queryKey: ['products'] })
       toast(editing ? 'Category updated' : 'Category created')
       setOpen(false)
       setEditing(null)
@@ -63,6 +65,8 @@ export function CategoriesPage() {
     mutationFn: softDeleteCategory,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['categories'] })
+      void qc.invalidateQueries({ queryKey: ['category-product-counts'] })
+      void qc.invalidateQueries({ queryKey: ['products'] })
       toast('Category deleted')
     },
     onError: (e: Error) => toast(e.message, 'error'),

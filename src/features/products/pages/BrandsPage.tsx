@@ -49,6 +49,7 @@ export function BrandsPage() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['brands'] })
+      void qc.invalidateQueries({ queryKey: ['products'] })
       toast(editing ? 'Brand updated' : 'Brand created')
       setOpen(false)
       setEditing(null)
@@ -61,6 +62,7 @@ export function BrandsPage() {
     mutationFn: softDeleteBrand,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['brands'] })
+      void qc.invalidateQueries({ queryKey: ['products'] })
       toast('Brand deleted')
     },
     onError: (e: Error) => toast(e.message, 'error'),

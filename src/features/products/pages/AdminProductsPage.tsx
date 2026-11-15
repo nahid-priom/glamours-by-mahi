@@ -152,6 +152,7 @@ export function AdminProductsPage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['products'] })
       void qc.invalidateQueries({ queryKey: ['category-product-counts'] })
+      void qc.invalidateQueries({ queryKey: ['pos-products'] })
       invalidateStorefrontCache()
       toast('Product deleted')
     },
@@ -299,6 +300,7 @@ export function AdminProductsPage() {
         onDuplicated={() => {
           void qc.invalidateQueries({ queryKey: ['products'] })
           void qc.invalidateQueries({ queryKey: ['category-product-counts'] })
+          void qc.invalidateQueries({ queryKey: ['pos-products'] })
           toast('Product duplicated')
         }}
         onError={(m) => toast(m, 'error')}

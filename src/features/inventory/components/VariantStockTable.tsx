@@ -36,9 +36,10 @@ export function VariantStockTable({ rows, isLoading }: Props) {
         </TableHeader>
         <TableBody>
           {rows.map((row) => {
+            const available = row.available ?? Math.max(row.quantity - (row.qtyReserved ?? 0), 0)
             const status =
-              resolveLocationStockStatus(row.locationType, row.quantity) ??
-              resolveAvailableStockStatus(row.quantity, row.reorderLevel)
+              resolveLocationStockStatus(row.locationType, available) ??
+              resolveAvailableStockStatus(available, row.reorderLevel)
             return (
               <TableRow key={row.balanceId}>
                 <TableCell className="font-medium">{row.productName}</TableCell>
@@ -48,7 +49,7 @@ export function VariantStockTable({ rows, isLoading }: Props) {
                   {row.barcode ? ` · ${row.barcode}` : ''}
                 </TableCell>
                 <TableCell className="text-sm text-[#6B7280]">{row.branchName}</TableCell>
-                <TableCell className="text-right tabular-nums font-medium">{row.quantity}</TableCell>
+                <TableCell className="text-right tabular-nums font-medium">{available}</TableCell>
                 <TableCell className="text-right tabular-nums">{row.reorderLevel}</TableCell>
                 <TableCell className="text-sm capitalize text-[#6B7280]">{row.locationName}</TableCell>
                 <TableCell>

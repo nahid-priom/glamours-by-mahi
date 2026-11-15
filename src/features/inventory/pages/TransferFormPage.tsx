@@ -60,6 +60,17 @@ export function TransferFormPage() {
           quantity_sent: Number(l.quantity_sent),
         }))
       if (!items.length) throw new Error('Add at least one line')
+      const seen = new Set<string>()
+      for (const item of items) {
+        if (seen.has(item.variant_id)) {
+          throw new Error('Duplicate variants are not allowed — combine quantities on one line')
+        }
+        seen.add(item.variant_id)
+        if (!(item.quantity_sent > 0)) throw new Error('Quantity sent must be greater than 0')
+      }
+      if (toBranchId === activeBranchId) {
+        throw new Error('Destination branch must differ from source')
+      }
       return createTransfer({
         organizationId: profile.organization_id,
         fromBranchId: activeBranchId,

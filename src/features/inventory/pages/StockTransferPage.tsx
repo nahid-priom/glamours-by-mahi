@@ -78,14 +78,37 @@ export function StockTransferPage() {
           quantity_damaged: l.damagedNow,
         }))
       if (items.length === 0) {
+        // Short finalize with no increments: restore remainder at source (do not auto-receive).
+        if (finalizeReceive) {
+          const zeroLines = lines.map((l) => ({
+            id: l.id,
+            variant_id: l.variant_id,
+            quantity_received: 0,
+            quantity_damaged: 0,
+          }))
+          return receive(id, zeroLines, true)
+        }
         const full = await getTransfer(id)
         const fallback = (full?.stock_transfer_items ?? [])
           .filter((i: { deleted_at: string | null }) => !i.deleted_at)
-          .map((i: { id: string; variant_id: string; quantity_sent: number; quantity_received: number | null }) => ({
-            id: i.id,
-            variant_id: i.variant_id,
-            quantity_received: Math.max(0, Number(i.quantity_sent) - Number(i.quantity_received ?? 0)),
-          }))
+          .map(
+            (i: {
+              id: string
+              variant_id: string
+              quantity_sent: number
+              quantity_received: number | null
+              quantity_damaged?: number | null
+            }) => ({
+              id: i.id,
+              variant_id: i.variant_id,
+              quantity_received: Math.max(
+                0,
+                Number(i.quantity_sent) -
+                  Number(i.quantity_received ?? 0) -
+                  Number(i.quantity_damaged ?? 0),
+              ),
+            }),
+          )
         return receive(id, fallback, finalizeReceive)
       }
       return receive(id, items, finalizeReceive)

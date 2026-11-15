@@ -57,6 +57,7 @@ export function StockAdjustmentPage() {
         location_id: locationId,
         reason: reason || undefined,
         notes: notes || undefined,
+        client_txn_key: crypto.randomUUID(),
         items,
       })
     },

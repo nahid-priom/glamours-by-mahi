@@ -788,10 +788,48 @@ export async function updateProduct(id: string, input: ProductInput) {
   return data
 }
 
+/** Keep POS/catalogue prices in sync — they read product_variants.selling_price. */
+export async function syncProductVariantPrices(
+  productId: string,
+  prices: {
+    purchase_price: number
+    selling_price: number
+    wholesale_price?: number | null
+    /** When true, only update if the product has exactly one active variant. */
+    onlyWhenSingleVariant?: boolean
+  },
+) {
+  if (prices.onlyWhenSingleVariant) {
+    const { data: variants, error: listErr } = await supabase
+      .from('product_variants')
+      .select('id')
+      .eq('product_id', productId)
+      .is('deleted_at', null)
+      .limit(2)
+    if (listErr) throw listErr
+    if ((variants ?? []).length !== 1) return
+  }
+
+  const { error } = await supabase
+    .from('product_variants')
+    .update({
+      purchase_price: prices.purchase_price,
+      selling_price: prices.selling_price,
+      wholesale_price: prices.wholesale_price ?? null,
+    })
+    .eq('product_id', productId)
+    .is('deleted_at', null)
+  if (error) throw error
+}
+
 export async function softDeleteProduct(id: string) {
   const { error } = await supabase
     .from('products')
-    .update({ deleted_at: new Date().toISOString(), is_active: false })
+    .update({
+      deleted_at: new Date().toISOString(),
+      is_active: false,
+      status: 'archived',
+    })
     .eq('id', id)
   if (error) throw error
 }
@@ -815,12 +853,13 @@ export async function listVariants(
     .select(
       `
       *,
-      products!inner(id, name),
+      products!inner(id, name, deleted_at),
       inventory_balances(quantity, deleted_at)
     `,
       { count: 'exact' },
     )
     .is('deleted_at', null)
+    .is('products.deleted_at', null)
     .order('sku', { ascending: true })
     .range(from, to)
 
@@ -1012,6 +1051,17 @@ export async function softDeleteProductImage(id: string) {
   }
 }
 
+/** Soft-delete all product-level cover images for a product. */
+export async function clearProductCover(productId: string) {
+  const { error } = await supabase
+    .from('product_images')
+    .update({ deleted_at: new Date().toISOString(), is_cover: false })
+    .eq('product_id', productId)
+    .is('variant_id', null)
+    .is('deleted_at', null)
+  if (error) throw error
+}
+
 export async function clearVariantImage(variantId: string) {
   const now = new Date().toISOString()
   await supabase
@@ -1167,11 +1217,19 @@ export type ProductInventorySummaryRow = {
   id: string
   name: string
   base_sku: string | null
+  base_barcode?: string | null
   status: string | null
   reorder_level: number
   is_active: boolean
   category_id: string | null
   category_name: string | null
+  brand_id?: string | null
+  brand_name?: string | null
+  product_type?: string | null
+  unit?: string | null
+  purchase_price?: number | null
+  selling_price?: number | null
+  created_at?: string | null
   variant_count: number
   total_stock: number
   stock_cost: number
@@ -1190,6 +1248,7 @@ export async function listProductsWithInventorySummary(
       payload: {
         search: params.search ?? null,
         category_id: params.categoryId ?? null,
+        brand_id: params.brandId ?? null,
         status: params.status ?? null,
         stock_status: params.stockStatus ?? null,
         branch_id: params.branchId ?? null,
@@ -1204,13 +1263,21 @@ export async function listProductsWithInventorySummary(
         id: p.id,
         name: p.name,
         base_sku: p.base_sku,
+        base_barcode: p.base_barcode ?? null,
         status: p.status,
         reorder_level: p.reorder_level,
         is_active: p.is_active,
         category_id: p.category_id,
+        brand_id: p.brand_id ?? null,
+        product_type: (p.product_type as ProductListItem['product_type']) ?? 'simple',
+        unit: p.unit ?? 'pcs',
+        purchase_price: Number(p.purchase_price ?? 0),
+        selling_price: Number(p.selling_price ?? 0),
+        created_at: p.created_at ?? undefined,
         totalStock: p.total_stock,
         variantCount: p.variant_count,
         categories: p.category_name ? { id: p.category_id ?? '', name: p.category_name } : null,
+        brands: p.brand_name ? { id: p.brand_id ?? '', name: p.brand_name } : null,
         coverUrl: await resolveStorageUrl(p.cover_path),
       })),
     )) as unknown as ProductListItem[]
@@ -1220,7 +1287,10 @@ export async function listProductsWithInventorySummary(
       page: row.page ?? page,
       pageSize: row.page_size ?? pageSize,
     }
-  } catch {
+  } catch (err) {
+    // Fallback only when RPC is missing / unsupported — rethrow auth/permission failures.
+    const msg = err instanceof Error ? err.message : String(err)
+    if (/permission|42501|not authenticated|jwt/i.test(msg)) throw err
     return listProducts(params)
   }
 }
@@ -1292,12 +1362,14 @@ export const catalogRepository = {
   createProductWithMatrix,
   updateProduct,
   softDeleteProduct,
+  syncProductVariantPrices,
   listVariants,
   updateVariant,
   createVariant,
   softDeleteVariant,
   uploadProductImage,
   softDeleteProductImage,
+  clearProductCover,
   clearVariantImage,
   validateProductImageFile,
   resolveStorageUrl,

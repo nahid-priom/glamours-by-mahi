@@ -81,6 +81,12 @@ export function QuickAddProductDialog({
 
   const mutation = useMutation({
     mutationFn: async () => {
+      if (!form.category_id) {
+        throw new Error('Category is required to activate a product for POS')
+      }
+      if (!form.name.trim()) {
+        throw new Error('Product name is required')
+      }
       const hasVariants = kindHasVariants(form.productKind)
       const payload: Record<string, unknown> = {
         name: form.name.trim(),
@@ -127,6 +133,7 @@ export function QuickAddProductDialog({
             quantity: openingQty,
             unit_cost: Number(form.purchase_price) || 0,
             reference: 'pos_quick_add',
+            client_txn_key: `pos_quick_add:${variantId}:${crypto.randomUUID()}`,
           },
         })
         if (error) throw error
@@ -137,6 +144,8 @@ export function QuickAddProductDialog({
     onSuccess: async (variantId) => {
       await qc.invalidateQueries({ queryKey: ['products'] })
       await qc.invalidateQueries({ queryKey: ['pos-products'] })
+      await qc.invalidateQueries({ queryKey: ['inventory-balances'] })
+      await qc.invalidateQueries({ queryKey: ['stock-overview'] })
       onCreated(variantId)
       onOpenChange(false)
     },

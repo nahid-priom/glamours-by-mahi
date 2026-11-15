@@ -60,6 +60,8 @@ export function VariantsPage() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['variants'] })
+      void qc.invalidateQueries({ queryKey: ['pos-products'] })
+      void qc.invalidateQueries({ queryKey: ['products'] })
       toast('Variant updated')
       setEditing(null)
       setForm(null)

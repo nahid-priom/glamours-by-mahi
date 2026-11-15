@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { invalidateStorefrontCache } from '@/features/storefront/storefront.service'
 import {
   PRODUCT_IMAGE_ACCEPT,
+  clearProductCover,
   uploadProductImage,
   validateProductImageFile,
 } from '../repositories/catalog.repository'
@@ -96,10 +97,23 @@ export function ProductImageUploader({
             type="button"
             size="sm"
             variant="ghost"
-            disabled={disabled || busy}
+            disabled={disabled || busy || !productId}
             onClick={() => {
-              setPreview(null)
-              onUploaded?.(null)
+              void (async () => {
+                setBusy(true)
+                setError(null)
+                try {
+                  await clearProductCover(productId)
+                  setPreview(null)
+                  invalidateStorefrontCache()
+                  await qc.invalidateQueries({ queryKey: ['products'] })
+                  onUploaded?.(null)
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'Could not clear cover')
+                } finally {
+                  setBusy(false)
+                }
+              })()
             }}
           >
             <X className="mr-1 h-3.5 w-3.5" />

@@ -39,6 +39,7 @@ import {
   searchBrands,
   searchCategories,
   searchSubcategories,
+  syncProductVariantPrices,
   transitionProductStatus,
   updateProduct,
   uploadProductImage,
@@ -140,7 +141,10 @@ export function ProductForm({
 }: Props) {
   const { can } = useAuth()
   const { toast } = useToast()
-  const canActivateOnSave = can(['products.approve', 'products.create'])
+  const canCreate = can('products.create')
+  const canApprove = can('products.approve')
+  /** Edit activation requires approve; create path can activate with create. */
+  const canActivateOnSave = editing ? canApprove : canCreate || canApprove
   const [form, setForm] = useState<ProductFormState>(() => productToForm(editing))
   const [createdId, setCreatedId] = useState<string | null>(editing?.id ?? null)
   const [sizes, setSizes] = useState<string[]>([])
@@ -315,6 +319,7 @@ export function ProductForm({
       }
 
       let id = productId
+      const prevStatus = String(editing?.status ?? 'draft')
       const status =
         mode === 'draft'
           ? 'draft'
@@ -324,19 +329,51 @@ export function ProductForm({
               ? 'active'
               : mode === 'save' && canActivateOnSave
                 ? 'active'
-                : form.publish
-                  ? 'active'
-                  : 'draft'
+                : editing
+                  ? // Preserve lifecycle on edit Save unless user can/should activate
+                    prevStatus === 'active' || prevStatus === 'pending_approval'
+                      ? prevStatus
+                      : form.publish && canApprove
+                        ? 'active'
+                        : prevStatus
+                  : form.publish
+                    ? 'active'
+                    : 'draft'
+
+      if (status === 'active' && !form.category_id) {
+        throw new Error('Category is required to activate a product for POS')
+      }
 
       let createdVariants: Array<{ id: string; sku?: string; key?: string }> = []
 
       if (editing && id) {
         await updateProduct(id, input)
-        if (mode !== 'save') {
-          await transitionProductStatus({ product_id: id, status, publish: mode === 'activate' })
+        // Only sync product-level prices onto the sole/simple variant — never wipe matrix prices.
+        if (!editing.has_variants && !kindHasVariants(form.productKind)) {
+          await syncProductVariantPrices(id, {
+            purchase_price: input.purchase_price,
+            selling_price: input.selling_price,
+            wholesale_price: input.wholesale_price ?? null,
+            onlyWhenSingleVariant: true,
+          })
+        }
+        if (mode !== 'save' || status !== prevStatus) {
+          await transitionProductStatus({
+            product_id: id,
+            status,
+            publish: mode === 'activate' || (mode === 'save' && form.publish),
+          })
         }
       } else if (id) {
         await updateProduct(id, input)
+        if (!kindHasVariants(form.productKind)) {
+          await syncProductVariantPrices(id, {
+            purchase_price: input.purchase_price,
+            selling_price: input.selling_price,
+            wholesale_price: input.wholesale_price ?? null,
+            onlyWhenSingleVariant: true,
+          })
+        }
       } else {
         if (matrixInvalid) {
           throw new Error('Select at least one size/volume and one color/shade for variant products.')
@@ -344,7 +381,7 @@ export function ProductForm({
         const payload: Record<string, unknown> = {
           ...input,
           status,
-          publish: status === 'active',
+          publish: Boolean(form.publish || mode === 'activate'),
           batch_tracking_enabled: form.productKind === 'cosmetics',
           expiry_tracking_enabled: form.productKind === 'cosmetics',
         }

@@ -13,6 +13,8 @@ export type BranchStockRow = {
   locationId: string
   branchId: string
   quantity: number
+  qtyReserved: number
+  available: number
   sku: string
   barcode: string | null
   variantName: string | null
@@ -89,6 +91,69 @@ export async function listStockLocations(branchId: string): Promise<StockLocatio
   return data ?? []
 }
 
+async function resolveStockVariantIds(search?: string): Promise<string[] | null> {
+  const s = search?.trim()
+  if (!s) return null
+
+  const safe = s.replace(/%/g, '')
+  const { data, error } = await supabase
+    .from('product_variants')
+    .select('id, products!inner(name)')
+    .is('deleted_at', null)
+    .or(`sku.ilike.%${safe}%,barcode.ilike.%${safe}%,name.ilike.%${safe}%`)
+    .limit(500)
+  if (error) throw error
+
+  const ids = new Set((data ?? []).map((row) => row.id as string))
+  if (ids.size === 0) {
+    const { data: products, error: prodErr } = await supabase
+      .from('products')
+      .select('id')
+      .is('deleted_at', null)
+      .ilike('name', `%${safe}%`)
+      .limit(100)
+    if (prodErr) throw prodErr
+    const productIds = (products ?? []).map((p) => p.id as string)
+    if (productIds.length === 0) return []
+    const { data: byName, error: nameErr } = await supabase
+      .from('product_variants')
+      .select('id')
+      .is('deleted_at', null)
+      .in('product_id', productIds)
+      .limit(500)
+    if (nameErr) throw nameErr
+    return (byName ?? []).map((row) => row.id as string)
+  }
+  return [...ids]
+}
+
+function mapBranchStockRow(row: Record<string, unknown>): BranchStockRow {
+  const variant = row.product_variants as Record<string, unknown>
+  const product = variant.products as Record<string, unknown>
+  const location = row.stock_locations as Record<string, unknown>
+  const branch = location.branches as Record<string, unknown>
+  const quantity = Number(row.quantity ?? 0)
+  const qtyReserved = Number(row.qty_reserved ?? 0)
+  return {
+    balanceId: row.id as string,
+    variantId: variant.id as string,
+    locationId: location.id as string,
+    branchId: branch.id as string,
+    quantity,
+    qtyReserved,
+    available: Math.max(quantity - qtyReserved, 0),
+    sku: variant.sku as string,
+    barcode: (variant.barcode as string | null) ?? null,
+    variantName: (variant.name as string | null) ?? null,
+    productName: product.name as string,
+    productId: product.id as string,
+    locationName: location.name as string,
+    locationType: location.location_type as string,
+    branchName: branch.name as string,
+    reorderLevel: Number(product.reorder_level ?? 0),
+  }
+}
+
 export async function branchStock(
   filters: StockFilters = {},
 ): Promise<{ items: BranchStockRow[]; total: number }> {
@@ -103,12 +168,16 @@ export async function branchStock(
     if (locationIds.length === 0) return { items: [], total: 0 }
   }
 
+  const variantIds = await resolveStockVariantIds(filters.search)
+  if (variantIds && variantIds.length === 0) return { items: [], total: 0 }
+
   let q = supabase
     .from('inventory_balances')
     .select(
       `
       id,
       quantity,
+      qty_reserved,
       variant_id,
       location_id,
       product_variants!inner (
@@ -142,57 +211,34 @@ export async function branchStock(
   if (locationIds) {
     q = q.in('location_id', locationIds)
   }
+  if (variantIds) {
+    q = q.in('variant_id', variantIds)
+  }
 
   const { data, error, count } = await q
   if (error) throw error
 
-  const search = filters.search?.trim().toLowerCase() ?? ''
-  const mapped: BranchStockRow[] = ((data ?? []) as unknown as Array<Record<string, unknown>>)
-    .map((row) => {
-      const variant = row.product_variants as Record<string, unknown>
-      const product = variant.products as Record<string, unknown>
-      const location = row.stock_locations as Record<string, unknown>
-      const branch = location.branches as Record<string, unknown>
-      return {
-        balanceId: row.id as string,
-        variantId: variant.id as string,
-        locationId: location.id as string,
-        branchId: branch.id as string,
-        quantity: Number(row.quantity ?? 0),
-        sku: variant.sku as string,
-        barcode: (variant.barcode as string | null) ?? null,
-        variantName: (variant.name as string | null) ?? null,
-        productName: product.name as string,
-        productId: product.id as string,
-        locationName: location.name as string,
-        locationType: location.location_type as string,
-        branchName: branch.name as string,
-        reorderLevel: Number(product.reorder_level ?? 0),
-      }
-    })
-    .filter((row) => {
-      if (!search) return true
-      return (
-        row.sku.toLowerCase().includes(search) ||
-        row.productName.toLowerCase().includes(search) ||
-        (row.barcode ?? '').toLowerCase().includes(search)
-      )
-    })
-
+  const mapped = ((data ?? []) as unknown as Array<Record<string, unknown>>).map(mapBranchStockRow)
   return { items: mapped, total: count ?? mapped.length }
 }
 
 export async function lowStock(
   filters: StockFilters = {},
 ): Promise<{ items: LowStockRow[]; total: number }> {
-  const { items } = await branchStock({ ...filters, page: 1, pageSize: 500 })
-  const low = items
-    .filter((r) => r.reorderLevel > 0 && r.quantity <= r.reorderLevel)
-    .map((r) => ({ ...r, shortage: r.reorderLevel - r.quantity }))
-    .sort((a, b) => a.quantity - b.quantity)
-
   const page = filters.page ?? 1
   const pageSize = filters.pageSize ?? 50
+  // Fetch a wider window then filter/page in memory — available qty drives low-stock.
+  const { items } = await branchStock({
+    branchId: filters.branchId,
+    search: filters.search,
+    page: 1,
+    pageSize: 2000,
+  })
+  const low = items
+    .filter((r) => r.reorderLevel > 0 && r.available <= r.reorderLevel)
+    .map((r) => ({ ...r, shortage: r.reorderLevel - r.available }))
+    .sort((a, b) => a.available - b.available)
+
   const start = (page - 1) * pageSize
   return { items: low.slice(start, start + pageSize), total: low.length }
 }
@@ -325,6 +371,7 @@ export type AdjustmentPayload = {
   location_id: string
   reason?: string
   notes?: string
+  client_txn_key?: string
   items: Array<{
     variant_id: string
     quantity_counted: number
@@ -420,20 +467,31 @@ export async function receive(
   }>,
   finalize = false,
 ) {
-  let receiveItems: Array<{ variant_id: string; quantity_received: number; id?: string }> =
-    items ?? []
-  if (!receiveItems.length) {
+  let receiveItems: Array<{
+    variant_id: string
+    quantity_received: number
+    quantity_damaged?: number
+    id?: string
+  }> = items ?? []
+  // Empty + finalize = short-close (restore shortfall); do not auto-receive remaining.
+  if (!receiveItems.length && !finalize) {
     const { data: rows, error: loadErr } = await supabase
       .from('stock_transfer_items')
-      .select('id, variant_id, quantity_sent')
+      .select('id, variant_id, quantity_sent, quantity_received, quantity_damaged')
       .eq('transfer_id', transferId)
       .is('deleted_at', null)
     if (loadErr) throw loadErr
-    receiveItems = (rows ?? []).map((r) => ({
-      id: r.id,
-      variant_id: r.variant_id,
-      quantity_received: Number(r.quantity_sent),
-    }))
+    receiveItems = (rows ?? []).map((r) => {
+      const remaining =
+        Number(r.quantity_sent) -
+        Number(r.quantity_received ?? 0) -
+        Number((r as { quantity_damaged?: number | null }).quantity_damaged ?? 0)
+      return {
+        id: r.id,
+        variant_id: r.variant_id,
+        quantity_received: Math.max(0, remaining),
+      }
+    })
   }
 
   const { data, error } = await supabase.rpc('receive_stock_transfer', {
@@ -482,6 +540,7 @@ export async function getTransfer(id: string) {
         variant_id,
         quantity_sent,
         quantity_received,
+        quantity_damaged,
         unit_cost,
         notes,
         deleted_at

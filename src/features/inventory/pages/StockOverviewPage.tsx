@@ -148,9 +148,10 @@ export function StockOverviewPage() {
     const items = variantQuery.data?.items ?? []
     const statusFilter = searchParams.get('status')
     if (!statusFilter || statusFilter === 'all') return items
-    return items.filter((row) =>
-      matchesStockStatusFilter(statusFilter, row.quantity, row.reorderLevel, row.locationType),
-    )
+    return items.filter((row) => {
+      const available = row.available ?? Math.max(row.quantity - (row.qtyReserved ?? 0), 0)
+      return matchesStockStatusFilter(statusFilter, available, row.reorderLevel, row.locationType)
+    })
   }, [variantQuery.data?.items, searchParams])
 
   const totalPages = useMemo(() => {
