@@ -22,6 +22,7 @@ export function ProductNewPage() {
       title="Add new product"
       onSaved={async (id) => {
         await qc.invalidateQueries({ queryKey: ['products'] })
+        await qc.invalidateQueries({ queryKey: ['pos-products'] })
         invalidateStorefrontCache()
         toast('Product created')
         navigate(`/products/${id}/edit`, { replace: true })

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ImagePlus, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppImage } from '@/components/common/AppImage'
@@ -27,6 +28,7 @@ export function ProductImageUploader({
   className,
   disabled,
 }: Props) {
+  const qc = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(currentUrl ?? null)
   const [busy, setBusy] = useState(false)
@@ -53,6 +55,7 @@ export function ProductImageUploader({
       const row = await uploadProductImage(orgId, productId, file, { isCover: true })
       setPreview(row.url)
       invalidateStorefrontCache()
+      await qc.invalidateQueries({ queryKey: ['products'] })
       onUploaded?.(row.url)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed')

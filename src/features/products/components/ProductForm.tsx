@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { EntityCombobox } from '@/components/entity-combobox'
+import { EntityCombobox, type EntityOption } from '@/components/entity-combobox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,10 +13,13 @@ import {
 } from '@/config/catalog'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { useAuth } from '@/features/auth/auth-session'
+import { useToast } from '@/components/ui/toast'
 import { ProductImageUploader } from './ProductImageUploader'
 import { VariantImageUploader } from './VariantImageUploader'
 import { ProductTypeSelector } from './VariantMatrixBuilder'
 import { VariantMatrixBuilder } from './VariantMatrixBuilder'
+import { QuickCreateNamedEntityDialog } from './QuickCreateNamedEntityDialog'
 import {
   generateVariantMatrixStrict,
   profitPreview,
@@ -31,6 +34,7 @@ import {
   createBrand,
   createCategory,
   createProductAtomic,
+  createSubcategory,
   listVariants,
   searchBrands,
   searchCategories,
@@ -134,6 +138,9 @@ export function ProductForm({
   onSaved,
   onError,
 }: Props) {
+  const { can } = useAuth()
+  const { toast } = useToast()
+  const canActivateOnSave = can(['products.approve', 'products.create'])
   const [form, setForm] = useState<ProductFormState>(() => productToForm(editing))
   const [createdId, setCreatedId] = useState<string | null>(editing?.id ?? null)
   const [sizes, setSizes] = useState<string[]>([])
@@ -142,6 +149,12 @@ export function ProductForm({
   const [pendingVariantImages, setPendingVariantImages] = useState<Record<string, File | null>>({})
   const [categoryCode, setCategoryCode] = useState<string | null>(null)
   const [brandCode, setBrandCode] = useState<string | null>(null)
+  const [categoryLabel, setCategoryLabel] = useState<string | null>(editing?.categories?.name ?? null)
+  const [subcategoryLabel, setSubcategoryLabel] = useState<string | null>(
+    editing?.subcategories?.name ?? null,
+  )
+  const [brandLabel, setBrandLabel] = useState<string | null>(editing?.brands?.name ?? null)
+  const [createDialog, setCreateDialog] = useState<'category' | 'subcategory' | 'brand' | null>(null)
   const [openingStock, setOpeningStock] = useState<OpeningStockInput>({
     branchId: '',
     locationId: '',
@@ -161,6 +174,11 @@ export function ProductForm({
     setColors([])
     setPendingCover(null)
     setPendingVariantImages({})
+    setCategoryLabel(editing?.categories?.name ?? null)
+    setSubcategoryLabel(editing?.subcategories?.name ?? null)
+    setBrandLabel(editing?.brands?.name ?? null)
+    setCategoryCode(null)
+    setBrandCode(null)
     setOpeningStock({
       branchId: '',
       locationId: '',
@@ -193,6 +211,33 @@ export function ProductForm({
     (q: string) => searchSubcategories(q, form.category_id),
     [form.category_id],
   )
+
+  const applyCategory = useCallback((id: string | null, opt?: EntityOption | null) => {
+    setForm((f) => ({ ...f, category_id: id, subcategory_id: null }))
+    setCategoryLabel(opt?.label ?? null)
+    setCategoryCode(opt?.description ?? opt?.meta?.code ?? null)
+    setSubcategoryLabel(null)
+  }, [])
+
+  const applySubcategory = useCallback((id: string | null, opt?: EntityOption | null) => {
+    const parentId = opt?.meta?.categoryId ?? null
+    const parentName = opt?.meta?.categoryName ?? opt?.description ?? null
+    setForm((f) => ({
+      ...f,
+      subcategory_id: id,
+      ...(parentId ? { category_id: parentId } : {}),
+    }))
+    setSubcategoryLabel(opt?.label ?? null)
+    if (parentId) {
+      setCategoryLabel(parentName)
+    }
+  }, [])
+
+  const applyBrand = useCallback((id: string | null, opt?: EntityOption | null) => {
+    setForm((f) => ({ ...f, brand_id: id }))
+    setBrandLabel(opt?.label ?? null)
+    setBrandCode(opt?.description ?? opt?.meta?.code ?? null)
+  }, [])
 
   const variantDrafts = useMemo(() => {
     if (!kindHasVariants(form.productKind)) return []
@@ -277,9 +322,11 @@ export function ProductForm({
             ? 'pending_approval'
             : mode === 'activate'
               ? 'active'
-              : form.publish
+              : mode === 'save' && canActivateOnSave
                 ? 'active'
-                : 'draft'
+                : form.publish
+                  ? 'active'
+                  : 'draft'
 
       let createdVariants: Array<{ id: string; sku?: string; key?: string }> = []
 
@@ -434,9 +481,14 @@ export function ProductForm({
         invalidateStorefrontCache()
       }
 
-      return id!
+      return { id: id!, status }
     },
-    onSuccess: (id) => onSaved(id),
+    onSuccess: ({ id, status }) => {
+      if (status === 'draft') {
+        toast('Saved as draft — activate to show in POS')
+      }
+      onSaved(id)
+    },
     onError: (e: Error) => onError(e.message),
   })
 
@@ -496,20 +548,11 @@ export function ProductForm({
             <Label>Category</Label>
             <EntityCombobox
               value={form.category_id}
-              onChange={(id, opt) => {
-                setForm((f) => ({ ...f, category_id: id, subcategory_id: null }))
-                setCategoryCode(opt?.description ?? null)
-              }}
+              onChange={applyCategory}
               onSearch={onSearchCategories}
               placeholder="Category"
-              onCreate={() => {
-                const name = window.prompt('New category name')
-                if (!name?.trim()) return
-                void createCategory(orgId, { name: name.trim(), is_active: true }).then((row) => {
-                  setForm((f) => ({ ...f, category_id: row.id }))
-                  setCategoryCode(row.code)
-                })
-              }}
+              initialLabel={categoryLabel}
+              onCreate={() => setCreateDialog('category')}
               createLabel="Create new category"
             />
           </div>
@@ -517,10 +560,12 @@ export function ProductForm({
             <Label>Subcategory</Label>
             <EntityCombobox
               value={form.subcategory_id}
-              onChange={(id) => setForm((f) => ({ ...f, subcategory_id: id }))}
+              onChange={applySubcategory}
               onSearch={onSearchSubcategories}
               placeholder="Subcategory"
-              disabled={!form.category_id}
+              initialLabel={subcategoryLabel}
+              onCreate={() => setCreateDialog('subcategory')}
+              createLabel="Create new subcategory"
             />
           </div>
         </div>
@@ -529,20 +574,11 @@ export function ProductForm({
           <Label>Brand</Label>
           <EntityCombobox
             value={form.brand_id}
-            onChange={(id, opt) => {
-              setForm((f) => ({ ...f, brand_id: id }))
-              setBrandCode(opt?.description ?? null)
-            }}
+            onChange={applyBrand}
             onSearch={onSearchBrands}
             placeholder="Brand"
-            onCreate={() => {
-              const name = window.prompt('New brand name')
-              if (!name?.trim()) return
-              void createBrand(orgId, { name: name.trim(), is_active: true }).then((row) => {
-                setForm((f) => ({ ...f, brand_id: row.id }))
-                setBrandCode(row.code)
-              })
-            }}
+            initialLabel={brandLabel}
+            onCreate={() => setCreateDialog('brand')}
             createLabel="Create new brand"
           />
         </div>
@@ -836,6 +872,64 @@ export function ProductForm({
           </Button>
         </div>
       </form>
+
+      <QuickCreateNamedEntityDialog
+        open={createDialog === 'category'}
+        onOpenChange={(open) => !open && setCreateDialog(null)}
+        title="Create category"
+        namePlaceholder="Category name"
+        onSubmit={async ({ name }) => {
+          const row = await createCategory(orgId, { name, is_active: true })
+          return { id: row.id, label: row.name, meta: { code: row.code ?? undefined } }
+        }}
+        onCreated={(opt) => applyCategory(opt.id, opt)}
+        onError={onError}
+      />
+
+      <QuickCreateNamedEntityDialog
+        open={createDialog === 'subcategory'}
+        onOpenChange={(open) => !open && setCreateDialog(null)}
+        title="Create subcategory"
+        namePlaceholder="Subcategory name"
+        parentCategory={{
+          value: form.category_id,
+          onSearch: onSearchCategories,
+          initialLabel: categoryLabel,
+          required: true,
+        }}
+        onSubmit={async ({ name, categoryId }) => {
+          const cats = await searchCategories('')
+          const parent = cats.find((c) => c.id === categoryId)
+          const row = await createSubcategory(orgId, {
+            name,
+            category_id: categoryId!,
+            is_active: true,
+          })
+          return {
+            id: row.id,
+            label: row.name,
+            meta: {
+              categoryId: categoryId ?? undefined,
+              categoryName: parent?.label ?? categoryLabel ?? undefined,
+            },
+          }
+        }}
+        onCreated={(opt) => applySubcategory(opt.id, opt)}
+        onError={onError}
+      />
+
+      <QuickCreateNamedEntityDialog
+        open={createDialog === 'brand'}
+        onOpenChange={(open) => !open && setCreateDialog(null)}
+        title="Create brand"
+        namePlaceholder="Brand name"
+        onSubmit={async ({ name }) => {
+          const row = await createBrand(orgId, { name, is_active: true })
+          return { id: row.id, label: row.name, meta: { code: row.code ?? undefined } }
+        }}
+        onCreated={(opt) => applyBrand(opt.id, opt)}
+        onError={onError}
+      />
     </div>
   )
 }

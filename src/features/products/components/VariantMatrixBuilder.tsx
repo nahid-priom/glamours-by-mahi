@@ -1,5 +1,8 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import {
   COLOR_PRESETS,
   PRODUCT_KIND_LABELS,
@@ -54,6 +57,42 @@ function toggle(list: string[], item: string): string[] {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item]
 }
 
+function CustomValueRow({
+  placeholder,
+  onAdd,
+}: {
+  placeholder: string
+  onAdd: (value: string) => void
+}) {
+  const [value, setValue] = useState('')
+  const commit = () => {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    onAdd(trimmed)
+    setValue('')
+  }
+  return (
+    <div className="mt-2 flex gap-2">
+      <Input
+        value={value}
+        placeholder={placeholder}
+        className="h-8 text-xs"
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            commit()
+          }
+        }}
+      />
+      <Button type="button" size="sm" variant="outline" className="h-8 shrink-0" onClick={commit}>
+        <Plus className="mr-1 h-3.5 w-3.5" />
+        Add
+      </Button>
+    </div>
+  )
+}
+
 export const VariantMatrixBuilder = memo(function VariantMatrixBuilder({
   kind,
   sizes,
@@ -70,6 +109,9 @@ export const VariantMatrixBuilder = memo(function VariantMatrixBuilder({
       : [...SIZE_PRESETS.apparel, ...SIZE_PRESETS.free, ...SIZE_PRESETS.numeric]
 
   const colorPresets = kind === 'cosmetics' ? [...SHADE_PRESETS, ...COLOR_PRESETS] : [...COLOR_PRESETS]
+
+  const customSizes = sizes.filter((s) => !sizePresets.includes(s))
+  const customColors = colors.filter((c) => !colorPresets.includes(c))
 
   return (
     <div className="space-y-4 rounded-xl border border-border bg-[#FAFAF9] p-4">
@@ -92,7 +134,7 @@ export const VariantMatrixBuilder = memo(function VariantMatrixBuilder({
           {kind === 'cosmetics' ? 'Volume' : 'Sizes'}
         </p>
         <div className="flex flex-wrap gap-2">
-          {sizePresets.map((size) => (
+          {[...sizePresets, ...customSizes].map((size) => (
             <button
               key={size}
               type="button"
@@ -108,6 +150,12 @@ export const VariantMatrixBuilder = memo(function VariantMatrixBuilder({
             </button>
           ))}
         </div>
+        <CustomValueRow
+          placeholder={kind === 'cosmetics' ? 'Custom volume…' : 'Custom size…'}
+          onAdd={(v) => {
+            if (!sizes.includes(v)) onSizesChange([...sizes, v])
+          }}
+        />
       </div>
 
       <div>
@@ -115,7 +163,7 @@ export const VariantMatrixBuilder = memo(function VariantMatrixBuilder({
           {kind === 'cosmetics' ? 'Shades' : 'Colors'}
         </p>
         <div className="flex flex-wrap gap-2">
-          {colorPresets.map((color) => (
+          {[...colorPresets, ...customColors].map((color) => (
             <button
               key={color}
               type="button"
@@ -131,6 +179,12 @@ export const VariantMatrixBuilder = memo(function VariantMatrixBuilder({
             </button>
           ))}
         </div>
+        <CustomValueRow
+          placeholder={kind === 'cosmetics' ? 'Custom shade…' : 'Custom color…'}
+          onAdd={(v) => {
+            if (!colors.includes(v)) onColorsChange([...colors, v])
+          }}
+        />
       </div>
     </div>
   )

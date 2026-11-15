@@ -56,6 +56,7 @@ export function ProductEditPage() {
       onSaved={async () => {
         await qc.invalidateQueries({ queryKey: ['products'] })
         await qc.invalidateQueries({ queryKey: queryKeys.product(id) })
+        await qc.invalidateQueries({ queryKey: ['pos-products'] })
         invalidateStorefrontCache()
         toast('Product updated')
         navigate('/products')

@@ -25,6 +25,7 @@ export type EntityOption = {
   id: string
   label: string
   description?: string
+  meta?: Record<string, string | undefined>
 }
 
 export type EntityComboboxProps = {
@@ -38,6 +39,8 @@ export type EntityComboboxProps = {
   createLabel?: string
   emptyMessage?: string
   className?: string
+  /** Hydrate the closed trigger label (e.g. edit form). */
+  initialLabel?: string | null
   'aria-label'?: string
 }
 
@@ -64,6 +67,7 @@ export function EntityCombobox({
   createLabel = 'Create new',
   emptyMessage = 'No results found',
   className,
+  initialLabel = null,
   'aria-label': ariaLabel = 'Search and select',
 }: EntityComboboxProps) {
   const listId = useId()
@@ -73,7 +77,7 @@ export function EntityCombobox({
   const [options, setOptions] = useState<EntityOption[]>([])
   const [loading, setLoading] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(initialLabel)
   const inputRef = useRef<HTMLInputElement>(null)
   const triggerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -155,8 +159,12 @@ export function EntityCombobox({
   }, [query, open, runSearch])
 
   useEffect(() => {
-    if (!value) setSelectedLabel(null)
-  }, [value])
+    if (!value) {
+      setSelectedLabel(null)
+      return
+    }
+    if (initialLabel) setSelectedLabel(initialLabel)
+  }, [value, initialLabel])
 
   useEffect(() => {
     if (!open || isMobile) return

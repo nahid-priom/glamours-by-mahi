@@ -240,6 +240,10 @@ export async function searchSubcategories(
     id: c.id,
     label: c.name,
     description: c.categories?.name,
+    meta: {
+      categoryId: c.category_id ?? c.categories?.id,
+      categoryName: c.categories?.name,
+    },
   }))
 }
 
@@ -1195,19 +1199,21 @@ export async function listProductsWithInventorySummary(
     })
     if (error) throw error
     const row = data as { items?: ProductInventorySummaryRow[]; total?: number; page?: number; page_size?: number }
-    const items = (row.items ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      base_sku: p.base_sku,
-      status: p.status,
-      reorder_level: p.reorder_level,
-      is_active: p.is_active,
-      category_id: p.category_id,
-      totalStock: p.total_stock,
-      variantCount: p.variant_count,
-      categories: p.category_name ? { id: p.category_id ?? '', name: p.category_name } : null,
-      coverUrl: p.cover_path,
-    })) as unknown as ProductListItem[]
+    const items = (await Promise.all(
+      (row.items ?? []).map(async (p) => ({
+        id: p.id,
+        name: p.name,
+        base_sku: p.base_sku,
+        status: p.status,
+        reorder_level: p.reorder_level,
+        is_active: p.is_active,
+        category_id: p.category_id,
+        totalStock: p.total_stock,
+        variantCount: p.variant_count,
+        categories: p.category_name ? { id: p.category_id ?? '', name: p.category_name } : null,
+        coverUrl: await resolveStorageUrl(p.cover_path),
+      })),
+    )) as unknown as ProductListItem[]
     return {
       items,
       total: row.total ?? 0,

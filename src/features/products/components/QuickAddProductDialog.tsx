@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { Button } from '@/components/ui/button'
@@ -8,10 +8,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { kindHasVariants, kindToProductType, type ProductKind } from '@/config/catalog'
 import {
+  createBrand,
+  createCategory,
   createProductAtomic,
   searchBrands,
   searchCategories,
 } from '../repositories/catalog.repository'
+import { QuickCreateNamedEntityDialog } from './QuickCreateNamedEntityDialog'
 import { supabase } from '@/lib/supabase/client'
 
 type UntypedRpc = (
@@ -56,15 +59,24 @@ const INITIAL: FormState = {
 export function QuickAddProductDialog({
   open,
   onOpenChange,
-  orgId: _orgId,
+  orgId,
   branchId,
   onCreated,
   onError,
 }: Props) {
+  const qc = useQueryClient()
   const [form, setForm] = useState<FormState>(INITIAL)
+  const [categoryLabel, setCategoryLabel] = useState<string | null>(null)
+  const [brandLabel, setBrandLabel] = useState<string | null>(null)
+  const [createDialog, setCreateDialog] = useState<'category' | 'brand' | null>(null)
 
   useEffect(() => {
-    if (!open) setForm(INITIAL)
+    if (!open) {
+      setForm(INITIAL)
+      setCategoryLabel(null)
+      setBrandLabel(null)
+      setCreateDialog(null)
+    }
   }, [open])
 
   const mutation = useMutation({
@@ -122,7 +134,9 @@ export function QuickAddProductDialog({
 
       return variantId
     },
-    onSuccess: (variantId) => {
+    onSuccess: async (variantId) => {
+      await qc.invalidateQueries({ queryKey: ['products'] })
+      await qc.invalidateQueries({ queryKey: ['pos-products'] })
       onCreated(variantId)
       onOpenChange(false)
     },
@@ -132,6 +146,7 @@ export function QuickAddProductDialog({
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }))
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -164,18 +179,30 @@ export function QuickAddProductDialog({
               <Label>Category</Label>
               <EntityCombobox
                 value={form.category_id}
-                onChange={(id) => set({ category_id: id })}
+                onChange={(id, opt) => {
+                  set({ category_id: id })
+                  setCategoryLabel(opt?.label ?? null)
+                }}
                 onSearch={searchCategories}
                 placeholder="Category"
+                initialLabel={categoryLabel}
+                onCreate={() => setCreateDialog('category')}
+                createLabel="Create category"
               />
             </div>
             <div className="space-y-1.5">
               <Label>Brand</Label>
               <EntityCombobox
                 value={form.brand_id}
-                onChange={(id) => set({ brand_id: id })}
+                onChange={(id, opt) => {
+                  set({ brand_id: id })
+                  setBrandLabel(opt?.label ?? null)
+                }}
                 onSearch={searchBrands}
                 placeholder="Brand"
+                initialLabel={brandLabel}
+                onCreate={() => setCreateDialog('brand')}
+                createLabel="Create brand"
               />
             </div>
           </div>
@@ -257,5 +284,38 @@ export function QuickAddProductDialog({
         </form>
       </DialogContent>
     </Dialog>
+
+    <QuickCreateNamedEntityDialog
+      open={createDialog === 'category'}
+      onOpenChange={(next) => !next && setCreateDialog(null)}
+      title="Create category"
+      namePlaceholder="Category name"
+      onSubmit={async ({ name }) => {
+        const row = await createCategory(orgId, { name, is_active: true })
+        return { id: row.id, label: row.name }
+      }}
+      onCreated={(opt) => {
+        set({ category_id: opt.id })
+        setCategoryLabel(opt.label)
+      }}
+      onError={onError}
+    />
+
+    <QuickCreateNamedEntityDialog
+      open={createDialog === 'brand'}
+      onOpenChange={(next) => !next && setCreateDialog(null)}
+      title="Create brand"
+      namePlaceholder="Brand name"
+      onSubmit={async ({ name }) => {
+        const row = await createBrand(orgId, { name, is_active: true })
+        return { id: row.id, label: row.name }
+      }}
+      onCreated={(opt) => {
+        set({ brand_id: opt.id })
+        setBrandLabel(opt.label)
+      }}
+      onError={onError}
+    />
+    </>
   )
 }
