@@ -91,7 +91,7 @@ export function usePWAInstall() {
       setInstallStatus('unavailable')
       return 'unavailable'
     }
-  }, [isInstalled])
+  }, [isInstalled, isIOS])
 
   const dismissInstallBanner = useCallback(() => {
     setInstallDismissedAt()

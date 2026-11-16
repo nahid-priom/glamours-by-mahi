@@ -144,11 +144,11 @@ export function ProductCreateWizard({
   useEffect(() => {
     if (isEdit) return
     if (entryMode === 'quick') {
-      setForm((f) => ({ ...f, productKind: 'simple' }))
+      setForm((f) => (f.productKind === 'simple' ? f : { ...f, productKind: 'simple' }))
     } else if (entryMode === 'variant' && form.productKind === 'simple') {
       setForm((f) => ({ ...f, productKind: 'size_color' }))
     }
-  }, [entryMode, isEdit])
+  }, [entryMode, isEdit, form.productKind])
 
   const { data: existingVariants = [] } = useQuery({
     queryKey: queryKeys.variants({ productId: editing?.id, pageSize: 200 }),

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { AppDateField } from '@/components/date-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { queryKeys } from '@/lib/query/keys'
@@ -155,10 +156,10 @@ export function BranchStockMatrix({
           </div>
           <div className="space-y-1.5">
             <Label>Expiry{requiresExpiry ? ' *' : ''}</Label>
-            <Input
-              type="date"
+            <AppDateField
               value={expiresAt}
-              onChange={(e) => onBatchChange(batchNumber, e.target.value)}
+              onChange={(ymd) => onBatchChange(batchNumber, ymd)}
+              clearable
             />
           </div>
         </div>

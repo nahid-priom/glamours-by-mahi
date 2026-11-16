@@ -276,7 +276,8 @@ export function ProductForm({
       }
       return next
     })
-  }, [variantStockSignature])
+    // variantStockSignature is derived from variantDrafts keys — keeps deps stable
+  }, [variantStockSignature, variantDrafts])
 
   const { data: editVariants = [], isLoading: editVariantsLoading } = useQuery({
     queryKey: queryKeys.variants({ productId: editing?.id, pageSize: 200 }),

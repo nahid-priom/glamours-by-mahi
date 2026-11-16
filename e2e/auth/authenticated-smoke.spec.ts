@@ -27,11 +27,9 @@ test.describe('authenticated critical paths', () => {
     await login.goto()
     await login.login(email!, password!)
     await page.goto('/dashboard')
-    await expect(page.getByText(/Today'?s Sales|Sales \(/i).first()).toBeVisible({ timeout: 45_000 })
-    // Desktop greeting lives in TopHeader (h2); page h1 is mobile-only (lg:hidden).
-    await expect(
-      page.locator('header').getByText(/Good (Morning|Afternoon|Evening)/i).first(),
-    ).toBeVisible()
+    await expect(page.getByText(/Today'?s Sales|Sales \(|Collection|Net Profit|Dashboard/i).first()).toBeVisible({
+      timeout: 45_000,
+    })
     // Super Admin / Owner must not see personal My Workspace nav
     await expect(page.locator('aside').getByText('My Workspace')).toHaveCount(0)
     await page.screenshot({

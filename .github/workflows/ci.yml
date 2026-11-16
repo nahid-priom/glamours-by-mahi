@@ -23,12 +23,19 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:coverage
+      - run: npm run qa:routes
       - run: npm run test:edge
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage
           path: coverage
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: route-manifest
+          path: tests/contracts
           if-no-files-found: ignore
 
   build:
@@ -61,19 +68,57 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
+      - run: npm run qa:routes
       - name: Preview + e2e
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+          E2E_BASE_URL: http://127.0.0.1:4173
           CI: 'true'
+          TEST_ENVIRONMENT_ID: ci-preview
+          ALLOW_MUTATING_E2E: 'false'
         run: |
           npx vite preview --host 127.0.0.1 --port 4173 &
           npx --yes wait-on http://127.0.0.1:4173
           npx playwright test --project=desktop
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: playwright-report
-          path: playwright-report
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: ignore
+
+  qa-staging:
+    name: Full QA (staging secrets)
+    runs-on: ubuntu-latest
+    needs: build
+    # Enable via repo variable ENABLE_STAGING_QA=true and configure OWNER_* / TEST_* secrets.
+    if: ${{ vars.ENABLE_STAGING_QA == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run full orchestrator against staging
+        env:
+          OWNER_EMAIL: ${{ secrets.OWNER_EMAIL }}
+          OWNER_PASSWORD: ${{ secrets.OWNER_PASSWORD }}
+          E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+          PLAYWRIGHT_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+          TEST_ENVIRONMENT_ID: ${{ secrets.TEST_ENVIRONMENT_ID }}
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          ALLOW_MUTATING_E2E: ${{ secrets.ALLOW_MUTATING_E2E }}
+          CI: 'true'
+        run: npm run test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-full-report
+          path: test-results
           if-no-files-found: ignore
 
   supabase-sql:
@@ -95,6 +140,7 @@ jobs:
           supabase db query --local --file supabase/tests/rpc/bulk_import_smoke.sql
           supabase db query --local --file supabase/tests/rls/rls_matrix_smoke.sql
           supabase db query --local --file supabase/tests/sql/inventory_wac_outcome_smoke.sql
+          supabase db query --local --file supabase/tests/sql/inventory_ssot_recon_contract_smoke.sql
           supabase db query --local --file supabase/tests/sql/mod_reference_uniqueness_smoke.sql
           supabase db query --local --file supabase/tests/sql/commission_structure_smoke.sql
       - name: Stop local Supabase

@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { useToast } from '@/components/ui/toast'
 import { PWA_BRAND, PWA_INSTALL_BAR_HEIGHT } from '../config/pwa.config'
 import { usePWAInstall } from '../hooks/usePWAInstall'
@@ -19,14 +19,15 @@ export function PWAProvider({ children }: PWAProviderProps) {
   const online = useOnlineStatus()
 
   const installBarHeight = install.showBanner ? PWA_INSTALL_BAR_HEIGHT : 0
+  const installPrompt = install.promptInstall
 
-  const promptInstall = async () => {
-    const result = await install.promptInstall()
+  const promptInstall = useCallback(async () => {
+    const result = await installPrompt()
     if (result === 'accepted') {
       toast(`${PWA_BRAND.shortName} App installed successfully.`)
     }
     return result
-  }
+  }, [installPrompt, toast])
 
   const value = useMemo<PWAContextValue>(
     () => ({
@@ -38,7 +39,7 @@ export function PWAProvider({ children }: PWAProviderProps) {
       applyUpdate: update.applyUpdate,
       postponeUpdate: update.postponeUpdate,
     }),
-    [install, update, online, installBarHeight],
+    [install, update, online, installBarHeight, promptInstall],
   )
 
   return <PWAContext.Provider value={value}>{children}</PWAContext.Provider>

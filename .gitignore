@@ -14,6 +14,14 @@ dist-ssr
 .env
 .env.*
 !.env.example
+!.env.e2e.example
+
+# QA / Playwright outputs
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+coverage/
 
 # Editor directories and files
 .vscode/*

@@ -98,7 +98,8 @@ export function StockLedgerPage() {
   })
 
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE))
-  const items = data?.items ?? []
+  // Prefer stable query reference — avoid `?? []` which allocates every render.
+  const items = data?.items
 
   const syncUrl = useCallback(
     (next: StockLedgerUiFilters, clearProduct = false) => {
@@ -130,7 +131,7 @@ export function StockLedgerPage() {
   const activeCount = countActiveFilters(filters, birthToDate ? null : productId)
 
   const summary = useMemo(() => {
-    if (!birthToDate || items.length === 0) return null
+    if (!birthToDate || !items?.length) return null
     const opening = items.find((r) => r.movement_type === 'opening')
     const netDelta = items.reduce((s, r) => s + Number(r.quantity_delta), 0)
     const last = items[items.length - 1]
@@ -144,7 +145,7 @@ export function StockLedgerPage() {
 
   const headerTitle = birthToDate
     ? filters.variantLabel ||
-      (items[0]
+      (items?.[0]
         ? `${items[0].productName ?? 'Product'}${items[0].variantName ? ` · ${items[0].variantName}` : ''}`
         : 'Variant history')
     : 'Stock ledger'
@@ -160,7 +161,7 @@ export function StockLedgerPage() {
               ? 'Product-scoped immutable movement history.'
               : 'Immutable movement history with advanced filters.'}
         </p>
-        {birthToDate && items[0]?.sku ? (
+        {birthToDate && items?.[0]?.sku ? (
           <p className="mt-0.5 text-xs text-[#9CA3AF]">SKU {items[0].sku}</p>
         ) : null}
       </div>
@@ -224,7 +225,7 @@ export function StockLedgerPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((row) => (
+            {(items ?? []).map((row) => (
               <LedgerRow
                 key={row.id}
                 row={row}
@@ -234,7 +235,7 @@ export function StockLedgerPage() {
             ))}
           </TableBody>
         </Table>
-        {!isLoading && activeBranchId && items.length === 0 ? (
+        {!isLoading && activeBranchId && (items?.length ?? 0) === 0 ? (
           <p className="p-6 text-center text-sm text-[#6B7280]">No ledger entries.</p>
         ) : null}
       </div>

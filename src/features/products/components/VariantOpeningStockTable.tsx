@@ -69,7 +69,8 @@ export function VariantOpeningStockTable({
   )
 
   useEffect(() => {
-    if (!variants.length) {
+    const count = variantSignature ? variantSignature.split('|').filter(Boolean).length : 0
+    if (!count) {
       setVisibleCount(0)
       setIsGenerating(false)
       return
@@ -79,21 +80,21 @@ export function VariantOpeningStockTable({
     setVisibleCount(0)
 
     const timers: ReturnType<typeof setTimeout>[] = []
-    variants.forEach((_, index) => {
+    for (let index = 0; index < count; index++) {
       timers.push(
         setTimeout(() => {
           setVisibleCount(index + 1)
         }, ROW_STAGGER_MS * (index + 1)),
       )
-    })
+    }
     timers.push(
       setTimeout(() => {
         setIsGenerating(false)
-      }, ROW_STAGGER_MS * variants.length + 40),
+      }, ROW_STAGGER_MS * count + 40),
     )
 
     return () => timers.forEach(clearTimeout)
-  }, [variantSignature, variants.length])
+  }, [variantSignature])
 
   const totals = useMemo(() => {
     let totalQty = 0
