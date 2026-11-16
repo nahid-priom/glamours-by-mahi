@@ -27,6 +27,7 @@ import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { listEmployees } from '../repositories/employees.repository'
 import { listSalaryStructures, saveSalaryStructure } from '../repositories/payroll.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function SalaryStructuresPage() {
   const qc = useQueryClient()
@@ -64,7 +65,7 @@ export function SalaryStructuresPage() {
       setEmployeeId('')
       setBasicSalary('')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

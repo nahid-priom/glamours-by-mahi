@@ -30,6 +30,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   createEmployee,
   getEmployeeStats,
@@ -140,7 +141,7 @@ export function EmployeesPage() {
       setEditing(null)
       setForm(empty)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const deleteMutation = useMutation({
@@ -149,7 +150,7 @@ export function EmployeesPage() {
       void qc.invalidateQueries({ queryKey: ['employees'] })
       toast('Employee removed')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   function openCreate() {

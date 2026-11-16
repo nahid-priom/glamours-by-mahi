@@ -41,6 +41,7 @@ import { formatBDT } from '@/lib/format'
 import { FRAUD_LEVELS } from '@/lib/constants'
 import type { Customer, CustomerFilters, CustomerFormInput, CustomerStatus } from './customers.types'
 import type { ActionItem } from '@/components/common/ActionDropdown'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const selectTriggerClass = 'h-11 w-full sm:w-[160px]'
 
@@ -89,7 +90,7 @@ export function CustomersPage() {
       invalidate()
       toast('Customer created successfully')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const updateMutation = useMutation({
@@ -99,7 +100,7 @@ export function CustomersPage() {
       invalidate()
       toast('Customer updated')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const deleteMutation = useMutation({
@@ -128,7 +129,7 @@ export function CustomersPage() {
       setBlacklistTarget(null)
       setBlacklistReason('')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const unblacklistMutation = useMutation({
@@ -137,7 +138,7 @@ export function CustomersPage() {
       invalidate()
       toast('Customer removed from blacklist')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const noteMutation = useMutation({
@@ -148,7 +149,7 @@ export function CustomersPage() {
       toast('Note saved')
       setNoteTarget(null)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const handleFormSubmit = async (data: CustomerFormInput) => {

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { peekDatabase, TransactionError } from '@/database/transaction'
+import { peekDatabase } from '@/database/transaction'
 import { customersService } from '@/services/customers.service'
 import { formatBDT } from '@/lib/format'
 import { useAuth } from '@/features/auth/auth.context'
 import { useToast } from '@/components/ui/toast'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ModuleShell } from './ErpModulePages'
@@ -33,7 +34,7 @@ export function CollectionFormPage() {
       toast('Customer collection received')
       window.location.reload()
     } catch (err) {
-      toast(err instanceof TransactionError ? err.message : 'Collection failed', 'error')
+      toastRpcError(toast, err, 'Collection failed')
     } finally {
       setSaving(false)
     }

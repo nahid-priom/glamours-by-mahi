@@ -11,6 +11,7 @@ import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateInventoryQueries } from '../lib/invalidate-inventory-queries'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   cancelTransfer,
   dispatch,
@@ -55,7 +56,7 @@ export function StockTransferPage() {
       toast('Transfer dispatched')
       invalidate()
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const cancelMutation = useMutation({
@@ -64,7 +65,7 @@ export function StockTransferPage() {
       toast('Transfer cancelled')
       invalidate()
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const receiveMutation = useMutation({
@@ -120,7 +121,7 @@ export function StockTransferPage() {
       setReceiveLines([])
       invalidate()
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const openPartialReceive = async (id: string) => {

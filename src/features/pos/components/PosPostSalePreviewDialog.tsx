@@ -99,7 +99,7 @@ export function PosPostSalePreviewDialog({
               disabled={!saleId}
             >
               <Printer className="h-4 w-4" />
-              Print ({width})
+              POS Invoice
             </Button>
             <Button type="button" variant="outline" asChild disabled={!saleId}>
               <Link to={`/print/sales/${saleId}/a4`} target="_blank" rel="noopener noreferrer">

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { peekDatabase, TransactionError } from '@/database/transaction'
+import { peekDatabase } from '@/database/transaction'
 import { inventoryService } from '@/services/inventory.service'
 import { useAuth } from '@/features/auth/auth.context'
 import { useToast } from '@/components/ui/toast'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ModuleShell } from './ErpModulePages'
@@ -34,7 +35,7 @@ export function TransferNewFormPage() {
       toast('Stock transfer dispatched')
       navigate('/inventory/transfers')
     } catch (err) {
-      toast(err instanceof TransactionError ? err.message : 'Transfer failed', 'error')
+      toastRpcError(toast, err, 'Transfer failed')
     } finally {
       setSaving(false)
     }

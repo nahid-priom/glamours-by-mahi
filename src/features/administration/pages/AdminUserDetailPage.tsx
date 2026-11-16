@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { listAccessibleBranches } from '@/features/inventory/repositories/inventory-valuation.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   getAdminUserDetail,
   listAdminRoles,
@@ -98,7 +99,7 @@ export function AdminUserDetailPage() {
       await qc.invalidateQueries({ queryKey: ['admin-users'] })
       toast('User updated')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const resetMut = useMutation({
@@ -108,7 +109,7 @@ export function AdminUserDetailPage() {
       setConfirmPassword('')
       toast('Password reset successfully')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   if (isLoading) {

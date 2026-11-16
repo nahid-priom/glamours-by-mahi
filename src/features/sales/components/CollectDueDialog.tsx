@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { simpleAccountingRepository } from '@/features/accounting/repositories/simple-accounting.repository'
 import { formatBDT } from '@/lib/format'
-import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
 import {
   NO_PAYMENT_ACCOUNT_MESSAGE,
@@ -122,7 +122,7 @@ export function CollectDueDialog({
           : `col-${Date.now()}`
       onOpenChange(false)
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const payableMethods = payMethods.length ? payMethods : [{ code: 'cash', name: 'Cash' }]

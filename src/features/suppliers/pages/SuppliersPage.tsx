@@ -13,6 +13,7 @@ import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   createSupplier,
   listSuppliers,
@@ -82,7 +83,7 @@ export function SuppliersPage() {
       setEditing(null)
       setForm(empty)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const deleteMutation = useMutation({
@@ -91,7 +92,7 @@ export function SuppliersPage() {
       void qc.invalidateQueries({ queryKey: ['suppliers'] })
       toast('Supplier deleted')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   function openCreate() {

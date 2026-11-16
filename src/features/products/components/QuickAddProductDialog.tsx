@@ -18,6 +18,7 @@ import { invalidateInventoryQueries } from '@/features/inventory/lib/invalidate-
 import { seedInventoryPresence } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { QuickCreateNamedEntityDialog } from './QuickCreateNamedEntityDialog'
 import { supabase } from '@/lib/supabase/client'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
 
 type UntypedRpc = (
   fn: string,
@@ -150,7 +151,7 @@ export function QuickAddProductDialog({
       onCreated(variantId)
       onOpenChange(false)
     },
-    onError: (e: Error) => onError?.(e.message),
+    onError: (e: Error) => onError?.(friendlyRpcError(e)),
   })
 
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }))

@@ -11,6 +11,7 @@ import { listPosCatalogue } from '@/features/pos/repositories/pos.repository'
 import { formatBDT } from '@/lib/format'
 import { getSale, type SaleDetail } from '../repositories/sales.repository'
 import { approveOnlineOrder } from '../repositories/online-orders.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 type SaleDetailView = SaleDetail & {
   order_source?: string | null
@@ -110,7 +111,7 @@ export function ApproveOnlineOrderPage() {
       await qc.invalidateQueries({ queryKey: ['sale', id] })
       navigate('/sales/online-orders')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   if (isLoading) {

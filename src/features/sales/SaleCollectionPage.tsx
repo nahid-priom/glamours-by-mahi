@@ -12,6 +12,7 @@ import { peekDatabase } from '@/database/transaction'
 import { salesService } from '@/services/sales.service'
 import { formatBDT } from '@/lib/format'
 import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function SaleCollectionPage() {
   const { id } = useParams<{ id: string }>()
@@ -52,7 +53,7 @@ export function SaleCollectionPage() {
       toast('Payment received')
       navigate(`/sales/${id}`)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   if (isLoading) return <LoadingSkeleton rows={4} />

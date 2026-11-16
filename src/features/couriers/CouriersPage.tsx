@@ -29,6 +29,7 @@ import { CourierFormDialog } from './CourierFormDialog'
 import { CourierDetailsDrawer } from './CourierDetailsDrawer'
 import { CourierApiConfigDialog } from './CourierApiConfigDialog'
 import type { Courier, CourierFormInput } from './couriers.types'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const connectionVariant = {
   connected: 'success' as const,
@@ -70,21 +71,21 @@ export function CouriersPage() {
   const createMutation = useMutation({
     mutationFn: (data: CourierFormInput) => couriersService.createCourier(data),
     onSuccess: () => { invalidate(); toast('Courier added') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CourierFormInput }) =>
       couriersService.updateCourier(id, data),
     onSuccess: () => { invalidate(); toast('Courier updated') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const apiConfigMutation = useMutation({
     mutationFn: ({ id, config }: { id: string; config: Parameters<typeof couriersService.updateApiConfig>[1] }) =>
       couriersService.updateApiConfig(id, config),
     onSuccess: () => { invalidate(); toast('API settings saved') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const archiveMutation = useMutation({

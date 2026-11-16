@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/toast'
 import { PERMISSIONS } from '@/lib/permissions/catalog'
 import { settingsService } from '@/features/settings/settings.service'
 import type { RoleEntry } from '@/features/settings/settings.types'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 function isLockedRole(role: RoleEntry) {
   const n = role.name.trim().toLowerCase()
@@ -57,7 +58,7 @@ export function AdminPermissionsPage() {
       void qc.invalidateQueries({ queryKey: ['admin-settings-roles'] })
       void qc.invalidateQueries({ queryKey: ['permissions'] })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

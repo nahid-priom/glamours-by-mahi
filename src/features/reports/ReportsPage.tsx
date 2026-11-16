@@ -13,6 +13,7 @@ import { flattenReportCell } from './report-cell.utils'
 import type { ReportFilters, ReportResult, ReportType } from './reports.types'
 import { downloadCsv } from '@/lib/format'
 import { useToast } from '@/components/ui/toast'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const reportCards: { id: ReportType; title: string; description: string }[] = [
   { id: 'orders', title: 'Order Report', description: 'All orders with status breakdown' },
@@ -41,7 +42,7 @@ export function ReportsPage() {
         previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const handleExportCsv = () => {

@@ -23,6 +23,7 @@ import {
   resolvePaymentAccount,
 } from '@/lib/payments/resolve-payment-account'
 import { listPaymentMethods } from '@/features/sales/repositories/sales.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function CustomerDuePage() {
   const { activeBranchId, profile } = useAuth()
@@ -98,7 +99,7 @@ export function CustomerDuePage() {
         branchId: activeBranchId,
       })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

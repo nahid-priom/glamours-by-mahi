@@ -22,6 +22,7 @@ import {
   type Customer,
 } from '../repositories/customers.repository'
 import { supabase } from '@/lib/supabase/client'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 type FormState = {
   name: string
@@ -140,7 +141,7 @@ export function CustomersAdminPage() {
       setEditing(null)
       setForm(empty)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const deleteMutation = useMutation({
@@ -149,7 +150,7 @@ export function CustomersAdminPage() {
       void qc.invalidateQueries({ queryKey: ['customers-admin'] })
       toast('Customer deleted')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   function openCreate() {

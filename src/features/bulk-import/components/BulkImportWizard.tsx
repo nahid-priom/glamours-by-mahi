@@ -15,6 +15,7 @@ import {
 } from '../repositories/import.repository'
 import type { BulkImportAdapter, ImportPreviewRow, ImportWizardStep } from '../types'
 import { ImportPreviewTable } from './ImportPreviewTable'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const CHUNK_SIZE = 10
 const STEPS: ImportWizardStep[] = ['template', 'upload', 'review', 'commit', 'summary']
@@ -64,7 +65,7 @@ export function BulkImportWizard({ adapter }: Props) {
       const enriched = await adapter.enrichMatches(parsed)
       setRows(enriched)
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Match failed', 'error')
+      toastRpcError(toast, e, 'Match failed')
     } finally {
       setMatching(false)
     }

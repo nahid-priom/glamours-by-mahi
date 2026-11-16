@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/toast'
 import { useHeroSlideMutations, useHeroSlides } from '../hooks/useHeroSlides'
 import { heroService } from '../services/hero.service'
 import { HeroSlideCard } from './HeroSlideCard'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function HeroSlideList() {
   const { data: slides = [], isLoading, isError } = useHeroSlides()
@@ -22,7 +23,7 @@ export function HeroSlideList() {
       await mutations.reorder.mutateAsync(next.map((s) => s.id))
       toast('Order saved', 'success')
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Reorder failed', 'error')
+      toastRpcError(toast, e, 'Reorder failed')
     }
   }
 
@@ -117,19 +118,19 @@ export function HeroSlideList() {
                     status: slide.status === 'active' ? 'inactive' : 'active',
                   })
                   .then(() => toast('Status updated', 'success'))
-                  .catch((e: Error) => toast(e.message, 'error'))
+                  .catch((e: Error) => toastRpcError(toast, e))
               }
               onDuplicate={() =>
                 void mutations.duplicate
                   .mutateAsync(slide.id)
                   .then(() => toast('Slide duplicated', 'success'))
-                  .catch((e: Error) => toast(e.message, 'error'))
+                  .catch((e: Error) => toastRpcError(toast, e))
               }
               onArchive={() =>
                 void mutations.archive
                   .mutateAsync(slide.id)
                   .then(() => toast('Slide archived', 'success'))
-                  .catch((e: Error) => toast(e.message, 'error'))
+                  .catch((e: Error) => toastRpcError(toast, e))
               }
             />
           ))}

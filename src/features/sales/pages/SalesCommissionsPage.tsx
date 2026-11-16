@@ -27,6 +27,7 @@ import { useToast } from '@/components/ui/toast'
 import { formatBDT, formatDateShort } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { cn } from '@/lib/utils'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 function employeeName(row: SalesCommissionRow) {
   if (row.employees?.full_name) {
@@ -176,7 +177,7 @@ export function SalesCommissionsPage() {
       toast('Commission approved')
       invalidateCommissionCaches(qc)
     },
-    onError: (e) => toast(e instanceof Error ? e.message : 'Could not approve', 'error'),
+    onError: (e) => toastRpcError(toast, e, 'Could not approve'),
   })
 
   const bulkApprove = useMutation({
@@ -192,7 +193,7 @@ export function SalesCommissionsPage() {
       setBulkOpen(false)
       invalidateCommissionCaches(qc)
     },
-    onError: (e) => toast(e instanceof Error ? e.message : 'Bulk approve failed', 'error'),
+    onError: (e) => toastRpcError(toast, e, 'Bulk approve failed'),
   })
 
   const reject = useMutation({
@@ -205,7 +206,7 @@ export function SalesCommissionsPage() {
       setDetailId(null)
       invalidateCommissionCaches(qc)
     },
-    onError: (e) => toast(e instanceof Error ? e.message : 'Could not reject', 'error'),
+    onError: (e) => toastRpcError(toast, e, 'Could not reject'),
   })
 
   const pay = useMutation({
@@ -215,7 +216,7 @@ export function SalesCommissionsPage() {
       toast('Commission paid')
       invalidateCommissionCaches(qc)
     },
-    onError: (e) => toast(e instanceof Error ? e.message : 'Could not pay', 'error'),
+    onError: (e) => toastRpcError(toast, e, 'Could not pay'),
   })
 
   const defaultAccount = payAccountId || accounts[0]?.id || ''

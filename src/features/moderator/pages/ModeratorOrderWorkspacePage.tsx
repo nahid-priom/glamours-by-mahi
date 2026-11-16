@@ -15,6 +15,7 @@ import { listPosCatalogue } from '@/features/pos/repositories/pos.repository'
 import type { PosVariant } from '@/features/pos/types'
 import { formatBDT } from '@/lib/format'
 import { createStaffOnlineOrder } from '../repositories/moderator.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 type CartLine = {
   variantId: string
@@ -147,7 +148,7 @@ export function ModeratorOrderWorkspacePage() {
       toast(`Order ${res.invoice_no} created`, 'success')
       navigate('/moderator')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

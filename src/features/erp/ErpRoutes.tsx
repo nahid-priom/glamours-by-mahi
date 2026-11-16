@@ -43,6 +43,7 @@ import { erpOrdersService } from '@/services/erp-orders.service'
 import { inventoryService } from '@/services/inventory.service'
 import { useAuth } from '@/features/auth/auth.context'
 import { ERP_DB_KEY } from '@/database/schema'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export {
   SalesPosPage,
@@ -271,7 +272,7 @@ export function HrPayrollPage() {
                         toast('Payroll payment completed')
                         window.location.reload()
                       } catch (e) {
-                        toast(e instanceof Error ? e.message : 'Payment failed', 'error')
+                        toastRpcError(toast, e, 'Payment failed')
                       }
                     }}
                   >
@@ -345,7 +346,7 @@ export function TransfersListPage() {
                     toast('Stock transfer received')
                     window.location.reload()
                   } catch (e) {
-                    toast(e instanceof Error ? e.message : 'Receive failed', 'error')
+                    toastRpcError(toast, e, 'Receive failed')
                   }
                 }}
               >

@@ -14,6 +14,7 @@ import { hasUnresolvedCartItems } from './utils/product-variants'
 import { CheckoutSummary } from './components/CheckoutSummary'
 import { getDefaultAddress, getSession, saveSession, syncProfile } from './account/account.service'
 import type { AccountSession } from './account/account.types'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const checkoutSchema = z.object({
   customer_name: z.string().min(2, 'Name is required'),
@@ -91,7 +92,7 @@ export function CheckoutPage() {
       )
       navigate(`/order-success/${result.primaryOrderId}`)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   if (items.length === 0) {

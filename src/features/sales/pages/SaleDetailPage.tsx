@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function SaleDetailPage() {
   const { id = '' } = useParams()
@@ -53,7 +54,7 @@ export function SaleDetailPage() {
       setCorrectOpen(false)
       setReason('')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   if (isLoading) {

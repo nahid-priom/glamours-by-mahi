@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
-import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { queryKeys } from '@/lib/query/keys'
 import {
   approvePayrollRun,
@@ -36,7 +36,7 @@ export function usePayrollMutations(runId?: string) {
       await invalidate()
       toast(res.idempotent ? 'Payroll run already exists' : 'Payroll created')
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const calculate = useMutation({
@@ -49,7 +49,7 @@ export function usePayrollMutations(runId?: string) {
           : `Payroll calculated for ${res.employee_count} employees`,
       )
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const approve = useMutation({
@@ -59,7 +59,7 @@ export function usePayrollMutations(runId?: string) {
       await invalidate()
       toast('Payroll approved')
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const reject = useMutation({
@@ -69,7 +69,7 @@ export function usePayrollMutations(runId?: string) {
       await invalidate()
       toast('Payroll returned to draft')
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const submitReview = useMutation({
@@ -79,7 +79,7 @@ export function usePayrollMutations(runId?: string) {
       await invalidate()
       toast('Payroll submitted for review')
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const pay = useMutation({
@@ -92,7 +92,7 @@ export function usePayrollMutations(runId?: string) {
           : `Payment recorded — ৳${res.amount_paid.toLocaleString()}`,
       )
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return { create, calculate, submitReview, approve, reject, pay }

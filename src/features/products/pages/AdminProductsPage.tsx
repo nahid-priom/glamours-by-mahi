@@ -43,6 +43,7 @@ import { queryKeys } from '@/lib/query/keys'
 import { formatNumber } from '@/lib/format'
 import { useAuth } from '@/features/auth/auth-session'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 function productToBarcodeItems(product: ProductListItem): BarcodePrintItem[] {
   const variants = (product.product_variants ?? []).filter((v) => !v.deleted_at)
@@ -169,7 +170,7 @@ export function AdminProductsPage() {
       invalidateStorefrontCache()
       toast('Product deleted')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const bulkStatusMutation = useMutation({
@@ -190,7 +191,7 @@ export function AdminProductsPage() {
       invalidateStorefrontCache()
       toast(`${count} product(s) marked ${status}`)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 24))

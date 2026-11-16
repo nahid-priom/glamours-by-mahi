@@ -19,6 +19,7 @@ import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateExpenseCaches } from '@/lib/mutations/party-finance-cache'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 function monthRange() {
   const to = new Date().toISOString().slice(0, 10)
@@ -87,7 +88,7 @@ export function SimpleExpensePage() {
       submitTxnKey.current = null
       await invalidateExpenseCaches(qc)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const voidTxn = useMutation({
@@ -100,7 +101,7 @@ export function SimpleExpensePage() {
       toast('Transaction voided')
       await invalidateExpenseCaches(qc)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

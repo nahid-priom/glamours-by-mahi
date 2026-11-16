@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { formatBDT } from '@/lib/format'
-import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { ExchangeConfirmStep } from '../components/ExchangeConfirmStep'
 import { ExchangeInvoiceStep } from '../components/ExchangeInvoiceStep'
 import { ExchangeReplacementsStep } from '../components/ExchangeReplacementsStep'
@@ -126,7 +126,7 @@ export function ExchangeCreatePage() {
       toast(`Exchange ${res.exchange_no} completed`)
       navigate('/sales/exchanges')
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   function canGoToStep(n: ExchangeStep) {

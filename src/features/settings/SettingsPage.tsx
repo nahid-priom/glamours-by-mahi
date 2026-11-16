@@ -24,6 +24,7 @@ import { RoleFormDialog } from './RoleFormDialog'
 import { ApiSettingsPanel } from './ApiSettingsPanel'
 import { APP_NAME } from '@/lib/constants'
 import type { RoleEntry, RoleFormInput, LabelSize, DefaultPrintType } from './settings.types'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function SettingsPage() {
   const queryClient = useQueryClient()
@@ -52,19 +53,19 @@ export function SettingsPage() {
   const updateCompanyMutation = useMutation({
     mutationFn: settingsService.updateCompany,
     onSuccess: () => { invalidate(); toast('Company profile saved') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const updatePrintMutation = useMutation({
     mutationFn: settingsService.updatePrint,
     onSuccess: () => { invalidate(); toast('Print settings saved') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const updateApiMutation = useMutation({
     mutationFn: settingsService.updateApi,
     onSuccess: () => { invalidate(); toast('API preferences saved') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const createRoleMutation = useMutation({

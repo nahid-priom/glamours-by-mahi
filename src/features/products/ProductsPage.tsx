@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function ProductsPage() {
   const queryClient = useQueryClient()
@@ -57,14 +58,14 @@ export function ProductsPage() {
   const createMutation = useMutation({
     mutationFn: (data: ProductFormInput) => productsService.createProduct(data),
     onSuccess: () => { invalidate(); toast('Product created successfully') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: ProductFormInput }) =>
       productsService.updateProduct(id, data),
     onSuccess: () => { invalidate(); toast('Product updated') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const deleteMutation = useMutation({

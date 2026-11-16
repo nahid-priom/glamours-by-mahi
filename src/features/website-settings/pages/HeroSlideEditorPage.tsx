@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { HeroSlideForm } from '../components/HeroSlideForm'
 import { useHeroSlide, useHeroSlideMutations } from '../hooks/useHeroSlides'
 import type { HeroSlideFormValues } from '../schemas/hero.schema'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function HeroSlideEditorPage() {
   const { id } = useParams()
@@ -26,7 +27,7 @@ export function HeroSlideEditorPage() {
         toast('Slide saved', 'success')
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Save failed', 'error')
+      toastRpcError(toast, e, 'Save failed')
     }
   }
 

@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   commissionsRepository,
   type CommissionOrderSource,
@@ -182,7 +183,7 @@ export function CommissionSettingsPage() {
       form.reset()
       await qc.invalidateQueries({ queryKey: ['commission-rules'] })
     },
-    onError: (e) => toast(e instanceof Error ? e.message : 'Could not save rule', 'error'),
+    onError: (e) => toastRpcError(toast, e, 'Could not save rule'),
   })
 
   const deactivate = useMutation({
@@ -191,7 +192,7 @@ export function CommissionSettingsPage() {
       toast('Rule deactivated')
       await qc.invalidateQueries({ queryKey: ['commission-rules'] })
     },
-    onError: (e) => toast(e instanceof Error ? e.message : 'Could not deactivate rule', 'error'),
+    onError: (e) => toastRpcError(toast, e, 'Could not deactivate rule'),
   })
 
   const activeRules = rules.filter((r) => r.is_active)

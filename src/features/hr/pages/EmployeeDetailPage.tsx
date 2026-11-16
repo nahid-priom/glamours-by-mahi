@@ -19,6 +19,7 @@ import {
   softDeleteEmployee,
   updateEmployee,
 } from '../repositories/employees.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   EmployeeFormFields,
   emptyEmployeeForm,
@@ -194,7 +195,7 @@ export function EmployeeDetailPage() {
       void qc.invalidateQueries({ queryKey: ['employees'] })
       toast('Employee updated')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const remove = useMutation({
@@ -204,7 +205,7 @@ export function EmployeeDetailPage() {
       toast('Employee removed')
       navigate('/hr/employees', { replace: true })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   if (isLoading) {

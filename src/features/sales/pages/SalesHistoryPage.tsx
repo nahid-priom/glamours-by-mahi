@@ -25,6 +25,7 @@ import {
   useSalesKpisQuery,
 } from '../hooks/use-sales-list'
 import { filtersToSearchParams } from '../schemas/sale-filters.schema'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   DEFAULT_VISIBLE_COLUMNS,
   FIXED_COLUMNS,
@@ -98,7 +99,7 @@ export function SalesHistoryPage() {
       await downloadSalesCsv(filters)
       toast('Export downloaded')
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Export failed', 'error')
+      toastRpcError(toast, e, 'Export failed')
     } finally {
       setExporting(false)
     }

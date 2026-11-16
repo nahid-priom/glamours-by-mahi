@@ -13,6 +13,7 @@ import { useAuth } from '@/features/auth/auth-session'
 import { todayYmd } from '@/lib/datetime/bd'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function DailyClosingPage() {
   const { activeBranchId } = useAuth()
@@ -55,7 +56,7 @@ export function DailyClosingPage() {
       toast('Day closed')
       setNotes('')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

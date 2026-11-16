@@ -19,6 +19,7 @@ import { useToast } from '@/components/ui/toast'
 import { formatBDT, formatDateShort } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { listEmployees } from '../repositories/employees.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   approveEmployeeAdvance,
   createEmployeeAdvance,
@@ -66,7 +67,7 @@ export function PayrollAdvancesPage() {
       setReason('')
       void qc.invalidateQueries({ queryKey: queryKeys.employeeAdvances })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const approveMut = useMutation({
@@ -75,7 +76,7 @@ export function PayrollAdvancesPage() {
       toast('Advance approved')
       void qc.invalidateQueries({ queryKey: queryKeys.employeeAdvances })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const disburseMut = useMutation({
@@ -84,7 +85,7 @@ export function PayrollAdvancesPage() {
       toast('Advance disbursed — payroll will recover remaining balance')
       void qc.invalidateQueries({ queryKey: queryKeys.employeeAdvances })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const isLoading = advLoading || loanLoading

@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { cancelExchange, listExchanges } from '../repositories/exchanges.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 function statusVariant(status: string): 'success' | 'danger' | 'warning' | 'info' {
   if (status === 'completed') return 'success'
@@ -37,7 +38,7 @@ export function ExchangesPage() {
       toast('Exchange cancelled')
       await qc.invalidateQueries({ queryKey: ['exchanges'] })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 30))

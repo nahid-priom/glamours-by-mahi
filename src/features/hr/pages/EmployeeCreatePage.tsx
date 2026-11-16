@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import { createEmployee } from '../repositories/employees.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   EmployeeFormFields,
   emptyEmployeeForm,
@@ -49,7 +50,7 @@ export function EmployeeCreatePage() {
       toast('Employee created')
       navigate(`/hr/employees/${row.id}`, { replace: true })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

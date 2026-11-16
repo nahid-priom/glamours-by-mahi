@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { PaymentMethod, SalesChannel } from '@/database/schema'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 interface CartLine {
   productId: string
@@ -189,7 +190,7 @@ export function SalesPosPage() {
       toast('Sale completed successfully')
       navigate(`/sales/${sale.id}`)
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not save sale', 'error')
+      toastRpcError(toast, e, 'Could not save sale')
     } finally {
       setSaving(false)
     }

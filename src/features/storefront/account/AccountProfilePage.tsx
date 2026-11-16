@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAccount } from './account.context'
 import { profileCompletion, syncProfile } from './account.service'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -60,7 +61,7 @@ export function AccountProfilePage() {
       updateSession(next)
       toast('Profile saved successfully')
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Failed to save profile', 'error')
+      toastRpcError(toast, e, 'Failed to save profile')
     }
   }
 

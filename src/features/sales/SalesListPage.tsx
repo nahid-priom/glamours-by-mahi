@@ -16,6 +16,7 @@ import { SalesFiltersBar } from './components/SalesFiltersBar'
 import { SalesTable, COLUMNS, type SaleRowActions } from './components/SalesTable'
 import { SalesMobileCards } from './components/SalesMobileCards'
 import { SalesBulkActions } from './components/SalesBulkActions'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 function openPrint(path: string) {
   window.open(path, '_blank', 'noopener,noreferrer')
@@ -81,7 +82,7 @@ export function SalesListPage() {
       toast('Sale deleted — stock & finance reversed')
       setDeleteTarget(null)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const bulkDeleteMutation = useMutation({
@@ -101,7 +102,7 @@ export function SalesListPage() {
       toast(`Duplicated as ${sale.saleNo}`)
       navigate(`/sales/${sale.id}`)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const toggleSelect = (id: string) => {

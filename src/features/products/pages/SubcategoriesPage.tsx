@@ -10,8 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
-import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { queryKeys } from '@/lib/query/keys'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   createSubcategory,
   listSubcategories,
@@ -79,7 +79,7 @@ export function SubcategoriesPage() {
       setEditing(null)
       setForm(empty)
     },
-    onError: (e: Error) => toast(friendlyRpcError(e, 'Could not save subcategory.'), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e, 'Could not save subcategory.'),
   })
 
   const deleteMutation = useMutation({
@@ -88,7 +88,7 @@ export function SubcategoriesPage() {
       void qc.invalidateQueries({ queryKey: ['subcategories'] })
       toast('Subcategory deleted')
     },
-    onError: (e: Error) => toast(friendlyRpcError(e, 'Could not delete subcategory.'), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e, 'Could not delete subcategory.'),
   })
 
   return (

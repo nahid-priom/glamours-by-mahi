@@ -19,6 +19,7 @@ import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateSupplierPaymentCaches } from '@/lib/mutations/party-finance-cache'
 import { listPaymentMethods } from '@/features/sales/repositories/sales.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   NO_PAYMENT_ACCOUNT_MESSAGE,
   resolvePaymentAccount,
@@ -98,7 +99,7 @@ export function SupplierDuePage() {
         branchId: activeBranchId,
       })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

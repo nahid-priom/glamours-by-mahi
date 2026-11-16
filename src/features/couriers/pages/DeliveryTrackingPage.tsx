@@ -5,6 +5,7 @@ import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import { queryKeys } from '@/lib/query/keys'
 import { useToast } from '@/components/ui/toast'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function DeliveryTrackingPage() {
   const { toast } = useToast()
@@ -28,7 +29,7 @@ export function DeliveryTrackingPage() {
       toast('Parcel marked delivered — COD accounting applied automatically')
       await qc.invalidateQueries({ queryKey: [...queryKeys.couriers] })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const selected = parcels.find((p) => p.id === parcelId)

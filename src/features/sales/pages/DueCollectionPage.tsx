@@ -11,7 +11,7 @@ import { useAuth } from '@/features/auth/auth-session'
 import { simpleAccountingRepository } from '@/features/accounting/repositories/simple-accounting.repository'
 import { queryKeys } from '@/lib/query/keys'
 import { formatBDT } from '@/lib/format'
-import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
 import {
   NO_PAYMENT_ACCOUNT_MESSAGE,
@@ -99,7 +99,7 @@ export function DueCollectionPage() {
           ? crypto.randomUUID()
           : `col-${Date.now()}`
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

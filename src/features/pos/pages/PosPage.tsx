@@ -8,7 +8,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
-import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
 import { queryKeys } from '@/lib/query/keys'
 import { cn } from '@/lib/utils'
@@ -43,6 +42,7 @@ import {
 } from '../repositories/pos.repository'
 import type { PosVariant } from '../types'
 import { usePosCart } from '../use-pos-cart'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 /** Map financial account kind → sale payment method code for RPC. */
 function methodFromAccountKind(kind: AccountKind): string {
@@ -173,7 +173,7 @@ export function PosPage() {
         setMobileCartOpen(true)
       } catch (e) {
         if (!cancelled) {
-          toast(friendlyRpcError(e, 'Could not restore held sale'), 'error')
+          toastRpcError(toast, e, 'Could not restore held sale')
           setSearchParams({}, { replace: true })
         }
       } finally {
@@ -369,7 +369,7 @@ export function PosPage() {
       clientTxnKeyRef.current = crypto.randomUUID()
       refocusBarcode()
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not hold sale', 'error')
+      toastRpcError(toast, e, 'Could not hold sale')
     } finally {
       setBusy(false)
       refocusBarcode()
@@ -454,7 +454,7 @@ export function PosPage() {
       })
       setPreviewOpen(true)
     } catch (e) {
-      toast(friendlyRpcError(e, 'Could not complete sale'), 'error')
+      toastRpcError(toast, e, 'Could not complete sale')
     } finally {
       setBusy(false)
       refocusBarcode()

@@ -31,6 +31,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { useToast } from '@/components/ui/toast'
 import { queryKeys } from '@/lib/query/keys'
 import { cn } from '@/lib/utils'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const statusVariant: Record<string, 'success' | 'default' | 'danger'> = {
   active: 'success',
@@ -83,7 +84,7 @@ export function CourierCompaniesPage() {
       setEditing(null)
       void qc.invalidateQueries({ queryKey: queryKeys.couriers })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const deleteMutation = useMutation({
@@ -93,7 +94,7 @@ export function CourierCompaniesPage() {
       setDeleteTarget(null)
       void qc.invalidateQueries({ queryKey: queryKeys.couriers })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   function openCreate() {

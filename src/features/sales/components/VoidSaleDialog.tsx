@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { voidSale } from '../repositories/sales.repository'
 import { useInvalidateSalesQueries } from '../hooks/use-sales-list'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function VoidSaleDialog({
   saleId,
@@ -33,7 +34,7 @@ export function VoidSaleDialog({
       setNote('')
       setConfirmed(false)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

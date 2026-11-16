@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   executeDataReset,
   previewDataReset,
@@ -53,7 +54,7 @@ export function DataResetSettingsPage() {
   const previewMut = useMutation({
     mutationFn: () => previewDataReset({ reset_level: level }),
     onSuccess: (res) => setPreview(res.summary),
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const executeMut = useMutation({
@@ -70,7 +71,7 @@ export function DataResetSettingsPage() {
       setPreview(null)
       void previewMut.mutate()
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

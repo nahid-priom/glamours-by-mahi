@@ -24,6 +24,7 @@ import { StoreFormDialog } from './StoreFormDialog'
 import { StoreDetailsDrawer } from './StoreDetailsDrawer'
 import type { Store, StoreFormInput, StoreStatus, StoreType } from './stores.types'
 import { cn } from '@/lib/utils'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const selectTriggerClass = 'h-11 w-full sm:w-[160px]'
 
@@ -82,7 +83,7 @@ export function StoresPage() {
       invalidate()
       toast('Store created successfully')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const updateMutation = useMutation({
@@ -92,7 +93,7 @@ export function StoresPage() {
       invalidate()
       toast('Store updated')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const deleteMutation = useMutation({

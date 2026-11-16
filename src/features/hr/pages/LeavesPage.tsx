@@ -30,6 +30,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import { listEmployees } from '../repositories/employees.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   createLeaveRequest,
   getLeaveStats,
@@ -103,7 +104,7 @@ export function LeavesPage() {
       setStartDate('')
       setEndDate('')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const reviewMutation = useMutation({
@@ -114,7 +115,7 @@ export function LeavesPage() {
       void qc.invalidateQueries({ queryKey: queryKeys.leaveStats })
       toast('Leave request updated')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const items = data?.items ?? []

@@ -19,6 +19,7 @@ import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateAccountingMovementCaches } from '@/lib/mutations/party-finance-cache'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 function monthRange() {
   const to = new Date().toISOString().slice(0, 10)
@@ -87,7 +88,7 @@ export function SimpleIncomePage() {
       submitTxnKey.current = null
       await invalidateAccountingMovementCaches(qc)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

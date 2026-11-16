@@ -9,6 +9,7 @@ import {
   KpiCard,
   PageHeader,
 } from '../../components/AccountingUi'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   useReconciliationDryRun,
   useReconciliationReport,
@@ -62,7 +63,7 @@ export function ReconciliationCenterPage() {
         setLastDryRun(result)
         toast(`${label} dry-run complete`, 'success')
       },
-      onError: (e: Error) => toast(e.message, 'error'),
+      onError: (e: Error) => toastRpcError(toast, e),
     })
   }
 

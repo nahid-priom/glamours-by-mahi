@@ -8,7 +8,7 @@ import { useAuth } from '@/features/auth/auth.context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ModuleShell } from '@/features/erp/ErpModulePages'
-import { TransactionError } from '@/database/transaction'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 interface Line {
   productId: string
@@ -90,7 +90,7 @@ export function PurchaseNewFormPage() {
       toast('Purchase saved successfully')
       navigate(`/purchases/${purchase.id}`)
     } catch (err) {
-      toast(err instanceof TransactionError ? err.message : 'Could not save purchase', 'error')
+      toastRpcError(toast, err, 'Could not save purchase')
     } finally {
       setSaving(false)
     }

@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
+import { UserPlus } from 'lucide-react'
 import { purchasesRepository } from '../repositories/purchases.repository'
+import { PurchaseQuickAddSupplierDialog } from '../components/PurchaseQuickAddSupplierDialog'
 import { simpleAccountingRepository } from '@/features/accounting/repositories/simple-accounting.repository'
 import { listPaymentMethods } from '@/features/sales/repositories/sales.repository'
 import { EntityCombobox } from '@/components/entity-combobox'
@@ -12,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
-import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { invalidatePurchaseCompletionCaches } from '@/lib/mutations/party-finance-cache'
 import {
   NO_PAYMENT_ACCOUNT_MESSAGE,
@@ -29,11 +31,13 @@ type Line = {
 }
 
 export function PurchaseNewPage() {
-  const { activeBranchId, profile } = useAuth()
+  const { activeBranchId, profile, can } = useAuth()
   const navigate = useNavigate()
   const { toast } = useToast()
   const qc = useQueryClient()
   const [supplierId, setSupplierId] = useState<string | null>(null)
+  const [supplierLabel, setSupplierLabel] = useState<string | null>(null)
+  const [supplierDialogOpen, setSupplierDialogOpen] = useState(false)
   const [lines, setLines] = useState<Line[]>([])
   const [discount, setDiscount] = useState(0)
   const [tax, setTax] = useState(0)
@@ -41,6 +45,8 @@ export function PurchaseNewPage() {
   const [note, setNote] = useState('')
   const [payAmount, setPayAmount] = useState(0)
   const [payMethod, setPayMethod] = useState('cash')
+
+  const canCreateSupplier = can('suppliers.manage')
 
   const { data: methods = [] } = useQuery({
     queryKey: queryKeys.paymentMethods,
@@ -123,7 +129,7 @@ export function PurchaseNewPage() {
       toast(`Purchase completed successfully${label}`)
       navigate(`/purchases/${res.purchase_id}`)
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (
@@ -138,73 +144,109 @@ export function PurchaseNewPage() {
       ) : null}
 
       <div className="space-y-3 rounded-xl border border-border bg-white p-4">
-        <label className="block text-sm font-medium">
-          Supplier
-          <div className="mt-1">
-            <EntityCombobox
-              value={supplierId}
-              onChange={(id) => setSupplierId(id)}
-              onSearch={purchasesRepository.searchSuppliers}
-              placeholder="Search suppliers…"
-            />
+        <div className="space-y-1">
+          <Label>Supplier</Label>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+            <div className="min-w-0">
+              <EntityCombobox
+                value={supplierId}
+                onChange={(id, option) => {
+                  setSupplierId(id)
+                  setSupplierLabel(option?.label ?? null)
+                }}
+                onSearch={purchasesRepository.searchSuppliers}
+                placeholder="Search suppliers…"
+                initialLabel={supplierLabel}
+                aria-label="Supplier"
+                className="w-full min-w-0"
+              />
+            </div>
+            {canCreateSupplier && profile?.organization_id ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 shrink-0 gap-1 border-[#E11D48]/45 px-2.5 text-[#E11D48] hover:bg-[#FFF1F2]"
+                onClick={() => setSupplierDialogOpen(true)}
+                aria-label="Add Supplier"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span className="text-xs font-semibold">+ Add</span>
+              </Button>
+            ) : null}
           </div>
-        </label>
+        </div>
 
-        <label className="block text-sm font-medium">
-          Add variant
-          <div className="mt-1">
-            <EntityCombobox
-              value={null}
-              onChange={(id, option) => {
-                if (!id || !option) return
-                const unitCost =
-                  'unitCost' in option && typeof (option as { unitCost?: number }).unitCost === 'number'
-                    ? (option as { unitCost: number }).unitCost
-                    : 0
-                setLines((prev) => [
-                  ...prev,
-                  {
-                    variantId: id,
-                    label: option.label,
-                    qty: 1,
-                    unitCost,
-                    lineDiscount: 0,
-                  },
-                ])
-              }}
-              onSearch={async (q) => {
-                const rows = await purchasesRepository.searchVariants(q)
-                return rows.map((r) => ({ ...r, unitCost: r.unitCost }))
-              }}
-              placeholder="Search products…"
-              allowClear={false}
-            />
-          </div>
-        </label>
+        <div className="space-y-1">
+          <Label>Add variant</Label>
+          <EntityCombobox
+            value={null}
+            onChange={(id, option) => {
+              if (!id || !option) return
+              const unitCost =
+                'unitCost' in option && typeof (option as { unitCost?: number }).unitCost === 'number'
+                  ? (option as { unitCost: number }).unitCost
+                  : 0
+              setLines((prev) => [
+                ...prev,
+                {
+                  variantId: id,
+                  label: option.label,
+                  qty: 1,
+                  unitCost,
+                  lineDiscount: 0,
+                },
+              ])
+            }}
+            onSearch={async (q) => {
+              const rows = await purchasesRepository.searchVariants(q)
+              return rows.map((r) => ({ ...r, unitCost: r.unitCost }))
+            }}
+            placeholder="Search products…"
+            allowClear={false}
+            aria-label="Add variant"
+          />
+        </div>
 
         <ul className="space-y-2">
           {lines.map((line, idx) => (
-            <li key={`${line.variantId}-${idx}`} className="grid gap-2 rounded-lg border p-2 sm:grid-cols-5">
-              <p className="sm:col-span-2 truncate text-sm font-medium">{line.label}</p>
-              <Input
-                type="number"
-                value={line.qty}
-                onChange={(e) => {
-                  const next = [...lines]
-                  next[idx] = { ...line, qty: Number(e.target.value) || 0 }
-                  setLines(next)
-                }}
-              />
-              <Input
-                type="number"
-                value={line.unitCost}
-                onChange={(e) => {
-                  const next = [...lines]
-                  next[idx] = { ...line, unitCost: Number(e.target.value) || 0 }
-                  setLines(next)
-                }}
-              />
-              <Button variant="ghost" size="sm" onClick={() => setLines(lines.filter((_, i) => i !== idx))}>
+            <li key={`${line.variantId}-${idx}`} className="grid gap-2 rounded-lg border p-2 sm:grid-cols-5 sm:items-end">
+              <p className="sm:col-span-2 truncate text-sm font-medium sm:pb-2">{line.label}</p>
+              <div className="space-y-1">
+                <Label htmlFor={`purchase-line-qty-${idx}`} className="text-xs text-text-muted">
+                  Qty
+                </Label>
+                <Input
+                  id={`purchase-line-qty-${idx}`}
+                  type="number"
+                  value={line.qty}
+                  onChange={(e) => {
+                    const next = [...lines]
+                    next[idx] = { ...line, qty: Number(e.target.value) || 0 }
+                    setLines(next)
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`purchase-line-cost-${idx}`} className="text-xs text-text-muted">
+                  Cost
+                </Label>
+                <Input
+                  id={`purchase-line-cost-${idx}`}
+                  type="number"
+                  value={line.unitCost}
+                  onChange={(e) => {
+                    const next = [...lines]
+                    next[idx] = { ...line, unitCost: Number(e.target.value) || 0 }
+                    setLines(next)
+                  }}
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="sm:mb-0.5"
+                onClick={() => setLines(lines.filter((_, i) => i !== idx))}
+              >
                 Remove
               </Button>
             </li>
@@ -212,37 +254,76 @@ export function PurchaseNewPage() {
         </ul>
 
         <div className="grid gap-2 sm:grid-cols-3">
-          <Input type="number" placeholder="Discount" value={discount || ''} onChange={(e) => setDiscount(Number(e.target.value) || 0)} />
-          <Input type="number" placeholder="Tax" value={tax || ''} onChange={(e) => setTax(Number(e.target.value) || 0)} />
-          <Input type="number" placeholder="Shipping" value={shipping || ''} onChange={(e) => setShipping(Number(e.target.value) || 0)} />
+          <div className="space-y-1">
+            <Label htmlFor="purchase-discount">Discount</Label>
+            <Input
+              id="purchase-discount"
+              type="number"
+              value={discount || ''}
+              onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="purchase-tax">Tax</Label>
+            <Input
+              id="purchase-tax"
+              type="number"
+              value={tax || ''}
+              onChange={(e) => setTax(Number(e.target.value) || 0)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="purchase-shipping">Shipping</Label>
+            <Input
+              id="purchase-shipping"
+              type="number"
+              value={shipping || ''}
+              onChange={(e) => setShipping(Number(e.target.value) || 0)}
+            />
+          </div>
         </div>
-        <Input placeholder="Note" value={note} onChange={(e) => setNote(e.target.value)} />
+
+        <div className="space-y-1">
+          <Label htmlFor="purchase-note">Note</Label>
+          <Input
+            id="purchase-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          <Input
-            type="number"
-            placeholder="Pay now"
-            value={payAmount || ''}
-            onChange={(e) => setPayAmount(Number(e.target.value) || 0)}
-          />
-          <select
-            className="h-9 rounded-md border border-border bg-white px-2 text-sm"
-            value={payMethod}
-            onChange={(e) => setPayMethod(e.target.value)}
-          >
-            {(payMethods.length
-              ? payMethods
-              : [
-                  { code: 'cash', name: 'Cash' },
-                  { code: 'bank', name: 'Bank' },
-                ]
-            ).map((m) => (
-              <option key={m.code} value={m.code}>
-                {m.name}
-              </option>
-            ))}
-            <option value="due">Due</option>
-          </select>
+          <div className="space-y-1">
+            <Label htmlFor="purchase-pay-now">Pay now</Label>
+            <Input
+              id="purchase-pay-now"
+              type="number"
+              value={payAmount || ''}
+              onChange={(e) => setPayAmount(Number(e.target.value) || 0)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="purchase-pay-method">Payment method</Label>
+            <select
+              id="purchase-pay-method"
+              className="h-9 w-full rounded-md border border-border bg-white px-2 text-sm"
+              value={payMethod}
+              onChange={(e) => setPayMethod(e.target.value)}
+            >
+              {(payMethods.length
+                ? payMethods
+                : [
+                    { code: 'cash', name: 'Cash' },
+                    { code: 'bank', name: 'Bank' },
+                  ]
+              ).map((m) => (
+                <option key={m.code} value={m.code}>
+                  {m.name}
+                </option>
+              ))}
+              <option value="due">Due</option>
+            </select>
+          </div>
         </div>
 
         {payAmount > 0 && payMethod !== 'due' ? (
@@ -280,6 +361,21 @@ export function PurchaseNewPage() {
           </Button>
         </PermissionGate>
       </div>
+
+      {canCreateSupplier && profile?.organization_id ? (
+        <PurchaseQuickAddSupplierDialog
+          open={supplierDialogOpen}
+          onOpenChange={setSupplierDialogOpen}
+          organizationId={profile.organization_id}
+          branchId={activeBranchId}
+          onCreated={(supplier) => {
+            setSupplierId(supplier.id)
+            setSupplierLabel(supplier.name)
+            void qc.invalidateQueries({ queryKey: ['suppliers'] })
+            toast('Supplier created')
+          }}
+        />
+      ) : null}
     </div>
   )
 }

@@ -9,7 +9,7 @@ import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
-import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
 import { supabase } from '@/lib/supabase/client'
@@ -143,7 +143,7 @@ export function SaleReturnPage() {
       toast('Sale return completed')
       navigate(`/sales/${id}`)
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   function updateLine(saleItemId: string, patch: Partial<ReturnDraft>) {

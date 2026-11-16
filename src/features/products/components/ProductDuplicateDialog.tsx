@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { duplicateProduct, type ProductListItem } from '../repositories/catalog.repository'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
 
 type Props = {
   open: boolean
@@ -46,7 +47,7 @@ export function ProductDuplicateDialog({
       onDuplicated(productId)
       onOpenChange(false)
     },
-    onError: (e: Error) => onError?.(e.message),
+    onError: (e: Error) => onError?.(friendlyRpcError(e)),
   })
 
   return (

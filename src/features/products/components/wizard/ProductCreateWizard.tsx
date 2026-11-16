@@ -13,6 +13,7 @@ import {
   kindToProductType,
   type ProductKind,
 } from '@/config/catalog'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { formatBDT } from '@/lib/format'
 import { useAuth } from '@/features/auth/auth-session'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
@@ -596,7 +597,7 @@ export function ProductCreateWizard({
       if (isEdit) onSaved?.(payload.productId)
       else onCreated?.(payload.productId)
     },
-    onError: (e: Error) => onError(e.message),
+    onError: (e: Error) => onError(friendlyRpcError(e)),
   })
 
   if (success) {

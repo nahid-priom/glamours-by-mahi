@@ -27,6 +27,7 @@ import { formatBDT, formatDateShort } from '@/lib/format'
 import { MOCK_STORES } from '@/lib/mock-data'
 import type { Invoice, InvoiceStatus } from './invoices.types'
 import { cn } from '@/lib/utils'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const statusVariant: Record<InvoiceStatus, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
   draft: 'default',
@@ -75,13 +76,13 @@ export function InvoicesPage() {
   const markPaidMutation = useMutation({
     mutationFn: (id: string) => invoicesService.markPaid(id),
     onSuccess: () => { invalidate(); toast('Invoice marked as paid') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const voidMutation = useMutation({
     mutationFn: (id: string) => invoicesService.void(id),
     onSuccess: () => { invalidate(); toast('Invoice voided'); setVoidTarget(null) },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const archiveMutation = useMutation({

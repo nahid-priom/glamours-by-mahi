@@ -16,6 +16,7 @@ import { findVariantByBarcodeExact } from '@/features/pos/repositories/pos.repos
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { useInvalidateSalesQueries } from '../hooks/use-sales-list'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   editSale,
   getSale,
@@ -252,7 +253,7 @@ export function SaleEditPage() {
       }
       setBarcode('')
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Lookup failed', 'error')
+      toastRpcError(toast, e, 'Lookup failed')
     } finally {
       setScanning(false)
     }

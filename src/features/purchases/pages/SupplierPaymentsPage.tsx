@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
-import { friendlyRpcError } from '@/lib/errors/rpc-error'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { invalidateSupplierPaymentCaches } from '@/lib/mutations/party-finance-cache'
 import {
   NO_PAYMENT_ACCOUNT_MESSAGE,
@@ -166,7 +166,7 @@ export function SupplierPaymentsPage() {
           ? crypto.randomUUID()
           : `spay-${Date.now()}`
     },
-    onError: (e: Error) => toast(friendlyRpcError(e), 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   function handleSubmit() {

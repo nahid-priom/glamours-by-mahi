@@ -20,6 +20,7 @@ import { customersService } from '@/features/customers/customers.service'
 import type { FraudRule, FraudRuleFormInput, HybridFraudResult } from './fraud.types'
 import type { Customer } from '@/features/customers/customers.types'
 import { cn } from '@/lib/utils'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 const severityVariant = {
   low: 'default' as const,
@@ -79,14 +80,14 @@ export function FraudPage() {
   const createRuleMutation = useMutation({
     mutationFn: (data: FraudRuleFormInput) => fraudService.createRule(data),
     onSuccess: () => { invalidate(); toast('Fraud rule created') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const updateRuleMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: FraudRuleFormInput }) =>
       fraudService.updateRule(id, data),
     onSuccess: () => { invalidate(); toast('Fraud rule updated') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const archiveRuleMutation = useMutation({
@@ -106,7 +107,7 @@ export function FraudPage() {
         ? fraudService.blockCustomer(id, reason!)
         : fraudService.unblockCustomer(id),
     onSuccess: () => { invalidate(); toast('Customer updated') },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const handleCheck = async () => {
@@ -117,7 +118,7 @@ export function FraudPage() {
       setCheckResult(result)
       invalidate()
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Check failed', 'error')
+      toastRpcError(toast, e, 'Check failed')
     } finally {
       setChecking(false)
     }

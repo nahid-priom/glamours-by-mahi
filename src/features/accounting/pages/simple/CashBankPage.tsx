@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   invalidateAccountingMovementCaches,
   invalidateExpenseCaches,
@@ -115,7 +116,7 @@ export function CashBankPage() {
         await invalidateAccountingMovementCaches(qc)
       }
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const mutateAdd = useMutation({
@@ -140,7 +141,7 @@ export function CashBankPage() {
       await qc.invalidateQueries({ queryKey: queryKeys.paymentMethods })
       await qc.invalidateQueries({ queryKey: queryKeys.posPaymentMethods })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const openMove = (m: DialogMode, id?: string) => {

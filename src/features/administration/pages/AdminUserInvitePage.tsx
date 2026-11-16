@@ -10,6 +10,7 @@ import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { listAccessibleBranches } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { listEmployees } from '@/features/hr/repositories/employees.repository'
 import { createAdminUser, listAdminRoles } from '../repositories/administration.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function AdminUserInvitePage() {
   const navigate = useNavigate()
@@ -126,7 +127,7 @@ export function AdminUserInvitePage() {
       toast(`User created — login with username “${res.username}”`)
       navigate('/administration/users')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

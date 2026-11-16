@@ -25,6 +25,7 @@ import { salesService } from '@/services/sales.service'
 import { formatBDT, formatDateShort, formatDateTime } from '@/lib/format'
 import { SaleStatusBadge } from './components/SaleStatusBadge'
 import { useState } from 'react'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 function openPrint(path: string) {
   window.open(path, '_blank', 'noopener,noreferrer')
@@ -51,7 +52,7 @@ export function SaleDetailsPage() {
       toast('Sale deleted')
       navigate('/sales')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const duplicateMutation = useMutation({
@@ -61,7 +62,7 @@ export function SaleDetailsPage() {
       toast(`Duplicated as ${sale.saleNo}`)
       navigate(`/sales/${sale.id}`)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   if (isLoading) return <LoadingSkeleton rows={8} />

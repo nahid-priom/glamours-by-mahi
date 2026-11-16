@@ -11,6 +11,7 @@ import {
   kindToProductType,
   type ProductKind,
 } from '@/config/catalog'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { useAuth } from '@/features/auth/auth-session'
@@ -527,7 +528,7 @@ export function ProductForm({
       }
       onSaved(id)
     },
-    onError: (e: Error) => onError(e.message),
+    onError: (e: Error) => onError(friendlyRpcError(e)),
   })
 
   return (

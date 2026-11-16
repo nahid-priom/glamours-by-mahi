@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateInventoryQueries } from '../lib/invalidate-inventory-queries'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   createTransfer,
   listStockLocations,
@@ -86,7 +87,7 @@ export function TransferFormPage() {
       toast('Stock transfer created')
       navigate('/inventory/transfers')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

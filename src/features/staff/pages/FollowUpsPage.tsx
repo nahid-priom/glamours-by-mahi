@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/toast'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { searchCustomers } from '@/features/customers/repositories/customers.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   completeStaffFollowUp,
   listStaffFollowUps,
@@ -44,7 +45,7 @@ export function FollowUpsPage() {
       await qc.invalidateQueries({ queryKey: ['staff-follow-ups'] })
       await qc.invalidateQueries({ queryKey: ['staff-dashboard'] })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const completeMut = useMutation({
@@ -54,7 +55,7 @@ export function FollowUpsPage() {
       await qc.invalidateQueries({ queryKey: ['staff-follow-ups'] })
       await qc.invalidateQueries({ queryKey: ['staff-dashboard'] })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (

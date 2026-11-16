@@ -13,6 +13,7 @@ import { listAdminUsers } from '../repositories/administration.repository'
 import { assignStaffTarget, listStaffTargets } from '@/features/staff/repositories/staff.repository'
 import { queryKeys } from '@/lib/query/keys'
 import { supabase } from '@/lib/supabase/client'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function AdminTargetsPage() {
   const { toast } = useToast()
@@ -67,7 +68,7 @@ export function AdminTargetsPage() {
       void qc.invalidateQueries({ queryKey: ['my-staff-targets-history'] })
       void qc.invalidateQueries({ queryKey: ['employee-targets'] })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const items = history?.items ?? []

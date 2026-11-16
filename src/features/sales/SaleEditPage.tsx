@@ -13,6 +13,7 @@ import { peekDatabase } from '@/database/transaction'
 import { salesService } from '@/services/sales.service'
 import { formatBDT } from '@/lib/format'
 import type { PaymentMethod, SalesChannel } from '@/database/schema'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 interface EditLine {
   productId: string
@@ -113,7 +114,7 @@ export function SaleEditPage() {
       toast('Sale updated — previous impacts reversed safely')
       navigate(`/sales/${updated.id}`)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   if (isLoading) return <LoadingSkeleton rows={8} />

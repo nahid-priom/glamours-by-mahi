@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   listVariants,
   searchProducts,
@@ -66,7 +67,7 @@ export function VariantsPage() {
       setEditing(null)
       setForm(null)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 50))

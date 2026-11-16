@@ -17,6 +17,7 @@ import { formatBDT } from '@/lib/format'
 import { methodCodeToAccountKind } from '@/lib/payments/resolve-payment-account'
 import { queryKeys } from '@/lib/query/keys'
 import { listPaymentMethods } from '@/features/sales/repositories/sales.repository'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 
 export function AccountSettingsPage() {
   const { profile, activeBranchId } = useAuth()
@@ -77,7 +78,7 @@ export function AccountSettingsPage() {
       toast('Settings saved')
       await qc.invalidateQueries({ queryKey: queryKeys.accounts })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const addAccount = useMutation({
@@ -100,7 +101,7 @@ export function AccountSettingsPage() {
       await qc.invalidateQueries({ queryKey: queryKeys.accounts })
       await qc.invalidateQueries({ queryKey: queryKeys.paymentMethods })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const linkMethod = useMutation({
@@ -111,7 +112,7 @@ export function AccountSettingsPage() {
       await qc.invalidateQueries({ queryKey: queryKeys.paymentMethods })
       await qc.invalidateQueries({ queryKey: queryKeys.posPaymentMethods })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   const toggleActive = useMutation({
@@ -120,7 +121,7 @@ export function AccountSettingsPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.accounts })
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toastRpcError(toast, e),
   })
 
   return (
