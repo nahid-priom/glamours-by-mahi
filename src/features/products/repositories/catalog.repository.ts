@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client'
+import { isUniqueViolation } from '@/lib/errors/unique-violation'
 import type { Tables, TablesInsert, TablesUpdate } from '@/types/database'
 import type { EntityOption } from '@/components/entity-combobox'
 
@@ -160,17 +161,45 @@ export async function getCategoryProductCounts(): Promise<{
   return { total: rows.length, uncategorized, categories }
 }
 
+/** Escape ILIKE wildcards for exact case-insensitive match. */
+function exactIlike(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
+async function findActiveCategoryByName(orgId: string, name: string) {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('organization_id', orgId)
+    .is('deleted_at', null)
+    .ilike('name', exactIlike(name))
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export async function createCategory(
   orgId: string,
   input: Pick<TablesInsert<'categories'>, 'name' | 'code' | 'description' | 'sort_order' | 'is_active'>,
 ) {
-  const { data, error } = await supabase
-    .from('categories')
-    .insert({ ...input, organization_id: orgId })
-    .select()
-    .single()
-  if (error) throw error
-  return data
+  const name = input.name.trim()
+  if (!name) throw new Error('Category name is required.')
+
+  const prior = await findActiveCategoryByName(orgId, name)
+  if (prior) return prior
+
+  const payload = { ...input, name, organization_id: orgId }
+  const { data, error } = await supabase.from('categories').insert(payload).select().single()
+  if (!error) return data
+
+  // Race: another session inserted first
+  if (isUniqueViolation(error)) {
+    const existing = await findActiveCategoryByName(orgId, name)
+    if (existing) return existing
+    throw new Error('A category with this name or code already exists.')
+  }
+  throw error
 }
 
 export async function updateCategory(id: string, input: TablesUpdate<'categories'>) {
@@ -247,6 +276,24 @@ export async function searchSubcategories(
   }))
 }
 
+async function findActiveSubcategoryByName(
+  orgId: string,
+  name: string,
+  categoryId?: string | null,
+) {
+  let q = supabase
+    .from('subcategories')
+    .select('*')
+    .eq('organization_id', orgId)
+    .is('deleted_at', null)
+    .ilike('name', exactIlike(name))
+    .limit(1)
+  if (categoryId) q = q.eq('category_id', categoryId)
+  const { data, error } = await q.maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export async function createSubcategory(
   orgId: string,
   input: Pick<
@@ -254,13 +301,22 @@ export async function createSubcategory(
     'category_id' | 'name' | 'code' | 'description' | 'sort_order' | 'is_active'
   >,
 ) {
-  const { data, error } = await supabase
-    .from('subcategories')
-    .insert({ ...input, organization_id: orgId })
-    .select()
-    .single()
-  if (error) throw error
-  return data
+  const name = input.name.trim()
+  if (!name) throw new Error('Subcategory name is required.')
+
+  const prior = await findActiveSubcategoryByName(orgId, name, input.category_id)
+  if (prior) return prior
+
+  const payload = { ...input, name, organization_id: orgId }
+  const { data, error } = await supabase.from('subcategories').insert(payload).select().single()
+  if (!error) return data
+
+  if (isUniqueViolation(error)) {
+    const existing = await findActiveSubcategoryByName(orgId, name, input.category_id)
+    if (existing) return existing
+    throw new Error('A subcategory with this name or code already exists.')
+  }
+  throw error
 }
 
 export async function updateSubcategory(id: string, input: TablesUpdate<'subcategories'>) {
@@ -311,17 +367,39 @@ export async function searchBrands(query: string): Promise<EntityOption[]> {
   return items.map((b) => ({ id: b.id, label: b.name, description: b.code ?? undefined }))
 }
 
+async function findActiveBrandByName(orgId: string, name: string) {
+  const { data, error } = await supabase
+    .from('brands')
+    .select('*')
+    .eq('organization_id', orgId)
+    .is('deleted_at', null)
+    .ilike('name', exactIlike(name))
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export async function createBrand(
   orgId: string,
   input: Pick<TablesInsert<'brands'>, 'name' | 'code' | 'description' | 'is_active'>,
 ) {
-  const { data, error } = await supabase
-    .from('brands')
-    .insert({ ...input, organization_id: orgId })
-    .select()
-    .single()
-  if (error) throw error
-  return data
+  const name = input.name.trim()
+  if (!name) throw new Error('Brand name is required.')
+
+  const prior = await findActiveBrandByName(orgId, name)
+  if (prior) return prior
+
+  const payload = { ...input, name, organization_id: orgId }
+  const { data, error } = await supabase.from('brands').insert(payload).select().single()
+  if (!error) return data
+
+  if (isUniqueViolation(error)) {
+    const existing = await findActiveBrandByName(orgId, name)
+    if (existing) return existing
+    throw new Error('A brand with this name or code already exists.')
+  }
+  throw error
 }
 
 export async function updateBrand(id: string, input: TablesUpdate<'brands'>) {

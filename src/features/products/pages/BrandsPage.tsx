@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { queryKeys } from '@/lib/query/keys'
 import {
   createBrand,
@@ -55,7 +56,7 @@ export function BrandsPage() {
       setEditing(null)
       setForm(empty)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toast(friendlyRpcError(e, 'Could not save brand.'), 'error'),
   })
 
   const deleteMutation = useMutation({
@@ -65,7 +66,7 @@ export function BrandsPage() {
       void qc.invalidateQueries({ queryKey: ['products'] })
       toast('Brand deleted')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toast(friendlyRpcError(e, 'Could not delete brand.'), 'error'),
   })
 
   return (

@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { EntityCombobox, type EntityOption } from '@/components/entity-combobox'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
 
 export type QuickCreateNamedEntityDialogProps = {
   open: boolean
@@ -78,7 +79,7 @@ export function QuickCreateNamedEntityDialog({
       })
       onOpenChange(false)
     } catch (e) {
-      onError?.(e instanceof Error ? e.message : 'Could not create')
+      onError?.(friendlyRpcError(e, 'Could not create. Please try a different name.'))
     } finally {
       setBusy(false)
     }

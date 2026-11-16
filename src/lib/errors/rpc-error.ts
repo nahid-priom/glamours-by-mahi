@@ -17,6 +17,22 @@ const FRIENDLY_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
   { pattern: /no access to branch/i, message: 'You do not have access to this branch.' },
   { pattern: /insufficient stock/i, message: 'Insufficient stock for one or more items.' },
   { pattern: /already been completed|idempotent/i, message: 'This transaction has already been completed.' },
+  {
+    pattern: /category with this name or code already exists/i,
+    message: 'A category with this name or code already exists.',
+  },
+  {
+    pattern: /subcategory with this name or code already exists/i,
+    message: 'A subcategory with this name or code already exists.',
+  },
+  {
+    pattern: /brand with this name or code already exists/i,
+    message: 'A brand with this name or code already exists.',
+  },
+  {
+    pattern: /duplicate key|unique constraint|categories_org_name|categories_org_code/i,
+    message: 'A category with this name or code already exists.',
+  },
 ]
 
 export function friendlyRpcError(error: unknown, fallback = 'Something went wrong. Please try again.'): string {

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
+import { friendlyRpcError } from '@/lib/errors/rpc-error'
 import { queryKeys } from '@/lib/query/keys'
 import {
   createCategory,
@@ -58,7 +59,7 @@ export function CategoriesPage() {
       setEditing(null)
       setForm(empty)
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toast(friendlyRpcError(e, 'Could not save category.'), 'error'),
   })
 
   const deleteMutation = useMutation({
@@ -69,7 +70,7 @@ export function CategoriesPage() {
       void qc.invalidateQueries({ queryKey: ['products'] })
       toast('Category deleted')
     },
-    onError: (e: Error) => toast(e.message, 'error'),
+    onError: (e: Error) => toast(friendlyRpcError(e, 'Could not delete category.'), 'error'),
   })
 
   function openCreate() {
