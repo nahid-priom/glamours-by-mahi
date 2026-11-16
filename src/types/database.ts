@@ -9174,6 +9174,10 @@ export type Database = {
         Args: { reason: string; txn_id: string }
         Returns: string
       }
+      void_purchase_return: {
+        Args: { reason: string; return_id: string }
+        Returns: Json
+      }
       void_sale: { Args: { reason: string; sale_id: string }; Returns: Json }
       write_audit_log: {
         Args: {

@@ -133,6 +133,26 @@ async function listPurchaseReturns(limit = 100) {
   return data ?? []
 }
 
+async function getPurchaseReturn(id: string) {
+  const { data, error } = await supabase
+    .from('purchase_returns')
+    .select(
+      `
+      id, return_no, status, total, reason, created_at, supplier_id, purchase_id, branch_id,
+      suppliers(name),
+      purchase_return_items(
+        id, purchase_item_id, variant_id, qty, unit_cost, line_total,
+        product_variants(sku, name, products(name))
+      )
+    `,
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 async function createPurchaseReturn(input: {
   organization_id: string
   branch_id: string
@@ -161,6 +181,22 @@ async function createPurchaseReturn(input: {
   })
   if (error) throw error
   return data
+}
+
+async function voidPurchaseReturn(returnId: string, reason: string) {
+  const { data, error } = await supabase.rpc('void_purchase_return', {
+    return_id: returnId,
+    reason,
+  })
+  if (error) throw error
+  return data as {
+    purchase_return_id: string
+    status: string
+    due_restored?: number
+    cash_voided?: number
+    reversing_journal_id?: string | null
+    idempotent?: boolean
+  }
 }
 
 async function paySupplier(payload: PaySupplierPayload) {
@@ -224,7 +260,9 @@ export const purchasesRepository = {
   listPurchases,
   getPurchase,
   listPurchaseReturns,
+  getPurchaseReturn,
   createPurchaseReturn,
+  voidPurchaseReturn,
   paySupplier,
   listSupplierPayments,
   listFinancialAccounts,
