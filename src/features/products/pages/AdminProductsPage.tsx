@@ -9,6 +9,8 @@ import { ProductFilterBar } from '../components/ProductFilterBar'
 import { ProductListPanel } from '../components/ProductListPanel'
 import { ProductListSkeleton } from '../components/ProductListSkeleton'
 import { ProductsPageHeader } from '../components/ProductsPageHeader'
+import { ProductKpiCards } from '../components/ProductKpiCards'
+import { ProductStatusTabs } from '../components/ProductStatusTabs'
 import {
   Select,
   SelectContent,
@@ -26,16 +28,21 @@ import {
 import { buildProductInventoryViewModels, UNCATEGORIZED_CATEGORY_ID } from '../lib/product-list-model'
 import {
   getCategoryProductCounts,
+  getProductCatalogKpis,
   listProductsWithInventorySummary,
   softDeleteProduct,
+  transitionProductStatus,
   type ProductListItem,
 } from '../repositories/catalog.repository'
+import { invalidateInventoryQueries } from '@/features/inventory/lib/invalidate-inventory-queries'
 import { invalidateStorefrontCache } from '@/features/storefront/storefront.service'
 import { getInventoryStockBreakdown, type InventoryProductStockRow } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { useToast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
 import { queryKeys } from '@/lib/query/keys'
 import { formatNumber } from '@/lib/format'
+import { useAuth } from '@/features/auth/auth-session'
+import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 
 function productToBarcodeItems(product: ProductListItem): BarcodePrintItem[] {
   const variants = (product.product_variants ?? []).filter((v) => !v.deleted_at)
@@ -60,9 +67,11 @@ function productToBarcodeItems(product: ProductListItem): BarcodePrintItem[] {
 
 export function AdminProductsPage() {
   const { toast } = useToast()
+  const { can } = useAuth()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const filters: ProductCatalogFilters = useMemo(
     () => searchParamsToFilters(searchParams),
@@ -84,6 +93,11 @@ export function AdminProductsPage() {
   const { data: categoryCounts } = useQuery({
     queryKey: ['category-product-counts'],
     queryFn: getCategoryProductCounts,
+  })
+
+  const { data: kpis, isLoading: kpisLoading } = useQuery({
+    queryKey: ['product-catalog-kpis'],
+    queryFn: getProductCatalogKpis,
   })
 
   const {
@@ -150,11 +164,31 @@ export function AdminProductsPage() {
   const deleteMutation = useMutation({
     mutationFn: softDeleteProduct,
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['products'] })
+      invalidateInventoryQueries(qc)
       void qc.invalidateQueries({ queryKey: ['category-product-counts'] })
-      void qc.invalidateQueries({ queryKey: ['pos-products'] })
       invalidateStorefrontCache()
       toast('Product deleted')
+    },
+    onError: (e: Error) => toast(e.message, 'error'),
+  })
+
+  const bulkStatusMutation = useMutation({
+    mutationFn: async (status: 'active' | 'archived') => {
+      const ids = Array.from(selectedIds)
+      for (const product_id of ids) {
+        await transitionProductStatus({
+          product_id,
+          status,
+          publish: status === 'active' ? false : undefined,
+        })
+      }
+      return { count: ids.length, status }
+    },
+    onSuccess: ({ count, status }) => {
+      setSelectedIds(new Set())
+      invalidateInventoryQueries(qc)
+      invalidateStorefrontCache()
+      toast(`${count} product(s) marked ${status}`)
     },
     onError: (e: Error) => toast(e.message, 'error'),
   })
@@ -181,8 +215,64 @@ export function AdminProductsPage() {
     setBarcodeOpen(true)
   }
 
+  const openBulkBarcode = () => {
+    const selected = viewItems.filter((i) => selectedIds.has(i.id)).map((i) => i.raw)
+    const source = selected.length > 0 ? selected : viewItems.map((i) => i.raw)
+    const items = source.flatMap(productToBarcodeItems).filter((i) => i.barcode)
+    if (items.length === 0) {
+      toast('No barcodes available to print', 'error')
+      return
+    }
+    setBarcodeItems(items)
+    setBarcodeOpen(true)
+  }
+
+  const exportCsv = () => {
+    const rows = viewItems.map((i) => ({
+      name: i.name,
+      sku: i.sku ?? '',
+      type: i.productTypeLabel,
+      category: i.categoryName,
+      brand: i.brandName ?? '',
+      variants: i.variantCount,
+      stock: i.availableStock,
+      price: i.priceLabel,
+      status: i.lifecycleStatus,
+    }))
+    const header = Object.keys(rows[0] ?? { name: '' })
+    const csv = [
+      header.join(','),
+      ...rows.map((r) =>
+        header.map((h) => `"${String((r as Record<string, unknown>)[h] ?? '').replace(/"/g, '""')}"`).join(','),
+      ),
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'products-export.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const handleDelete = (row: ProductListItem) => {
     if (confirm(`Delete “${row.name}”?`)) deleteMutation.mutate(row.id)
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      if (viewItems.length > 0 && viewItems.every((i) => prev.has(i.id))) return new Set()
+      return new Set(viewItems.map((i) => i.id))
+    })
   }
 
   const showInitialLoading = isLoading && !data
@@ -192,11 +282,47 @@ export function AdminProductsPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl min-w-0 space-y-4 px-3 sm:px-4 lg:px-0">
-      <ProductsPageHeader
-        totalCount={data?.total ?? 0}
-        pageCount={viewItems.length}
-        isFetching={isFetching && !isLoading}
+      <ProductsPageHeader onPrintBarcodes={openBulkBarcode} onExport={exportCsv} />
+
+      <ProductKpiCards
+        kpis={kpis}
+        loading={kpisLoading}
+        showValue={can('inventory.read') || can('reports.read') || can('products.approve')}
       />
+
+      <ProductStatusTabs filters={filters} onChange={setFilters} />
+
+      {selectedIds.size > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#FECDD3] bg-[#FFF1F2] px-3 py-2 text-sm">
+          <span className="font-medium text-[#9F1239]">{selectedIds.size} selected</span>
+          <PermissionGate permission="products.approve">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkStatusMutation.isPending}
+              onClick={() => bulkStatusMutation.mutate('active')}
+            >
+              Bulk Activate
+            </Button>
+          </PermissionGate>
+          <PermissionGate permission="products.update">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkStatusMutation.isPending}
+              onClick={() => bulkStatusMutation.mutate('archived')}
+            >
+              Bulk Archive
+            </Button>
+          </PermissionGate>
+          <Button size="sm" variant="outline" onClick={openBulkBarcode}>
+            Print Barcodes
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+            Clear
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <aside className="hidden w-60 shrink-0 lg:block">
@@ -254,6 +380,9 @@ export function AdminProductsPage() {
                 <ProductListPanel
                   items={viewItems}
                   showCategoryBadge={showCategoryBadge}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
+                  onToggleSelectAll={toggleSelectAll}
                   onEdit={(row) => navigate(`/products/${row.id}/edit`)}
                   onDuplicate={openDuplicate}
                   onPrintBarcode={openBarcode}
@@ -298,9 +427,8 @@ export function AdminProductsPage() {
         onOpenChange={setDuplicateOpen}
         product={duplicateTarget}
         onDuplicated={() => {
-          void qc.invalidateQueries({ queryKey: ['products'] })
+          invalidateInventoryQueries(qc)
           void qc.invalidateQueries({ queryKey: ['category-product-counts'] })
-          void qc.invalidateQueries({ queryKey: ['pos-products'] })
           toast('Product duplicated')
         }}
         onError={(m) => toast(m, 'error')}

@@ -100,24 +100,25 @@ export function BulkImportWizard({ adapter }: Props) {
       activeBranchId,
       filename,
       jobId,
+      allRows: rows,
+      committedGroupKeys: new Set<string>(),
     }
 
-    for (let i = 0; i < work.length; i += CHUNK_SIZE) {
-      const chunk = work.slice(i, i + CHUNK_SIZE)
-      await Promise.all(
-        chunk.map(async (row) => {
-          try {
-            await adapter.commitRow(row, ctx)
-            ok++
-            if (jobId) await markImportJobRow(jobId, row.rowNum, 'success', { action: row.action })
-          } catch (e) {
-            const message = e instanceof Error ? e.message : 'Import failed'
-            errors.push({ rowNum: row.rowNum, error: message })
-            if (jobId) await markImportJobRow(jobId, row.rowNum, 'failed', {}, message)
-          }
-        }),
-      )
-      setProgress(Math.min(100, Math.round(((i + chunk.length) / Math.max(work.length, 1)) * 100)))
+    // Sequential commits keep variant-row grouping and inventory RPCs race-free.
+    for (let i = 0; i < work.length; i++) {
+      const row = work[i]
+      try {
+        await adapter.commitRow(row, ctx)
+        ok++
+        if (jobId) await markImportJobRow(jobId, row.rowNum, 'success', { action: row.action })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Import failed'
+        errors.push({ rowNum: row.rowNum, error: message })
+        if (jobId) await markImportJobRow(jobId, row.rowNum, 'failed', {}, message)
+      }
+      if (i % CHUNK_SIZE === 0 || i === work.length - 1) {
+        setProgress(Math.min(100, Math.round(((i + 1) / Math.max(work.length, 1)) * 100)))
+      }
     }
 
     for (const row of rows.filter((r) => r.action === 'skip')) {

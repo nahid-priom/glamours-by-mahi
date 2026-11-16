@@ -37,6 +37,10 @@ export type ImportCommitContext = {
   activeBranchId: string | null
   filename: string
   jobId: string | null
+  /** All preview rows in this commit (for grouped variant product creates). */
+  allRows?: ImportPreviewRow[]
+  /** Mutable set of group keys already committed in this job. */
+  committedGroupKeys?: Set<string>
 }
 
 export type ImportCommitResult = {

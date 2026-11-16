@@ -18,13 +18,13 @@ export function AvailableStockDetails({ item, className }: Props) {
   const showBreakdown = item.reserved > 0 || item.onHand !== item.availableStock
 
   return (
-    <div className={cn('flex min-w-0 items-center gap-2', className)}>
-      <div className="min-w-0 text-right">
+    <div className={cn('flex min-w-0 items-start gap-1.5', className)}>
+      <div className="flex min-w-0 flex-col items-end gap-1">
         <p className="tabular-nums text-sm font-semibold text-[#111111]">
           {formatNumber(item.availableStock)} {item.unit}
         </p>
+        <StockStatusBadge status={item.stockStatus} className="shrink-0" />
       </div>
-      <StockStatusBadge status={item.stockStatus} className="shrink-0" />
       {showBreakdown ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

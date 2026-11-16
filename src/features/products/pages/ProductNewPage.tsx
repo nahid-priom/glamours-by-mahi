@@ -1,14 +1,13 @@
-import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/auth-session'
 import { useToast } from '@/components/ui/toast'
+import { invalidateInventoryQueries } from '@/features/inventory/lib/invalidate-inventory-queries'
 import { invalidateStorefrontCache } from '@/features/storefront/storefront.service'
-import { ProductForm } from '../components/ProductForm'
+import { ProductCreateWizard } from '../components/wizard/ProductCreateWizard'
 
 export function ProductNewPage() {
   const { profile } = useAuth()
   const { toast } = useToast()
-  const navigate = useNavigate()
   const qc = useQueryClient()
 
   if (!profile?.organization_id) {
@@ -16,18 +15,13 @@ export function ProductNewPage() {
   }
 
   return (
-    <ProductForm
+    <ProductCreateWizard
       orgId={profile.organization_id}
-      editing={null}
-      title="Add new product"
-      onSaved={async (id) => {
-        await qc.invalidateQueries({ queryKey: ['products'] })
-        await qc.invalidateQueries({ queryKey: ['pos-products'] })
-        invalidateStorefrontCache()
-        toast('Product created')
-        navigate(`/products/${id}/edit`, { replace: true })
-      }}
       onError={(m) => toast(m, 'error')}
+      onCreated={async () => {
+        invalidateInventoryQueries(qc)
+        invalidateStorefrontCache()
+      }}
     />
   )
 }

@@ -1,7 +1,7 @@
 -- Inventory valuation RPC smoke tests (pgTAP when available)
 BEGIN;
 
-SELECT plan(8);
+SELECT plan(11);
 
 SELECT has_function(
   'public',
@@ -18,6 +18,18 @@ SELECT has_function(
 SELECT has_function(
   'public',
   'get_inventory_stock_breakdown',
+  ARRAY['uuid', 'uuid', 'text', 'uuid', 'uuid', 'text', 'integer', 'integer', 'text', 'text', 'boolean']
+);
+
+-- Inventory Overview 360 additions (also covered in sql/inventory_overview_360.sql)
+SELECT has_function(
+  'public',
+  'get_inventory_variant_breakdown',
+  ARRAY['uuid', 'uuid', 'text', 'uuid', 'uuid', 'text', 'integer', 'integer', 'text', 'text', 'boolean']
+);
+SELECT has_function(
+  'public',
+  'get_inventory_low_stock',
   ARRAY['uuid', 'uuid', 'text', 'uuid', 'uuid', 'text', 'integer', 'integer', 'text', 'text', 'boolean']
 );
 

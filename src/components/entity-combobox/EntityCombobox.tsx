@@ -289,22 +289,41 @@ export function EntityCombobox({
   )
 
   const trigger = (
-    <div ref={triggerRef} className={cn('flex w-full min-w-0 gap-1', className)}>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={disabled}
-        aria-label={ariaLabel}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="h-9 min-w-0 flex-1 justify-between overflow-hidden font-normal"
-        onClick={() => (open ? closePanel() : openPanel())}
-      >
-        <span className={cn('truncate', !value && 'text-text-muted')}>
-          {value ? selectedLabel ?? 'Selected' : placeholder}
-        </span>
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
+    <div className={cn('flex w-full min-w-0 items-center gap-1', className)}>
+      <div ref={triggerRef} className="min-w-0 flex-1">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          aria-label={ariaLabel}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          className="h-9 w-full justify-between overflow-hidden font-normal"
+          onClick={() => (open ? closePanel() : openPanel())}
+        >
+          <span className={cn('truncate', !value && 'text-text-muted')}>
+            {value ? selectedLabel ?? 'Selected' : placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </div>
+      {onCreate ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          disabled={disabled}
+          className="h-9 w-9 shrink-0"
+          aria-label={createLabel}
+          title={createLabel}
+          onClick={() => {
+            closePanel()
+            onCreate()
+          }}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      ) : null}
       {allowClear && value ? (
         <Button
           type="button"

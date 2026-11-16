@@ -11,9 +11,16 @@ type Props = {
   canViewCost: boolean
   selectedBranchId: string | null
   onViewStock: (branchId: string) => void
+  onViewSupplierStock?: (branchId: string) => void
 }
 
-export function BranchStockTable({ rows, canViewCost, selectedBranchId, onViewStock }: Props) {
+export function BranchStockTable({
+  rows,
+  canViewCost,
+  selectedBranchId,
+  onViewStock,
+  onViewSupplierStock,
+}: Props) {
   if (rows.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-border bg-white p-6 text-center text-sm text-[#6B7280]">
@@ -24,8 +31,6 @@ export function BranchStockTable({ rows, canViewCost, selectedBranchId, onViewSt
 
   const totals = rows.reduce(
     (acc, row) => ({
-      products: acc.products + row.total_products,
-      variants: acc.variants + row.total_variants,
       qty: acc.qty + row.total_stock_quantity,
       cost: acc.cost + (row.total_stock_purchase_cost ?? 0),
       value: acc.value + row.total_stock_value,
@@ -33,7 +38,7 @@ export function BranchStockTable({ rows, canViewCost, selectedBranchId, onViewSt
       low: acc.low + row.low_stock_count,
       out: acc.out + row.out_of_stock_count,
     }),
-    { products: 0, variants: 0, qty: 0, cost: 0, value: 0, profit: 0, low: 0, out: 0 },
+    { qty: 0, cost: 0, value: 0, profit: 0, low: 0, out: 0 },
   )
 
   return (
@@ -43,8 +48,8 @@ export function BranchStockTable({ rows, canViewCost, selectedBranchId, onViewSt
           <TableHeader className="sticky top-0 z-10 bg-slate-50">
             <TableRow>
               <TableHead>Branch</TableHead>
-              <TableHead className="text-right">Products</TableHead>
-              <TableHead className="text-right">Variants</TableHead>
+              <TableHead className="text-right">Branch products</TableHead>
+              <TableHead className="text-right">Branch variants</TableHead>
               <TableHead className="text-right">Stock Qty</TableHead>
               {canViewCost ? <TableHead className="text-right">Stock Cost</TableHead> : null}
               <TableHead className="text-right">Selling Value</TableHead>
@@ -70,7 +75,7 @@ export function BranchStockTable({ rows, canViewCost, selectedBranchId, onViewSt
                       <p className="font-medium text-[#111827]">{row.branch_name}</p>
                       <p className="text-xs text-[#6B7280]">
                         {row.branch_code ?? '—'}
-                        {row.is_head_office ? ' · Head Office' : ''}
+                        {row.is_head_office ? ' · Head Office' : ' · Retail branch'}
                       </p>
                     </div>
                   </div>
@@ -102,16 +107,32 @@ export function BranchStockTable({ rows, canViewCost, selectedBranchId, onViewSt
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button size="sm" variant="outline" onClick={() => onViewStock(row.branch_id)}>
-                    View Stock
-                  </Button>
+                  <div className="flex justify-end gap-1">
+                    <Button size="sm" variant="outline" onClick={() => onViewStock(row.branch_id)}>
+                      View Stock
+                    </Button>
+                    {onViewSupplierStock ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onViewSupplierStock(row.branch_id)}
+                      >
+                        Suppliers
+                      </Button>
+                    ) : null}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
             <TableRow className="bg-slate-50 font-medium">
-              <TableCell>Total</TableCell>
-              <TableCell className="text-right tabular-nums">{totals.products}</TableCell>
-              <TableCell className="text-right tabular-nums">{totals.variants}</TableCell>
+              <TableCell>
+                Grand totals
+                <span className="mt-0.5 block text-[10px] font-normal text-[#9CA3AF]">
+                  Qty / value / low / out only — product counts are per-branch listings
+                </span>
+              </TableCell>
+              <TableCell className="text-right text-xs text-[#9CA3AF]">—</TableCell>
+              <TableCell className="text-right text-xs text-[#9CA3AF]">—</TableCell>
               <TableCell className="text-right tabular-nums">{totals.qty.toLocaleString('en-BD')}</TableCell>
               {canViewCost ? (
                 <TableCell className="text-right">
@@ -165,9 +186,20 @@ export function BranchStockTable({ rows, canViewCost, selectedBranchId, onViewSt
               <p className="text-xs text-[#6B7280]">
                 Low: {row.low_stock_count} · Out: {row.out_of_stock_count}
               </p>
-              <Button size="sm" variant="outline" onClick={() => onViewStock(row.branch_id)}>
-                View Stock
-              </Button>
+              <div className="flex gap-1">
+                <Button size="sm" variant="outline" onClick={() => onViewStock(row.branch_id)}>
+                  View Stock
+                </Button>
+                {onViewSupplierStock ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onViewSupplierStock(row.branch_id)}
+                  >
+                    Suppliers
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </article>
         ))}

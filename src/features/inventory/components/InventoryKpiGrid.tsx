@@ -26,7 +26,7 @@ export function InventoryKpiGrid({ summary, canViewCost }: Props) {
         />
         <InventoryKpiCard
           accent="value"
-          label="Total Selling Value"
+          label="Potential Selling Value"
           value={`৳${summary.total_stock_value.toLocaleString('en-BD')}`}
         />
         <InventoryKpiCard
@@ -40,8 +40,16 @@ export function InventoryKpiGrid({ summary, canViewCost }: Props) {
         />
       </div>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <InventoryKpiCard accent="primary" label="Total Products" value={String(summary.total_products)} />
-        <InventoryKpiCard accent="primary" label="Total Variants" value={String(summary.total_variants)} />
+        <InventoryKpiCard
+          accent="primary"
+          label="Unique Catalog Products"
+          value={String(summary.total_products)}
+        />
+        <InventoryKpiCard
+          accent="primary"
+          label="Unique Catalog Variants"
+          value={String(summary.total_variants)}
+        />
         <InventoryKpiCard
           accent="warning"
           label="Low Stock"
@@ -53,6 +61,12 @@ export function InventoryKpiGrid({ summary, canViewCost }: Props) {
           value={String(summary.out_of_stock_variants)}
         />
       </div>
+      {canViewCost && summary.valuation_fallback_count > 0 ? (
+        <p className="text-xs text-[#9CA3AF]">
+          Estimated costs on {summary.valuation_fallback_count} variant
+          {summary.valuation_fallback_count === 1 ? '' : 's'} (catalog fallback, not verified WAC).
+        </p>
+      ) : null}
     </div>
   )
 }

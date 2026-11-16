@@ -1088,6 +1088,25 @@ export async function createProductAtomic(payload: Record<string, unknown>) {
   }
 }
 
+/** Server-side internal barcode allocation (falls back to client generator). */
+export async function allocateInternalBarcode(opts?: {
+  variantId?: string | null
+  productId?: string | null
+}): Promise<string> {
+  try {
+    const { data, error } = await untypedRpc('allocate_internal_barcode', {
+      p_variant_id: opts?.variantId ?? null,
+      p_product_id: opts?.productId ?? null,
+    })
+    if (error) throw error
+    if (typeof data === 'string' && data.trim()) return data.trim()
+  } catch {
+    /* RPC may be unavailable until migration 00136 is applied */
+  }
+  const { generateBaseBarcode } = await import('../lib/product-identifiers')
+  return generateBaseBarcode()
+}
+
 export async function duplicateProduct(payload: Record<string, unknown>) {
   const { data, error } = await untypedRpc('duplicate_product', { payload })
   if (error) throw error
@@ -1238,6 +1257,91 @@ export type ProductInventorySummaryRow = {
   cover_path: string | null
 }
 
+export type ProductCatalogKpis = {
+  totalProducts: number
+  activeProducts: number
+  draftProducts: number
+  pendingProducts: number
+  totalVariants: number
+  lowStock: number
+  outOfStock: number
+  inventoryValue: number | null
+}
+
+/** Lightweight catalog KPIs for listing header cards (org-scoped via RLS). */
+export async function getProductCatalogKpis(): Promise<ProductCatalogKpis> {
+  const [
+    { count: totalProducts, error: e1 },
+    { count: activeProducts, error: e2 },
+    { count: draftProducts, error: e3 },
+    { count: pendingProducts, error: e4 },
+    { count: totalVariants, error: e5 },
+  ] = await Promise.all([
+    supabase.from('products').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .eq('status', 'active'),
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .eq('status', 'draft'),
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .eq('status', 'pending_approval'),
+    supabase
+      .from('product_variants')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null),
+  ])
+  if (e1) throw e1
+  if (e2) throw e2
+  if (e3) throw e3
+  if (e4) throw e4
+  if (e5) throw e5
+
+  let lowStock = 0
+  let outOfStock = 0
+  let inventoryValue: number | null = null
+  try {
+    const low = await listProductsWithInventorySummary({ stockStatus: 'low_stock', pageSize: 1 })
+    const out = await listProductsWithInventorySummary({ stockStatus: 'out_of_stock', pageSize: 1 })
+    lowStock = low.total
+    outOfStock = out.total
+  } catch {
+    /* optional stock chips */
+  }
+
+  try {
+    const { data, error } = await untypedFrom('v_inventory_valuation_balances')
+      .select('stock_value')
+      .limit(5000)
+    if (!error && Array.isArray(data)) {
+      inventoryValue = data.reduce(
+        (sum: number, row: { stock_value?: number | null }) => sum + Number(row.stock_value ?? 0),
+        0,
+      )
+    }
+  } catch {
+    inventoryValue = null
+  }
+
+  return {
+    totalProducts: totalProducts ?? 0,
+    activeProducts: activeProducts ?? 0,
+    draftProducts: draftProducts ?? 0,
+    pendingProducts: pendingProducts ?? 0,
+    totalVariants: totalVariants ?? 0,
+    lowStock,
+    outOfStock,
+    inventoryValue,
+  }
+}
+
 export async function listProductsWithInventorySummary(
   params: PageParams & { branchId?: string | null } = {},
 ): Promise<PagedResult<ProductListItem>> {
@@ -1374,6 +1478,7 @@ export const catalogRepository = {
   validateProductImageFile,
   resolveStorageUrl,
   createProductAtomic,
+  allocateInternalBarcode,
   duplicateProduct,
   transitionProductStatus,
   listExpiryAlerts,

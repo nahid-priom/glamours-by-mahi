@@ -351,8 +351,8 @@ export function ProductForm({
         // Only sync product-level prices onto the sole/simple variant — never wipe matrix prices.
         if (!editing.has_variants && !kindHasVariants(form.productKind)) {
           await syncProductVariantPrices(id, {
-            purchase_price: input.purchase_price,
-            selling_price: input.selling_price,
+            purchase_price: Number(input.purchase_price) || 0,
+            selling_price: Number(input.selling_price) || 0,
             wholesale_price: input.wholesale_price ?? null,
             onlyWhenSingleVariant: true,
           })
@@ -368,8 +368,8 @@ export function ProductForm({
         await updateProduct(id, input)
         if (!kindHasVariants(form.productKind)) {
           await syncProductVariantPrices(id, {
-            purchase_price: input.purchase_price,
-            selling_price: input.selling_price,
+            purchase_price: Number(input.purchase_price) || 0,
+            selling_price: Number(input.selling_price) || 0,
             wholesale_price: input.wholesale_price ?? null,
             onlyWhenSingleVariant: true,
           })

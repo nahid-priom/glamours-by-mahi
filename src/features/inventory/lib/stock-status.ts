@@ -3,11 +3,11 @@ export type StockStatusKey =
   | 'low_stock'
   | 'out_of_stock'
   | 'negative_stock'
-  | 'overstock'
   | 'in_transit'
   | 'damaged'
   | 'quarantine'
 
+/** Matches SQL `_inventory_stock_status` (available is not clamped before status). */
 export function resolveAvailableStockStatus(
   available: number,
   reorderLevel: number,
@@ -35,9 +35,10 @@ export function matchesStockStatusFilter(
   reorderLevel: number,
   locationType?: string,
 ): boolean {
-  if (!filter) return true
+  if (!filter || filter === 'all') return true
   const status = locationType
-    ? resolveLocationStockStatus(locationType, available) ?? resolveAvailableStockStatus(available, reorderLevel)
+    ? resolveLocationStockStatus(locationType, available) ??
+      resolveAvailableStockStatus(available, reorderLevel)
     : resolveAvailableStockStatus(available, reorderLevel)
   return status === filter
 }

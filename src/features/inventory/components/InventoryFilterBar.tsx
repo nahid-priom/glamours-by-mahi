@@ -19,12 +19,13 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { searchBrands, searchCategories } from '@/features/products/repositories/catalog.repository'
+import { searchSuppliers } from '@/features/suppliers/repositories/suppliers.repository'
 import type { AccessibleBranch } from '../repositories/inventory-valuation.repository'
 import {
   SORT_OPTIONS,
-  STOCK_STATUS_FILTER_OPTIONS,
   clearInventoryFilters,
   countActiveInventoryFilters,
+  statusOptionsForView,
   type InventoryPageFilters,
 } from '../lib/inventory-filters'
 
@@ -74,7 +75,9 @@ export function InventoryFilterBar({
     else onChange({ branchId: value, page: 1 })
   }
 
+  const statusOptions = statusOptionsForView(filters.view)
   const statusValue = filters.stockStatus ?? 'all'
+  const statusEnabled = statusOptions.length > 1
 
   const primaryFilters = (
     <>
@@ -96,9 +99,17 @@ export function InventoryFilterBar({
 
       <Select
         value={statusValue}
+        disabled={!statusEnabled}
         onValueChange={(v) =>
           onChange({
             stockStatus: v === 'all' ? null : (v as InventoryPageFilters['stockStatus']),
+            includeNonSaleable:
+              v === 'damaged' ||
+              v === 'quarantine' ||
+              filters.includeDamaged ||
+              filters.includeQuarantine,
+            includeDamaged: v === 'damaged' ? true : filters.includeDamaged,
+            includeQuarantine: v === 'quarantine' ? true : filters.includeQuarantine,
             page: 1,
           })
         }
@@ -107,7 +118,7 @@ export function InventoryFilterBar({
           <SelectValue placeholder="Stock Status" />
         </SelectTrigger>
         <SelectContent>
-          {STOCK_STATUS_FILTER_OPTIONS.map((opt) => (
+          {statusOptions.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
               {opt.label}
             </SelectItem>
@@ -123,6 +134,16 @@ export function InventoryFilterBar({
         aria-label="Category filter"
         className="w-full lg:w-[160px]"
       />
+      {filters.view === 'suppliers' ? (
+        <EntityCombobox
+          value={filters.supplierId ?? null}
+          onChange={(id) => onChange({ supplierId: id, page: 1 })}
+          onSearch={searchSuppliers}
+          placeholder="Supplier"
+          aria-label="Supplier filter"
+          className="w-full lg:w-[180px]"
+        />
+      ) : null}
     </>
   )
 
@@ -136,6 +157,30 @@ export function InventoryFilterBar({
         aria-label="Brand filter"
         className="w-full"
       />
+      {filters.view === 'suppliers' ? (
+        <Select
+          value={filters.sourceStatus ?? 'all'}
+          onValueChange={(v) =>
+            onChange({
+              sourceStatus:
+                v === 'all'
+                  ? null
+                  : (v as InventoryPageFilters['sourceStatus']),
+              page: 1,
+            })
+          }
+        >
+          <SelectTrigger className="h-10 w-full">
+            <SelectValue placeholder="Traceability" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Traceability</SelectItem>
+            <SelectItem value="system_allocated">System Allocated</SelectItem>
+            <SelectItem value="verified">Verified</SelectItem>
+            <SelectItem value="unknown_legacy">Unknown Legacy</SelectItem>
+          </SelectContent>
+        </Select>
+      ) : null}
       <Select
         value={filters.sortBy}
         onValueChange={(v) => onChange({ sortBy: v as InventoryPageFilters['sortBy'], page: 1 })}

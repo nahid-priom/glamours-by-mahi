@@ -17,12 +17,14 @@ export type BarcodePrintItem = {
   expiry?: string
 }
 
-type LabelSize = '38x25' | '50x25' | '50x30'
+type LabelSize = '38x25' | '50x25' | '50x30' | '40x25' | '30x20'
 
-const LABEL_SIZES: Record<LabelSize, { width: string; height: string; page: string }> = {
-  '38x25': { width: '38mm', height: '25mm', page: 'barcode-38x25' },
-  '50x25': { width: '50mm', height: '25mm', page: 'barcode-50x25' },
-  '50x30': { width: '50mm', height: '30mm', page: 'barcode-50x30' },
+const LABEL_SIZES: Record<LabelSize, { width: string; height: string; page: string; label: string }> = {
+  '50x30': { width: '50mm', height: '30mm', page: 'barcode-50x30', label: '50 × 30 mm' },
+  '50x25': { width: '50mm', height: '25mm', page: 'barcode-50x25', label: '50 × 25 mm' },
+  '40x25': { width: '40mm', height: '25mm', page: 'barcode-40x25', label: '40 × 25 mm' },
+  '38x25': { width: '38mm', height: '25mm', page: 'barcode-38x25', label: '38 × 25 mm' },
+  '30x20': { width: '30mm', height: '20mm', page: 'barcode-30x20', label: '30 × 20 mm' },
 }
 
 type Props = {
@@ -54,7 +56,7 @@ function BarcodeSvg({ value }: { value: string }) {
 }
 
 export function BarcodePrintDialog({ open, onOpenChange, items }: Props) {
-  const [labelSize, setLabelSize] = useState<LabelSize>('50x25')
+  const [labelSize, setLabelSize] = useState<LabelSize>('50x30')
   const size = LABEL_SIZES[labelSize]
 
   const handlePrint = () => {
@@ -67,6 +69,8 @@ export function BarcodePrintDialog({ open, onOpenChange, items }: Props) {
         @page barcode-38x25 { size: 38mm 25mm; margin: 1mm; }
         @page barcode-50x25 { size: 50mm 25mm; margin: 1mm; }
         @page barcode-50x30 { size: 50mm 30mm; margin: 1mm; }
+        @page barcode-40x25 { size: 40mm 25mm; margin: 1mm; }
+        @page barcode-30x20 { size: 30mm 20mm; margin: 1mm; }
 
         .barcode-print-root { background: #f8fafc; }
         .barcode-label {
@@ -143,7 +147,7 @@ export function BarcodePrintDialog({ open, onOpenChange, items }: Props) {
                     variant={labelSize === key ? 'default' : 'outline'}
                     onClick={() => setLabelSize(key)}
                   >
-                    {key.replace('x', '×')} mm
+                    {LABEL_SIZES[key].label}
                   </Button>
                 ))}
               </div>

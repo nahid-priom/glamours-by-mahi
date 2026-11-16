@@ -110,8 +110,8 @@ export const VariantMatrixBuilder = memo(function VariantMatrixBuilder({
 
   const colorPresets = kind === 'cosmetics' ? [...SHADE_PRESETS, ...COLOR_PRESETS] : [...COLOR_PRESETS]
 
-  const customSizes = sizes.filter((s) => !sizePresets.includes(s))
-  const customColors = colors.filter((c) => !colorPresets.includes(c))
+  const customSizes = sizes.filter((s) => !(sizePresets as string[]).includes(s))
+  const customColors = colors.filter((c) => !(colorPresets as string[]).includes(c))
 
   return (
     <div className="space-y-4 rounded-xl border border-border bg-[#FAFAF9] p-4">

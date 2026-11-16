@@ -3,12 +3,11 @@ import { ArrowLeftRight, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import type { LowStockRow } from '../repositories/inventory.repository'
-import { resolveAvailableStockStatus } from '../lib/stock-status'
+import type { InventoryLowStockRow } from '../repositories/inventory-valuation.repository'
 import { StockStatusBadge } from './StockStatusBadge'
 
 type Props = {
-  rows: LowStockRow[]
+  rows: InventoryLowStockRow[]
   isLoading?: boolean
 }
 
@@ -31,42 +30,40 @@ export function LowStockTable({ rows, isLoading }: Props) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row) => {
-            const available = row.available ?? Math.max(row.quantity - (row.qtyReserved ?? 0), 0)
-            const status = resolveAvailableStockStatus(available, row.reorderLevel)
-            return (
-              <TableRow key={row.balanceId}>
-                <TableCell className="font-medium">{row.productName}</TableCell>
-                <TableCell>{row.variantName ?? 'Default'}</TableCell>
-                <TableCell className="text-sm text-[#6B7280]">{row.branchName}</TableCell>
-                <TableCell className="text-right tabular-nums font-medium">{available}</TableCell>
-                <TableCell className="text-right tabular-nums">{row.reorderLevel}</TableCell>
-                <TableCell className="text-right tabular-nums text-[#DC2626]">{row.shortage}</TableCell>
-                <TableCell>
-                  <StockStatusBadge status={status} />
-                </TableCell>
-                <TableCell>
-                  <div className="flex justify-end gap-1">
-                    <PermissionGate permission="inventory.adjust">
-                      <Button asChild size="sm" variant="outline">
-                        <Link to="/inventory/adjustments">
-                          <SlidersHorizontal className="mr-1 h-3.5 w-3.5" />
-                          Adjust
-                        </Link>
-                      </Button>
-                    </PermissionGate>
-                    <PermissionGate permission="inventory.transfer">
-                      <Button asChild size="sm" variant="ghost">
-                        <Link to="/inventory/transfers/new">
-                          <ArrowLeftRight className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
-                    </PermissionGate>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )
-          })}
+          {rows.map((row) => (
+            <TableRow key={row.row_key}>
+              <TableCell className="font-medium">{row.product_name}</TableCell>
+              <TableCell>{row.variant_name ?? 'Default'}</TableCell>
+              <TableCell className="text-sm text-[#6B7280]">{row.branch_name}</TableCell>
+              <TableCell className="text-right tabular-nums font-medium">
+                {row.available_quantity}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{row.reorder_level}</TableCell>
+              <TableCell className="text-right tabular-nums text-[#DC2626]">{row.shortage}</TableCell>
+              <TableCell>
+                <StockStatusBadge status={row.stock_status} />
+              </TableCell>
+              <TableCell>
+                <div className="flex justify-end gap-1">
+                  <PermissionGate permission="inventory.adjust">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to="/inventory/adjustments">
+                        <SlidersHorizontal className="mr-1 h-3.5 w-3.5" />
+                        Adjust
+                      </Link>
+                    </Button>
+                  </PermissionGate>
+                  <PermissionGate permission="inventory.transfer">
+                    <Button asChild size="sm" variant="ghost">
+                      <Link to="/inventory/transfers/new">
+                        <ArrowLeftRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  </PermissionGate>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
       {isLoading ? <p className="p-4 text-center text-sm text-[#6B7280]">Loading low stock…</p> : null}

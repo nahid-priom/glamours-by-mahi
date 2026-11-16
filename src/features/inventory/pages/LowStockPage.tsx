@@ -6,21 +6,26 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
-import { lowStock } from '../repositories/inventory.repository'
+import { getInventoryLowStock } from '../repositories/inventory-valuation.repository'
 
 export function LowStockPage() {
   const { activeBranchId } = useAuth()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
-  const filters = { branchId: activeBranchId, search, page, pageSize: 50 }
+  const filters = {
+    branchId: activeBranchId,
+    search,
+    page,
+    pageSize: 50,
+  }
   const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.lowStock(filters),
-    queryFn: () => lowStock(filters),
+    queryKey: queryKeys.inventoryLowStock(filters),
+    queryFn: () => getInventoryLowStock(filters),
     enabled: Boolean(activeBranchId),
   })
 
-  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 50))
+  const totalPages = Math.max(1, Math.ceil((data?.total_count ?? 0) / 50))
 
   return (
     <div className="mx-auto w-full max-w-6xl min-w-0 space-y-4">
@@ -57,7 +62,7 @@ export function LowStockPage() {
             <TableRow>
               <TableHead>Product</TableHead>
               <TableHead>SKU</TableHead>
-              <TableHead>Location</TableHead>
+              <TableHead>Branch</TableHead>
               <TableHead className="text-right">Qty</TableHead>
               <TableHead className="text-right">Reorder</TableHead>
               <TableHead className="text-right">Shortage</TableHead>
@@ -65,37 +70,39 @@ export function LowStockPage() {
           </TableHeader>
           <TableBody>
             {(data?.items ?? []).map((row) => (
-              <TableRow key={row.balanceId}>
-                <TableCell className="font-medium">{row.productName}</TableCell>
+              <TableRow key={row.row_key}>
+                <TableCell className="font-medium">{row.product_name}</TableCell>
                 <TableCell>{row.sku}</TableCell>
-                <TableCell className="text-[#6B7280]">{row.locationName}</TableCell>
+                <TableCell className="text-[#6B7280]">{row.branch_name}</TableCell>
                 <TableCell className="text-right font-medium text-[#E11D48]">
-                  {row.available ?? Math.max(row.quantity - (row.qtyReserved ?? 0), 0)}
+                  {row.available_quantity}
                 </TableCell>
-                <TableCell className="text-right">{row.reorderLevel}</TableCell>
+                <TableCell className="text-right">{row.reorder_level}</TableCell>
                 <TableCell className="text-right text-[#E11D48]">{row.shortage}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        {!isLoading && activeBranchId && (data?.items.length ?? 0) === 0 ? (
-          <p className="p-6 text-center text-sm text-[#6B7280]">No low-stock items. Nice.</p>
-        ) : null}
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-          Prev
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={page >= totalPages}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next
-        </Button>
-      </div>
+      {totalPages > 1 ? (
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            Prev
+          </Button>
+          <span className="self-center text-sm text-[#6B7280]">
+            Page {page} / {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -52,16 +52,13 @@ export function ProductInventoryCard({
             />
           </div>
           <p className="truncate text-xs text-[#6B7280]">{item.sku ?? '—'}</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            <Badge variant="info" className="text-[10px]">
-              {item.productTypeLabel}
-            </Badge>
-            {showCategoryBadge ? (
+          {showCategoryBadge ? (
+            <div className="mt-1 flex flex-wrap gap-1">
               <Badge variant="default" className="text-[10px]">
                 {item.categoryName}
               </Badge>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
           {item.brandName ? (
             <p className="truncate text-xs text-[#9CA3AF]">{item.brandName}</p>
           ) : null}

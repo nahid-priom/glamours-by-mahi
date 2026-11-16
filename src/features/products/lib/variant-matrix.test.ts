@@ -33,6 +33,19 @@ describe('generateVariantMatrixStrict', () => {
     expect(rows[0].size).toBe('S')
     expect(rows[0].color).toBe('Red')
   })
+
+  it('generates six unique combinations for three shades × two sizes', () => {
+    const rows = generateVariantMatrixStrict({
+      sizes: ['3.5g', '5g'],
+      colors: ['Ruby Red', 'Rose Pink', 'Nude Brown'],
+      purchasePrice: 550,
+      sellingPrice: 850,
+    })
+    expect(rows).toHaveLength(6)
+    const keys = new Set(rows.map((r) => r.key))
+    expect(keys.size).toBe(6)
+    expect(rows.every((r) => Boolean(r.sku))).toBe(true)
+  })
 })
 
 describe('generateVariantMatrix', () => {

@@ -243,6 +243,7 @@ export async function fetchPublishedProductById(id: string): Promise<CatalogProd
     .eq('id', id)
     .is('deleted_at', null)
     .eq('is_active', true)
+    .eq('status' as never, 'active')
     .not('published_at', 'is', null)
     .maybeSingle()
 

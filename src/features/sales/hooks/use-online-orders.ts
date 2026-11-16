@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { invalidateInventoryQueries } from '@/features/inventory/lib/invalidate-inventory-queries'
 import { queryKeys } from '@/lib/query/keys'
 import {
   approveOnlineOrder,
@@ -21,7 +22,7 @@ export function useFulfilOnlineOrder() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['online-orders'] })
       void qc.invalidateQueries({ queryKey: ['sales'] })
-      void qc.invalidateQueries({ queryKey: ['inventory'] })
+      invalidateInventoryQueries(qc)
     },
   })
 }

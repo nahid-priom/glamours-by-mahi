@@ -300,6 +300,13 @@ export async function findVariantByBarcodeExact(
   if (!data || typeof data !== 'object') return null
 
   const row = data as Record<string, unknown>
+  if (row.error === 'ambiguous_barcode') {
+    throw new Error(
+      String(row.message ?? 'Barcode matches multiple variants — resolve conflicts before selling'),
+    )
+  }
+  if (!row.variantId) return null
+
   const thumbRaw = (row.thumbnailUrl as string | null) ?? null
   const thumbnailUrl = await resolveThumbnail(thumbRaw, null)
 

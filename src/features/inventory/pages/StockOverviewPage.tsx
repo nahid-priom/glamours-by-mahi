@@ -16,21 +16,31 @@ import { InventoryViewSwitcher } from '../components/InventoryViewSwitcher'
 import { LowStockTable } from '../components/LowStockTable'
 import { ProductStockTable } from '../components/ProductStockTable'
 import { StockDetailsDrawer } from '../components/StockDetailsDrawer'
+import { SupplierStockDetailsDrawer } from '../components/SupplierStockDetailsDrawer'
+import { SupplierStockKpiGrid } from '../components/SupplierStockKpiGrid'
+import { SupplierStockTable } from '../components/SupplierStockTable'
 import { VariantStockTable } from '../components/VariantStockTable'
 import {
   clearInventoryFilters,
   filtersFromSearchParams,
   filtersToSearchParams,
+  toSupplierStockFilters,
   toValuationFilters,
   type InventoryPageFilters,
   type InventoryView,
 } from '../lib/inventory-filters'
-import { matchesStockStatusFilter } from '../lib/stock-status'
-import { branchStock, lowStock } from '../repositories/inventory.repository'
 import {
+  getSupplierStockKpis,
+  getSupplierStockSummary,
+  type SupplierStockSummaryRow,
+} from '../repositories/inventory-supplier.repository'
+import {
+  exportInventoryStock,
   getInventoryBranchSummary,
+  getInventoryLowStock,
   getInventoryStockBreakdown,
   getInventoryValuationSummary,
+  getInventoryVariantBreakdown,
   listAccessibleBranches,
   type InventoryProductStockRow,
 } from '../repositories/inventory-valuation.repository'
@@ -41,6 +51,8 @@ export function StockOverviewPage() {
   const { can } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [detailsRow, setDetailsRow] = useState<InventoryProductStockRow | null>(null)
+  const [supplierDetails, setSupplierDetails] = useState<SupplierStockSummaryRow | null>(null)
+  const [exportBusy, setExportBusy] = useState(false)
 
   const filters: InventoryPageFilters = useMemo(
     () => filtersFromSearchParams(searchParams),
@@ -48,6 +60,7 @@ export function StockOverviewPage() {
   )
 
   const valuationFilters = useMemo(() => toValuationFilters(filters), [filters])
+  const supplierFilters = useMemo(() => toSupplierStockFilters(filters), [filters])
 
   const setFilters = useCallback(
     (patch: Partial<InventoryPageFilters>) => {
@@ -102,34 +115,34 @@ export function StockOverviewPage() {
   })
 
   const variantQuery = useQuery({
-    queryKey: queryKeys.inventoryBalances({
-      branchId: filters.branchId,
-      search: filters.search,
+    queryKey: queryKeys.inventoryVariantBreakdown({
+      ...valuationFilters,
       page: filters.page,
-      view: 'variants',
+      pageSize: PAGE_SIZE,
+      sortBy: filters.sortBy,
+      sortDirection: filters.sortDirection,
     }),
     queryFn: () =>
-      branchStock({
-        branchId: filters.branchId,
-        search: filters.search,
+      getInventoryVariantBreakdown({
+        ...valuationFilters,
         page: filters.page,
         pageSize: PAGE_SIZE,
+        sortBy: filters.sortBy,
+        sortDirection: filters.sortDirection === 'desc' ? 'desc' : 'asc',
       }),
     enabled: filters.view === 'variants',
     placeholderData: keepPreviousData,
   })
 
   const lowStockQuery = useQuery({
-    queryKey: queryKeys.lowStock({
-      branchId: filters.branchId,
-      search: filters.search,
+    queryKey: queryKeys.inventoryLowStock({
+      ...valuationFilters,
       page: filters.page,
-      view: 'low-stock',
+      pageSize: PAGE_SIZE,
     }),
     queryFn: () =>
-      lowStock({
-        branchId: filters.branchId,
-        search: filters.search,
+      getInventoryLowStock({
+        ...valuationFilters,
         page: filters.page,
         pageSize: PAGE_SIZE,
       }),
@@ -137,38 +150,57 @@ export function StockOverviewPage() {
     placeholderData: keepPreviousData,
   })
 
+  const supplierKpiQuery = useQuery({
+    queryKey: queryKeys.inventorySupplierKpis(supplierFilters),
+    queryFn: () => getSupplierStockKpis(supplierFilters),
+    enabled: filters.view === 'suppliers',
+    placeholderData: keepPreviousData,
+  })
+
+  const supplierQuery = useQuery({
+    queryKey: queryKeys.inventorySupplierSummary(supplierFilters),
+    queryFn: () => getSupplierStockSummary(supplierFilters),
+    enabled: filters.view === 'suppliers',
+    placeholderData: keepPreviousData,
+  })
+
   const canViewCost =
     breakdownQuery.data?.can_view_cost ??
+    variantQuery.data?.can_view_cost ??
+    lowStockQuery.data?.can_view_cost ??
+    supplierQuery.data?.can_view_cost ??
+    supplierKpiQuery.data?.can_view_cost ??
     (can('inventory.valuation') || can('accounting.view') || can('products.manage_prices'))
 
   const summary = summaryQuery.data
-  const showInitialLoading = summaryQuery.isLoading && !summary
-
-  const variantRows = useMemo(() => {
-    const items = variantQuery.data?.items ?? []
-    const statusFilter = searchParams.get('status')
-    if (!statusFilter || statusFilter === 'all') return items
-    return items.filter((row) => {
-      const available = row.available ?? Math.max(row.quantity - (row.qtyReserved ?? 0), 0)
-      return matchesStockStatusFilter(statusFilter, available, row.reorderLevel, row.locationType)
-    })
-  }, [variantQuery.data?.items, searchParams])
+  const showInitialLoading =
+    filters.view === 'suppliers'
+      ? supplierKpiQuery.isLoading && !supplierKpiQuery.data
+      : summaryQuery.isLoading && !summary
 
   const totalPages = useMemo(() => {
     if (filters.view === 'products') {
       return Math.max(1, Math.ceil((breakdownQuery.data?.total_count ?? 0) / PAGE_SIZE))
     }
     if (filters.view === 'variants') {
-      return Math.max(1, Math.ceil((variantQuery.data?.total ?? 0) / PAGE_SIZE))
+      return Math.max(1, Math.ceil((variantQuery.data?.total_count ?? 0) / PAGE_SIZE))
     }
     if (filters.view === 'low-stock') {
-      return Math.max(1, Math.ceil((lowStockQuery.data?.total ?? 0) / PAGE_SIZE))
+      return Math.max(1, Math.ceil((lowStockQuery.data?.total_count ?? 0) / PAGE_SIZE))
+    }
+    if (filters.view === 'suppliers') {
+      return Math.max(1, Math.ceil((supplierQuery.data?.total_count ?? 0) / PAGE_SIZE))
     }
     return 1
-  }, [filters.view, breakdownQuery.data, variantQuery.data, lowStockQuery.data])
+  }, [
+    filters.view,
+    breakdownQuery.data,
+    variantQuery.data,
+    lowStockQuery.data,
+    supplierQuery.data,
+  ])
 
-  const exportCsv = () => {
-    const rows = breakdownQuery.data?.items ?? []
+  const writeCsv = (rows: InventoryProductStockRow[], scope: string) => {
     const headers = [
       'Product',
       'SKU',
@@ -191,28 +223,92 @@ export function StockOverviewPage() {
       r.total_stock_value,
       r.stock_status,
     ])
-    downloadCsv(`inventory-${new Date().toISOString().slice(0, 10)}.csv`, headers, data)
+    downloadCsv(`inventory-${scope}-${new Date().toISOString().slice(0, 10)}.csv`, headers, data)
+  }
+
+  const exportCsv = async (scope: 'page' | 'filtered') => {
+    if (filters.view === 'suppliers') {
+      const rows = supplierQuery.data?.items ?? []
+      downloadCsv(
+        `supplier-stock-${new Date().toISOString().slice(0, 10)}.csv`,
+        [
+          'Supplier',
+          'Products',
+          'Variants',
+          'Received',
+          'Remaining',
+          ...(canViewCost ? ['Stock Cost', 'Potential Profit'] : []),
+          'Selling Value',
+          'Low',
+          'Out',
+        ],
+        rows.map((r) => [
+          r.supplier_name,
+          r.product_count,
+          r.variant_count,
+          r.received_qty,
+          r.remaining_qty,
+          ...(canViewCost ? [r.stock_cost ?? '', r.potential_profit ?? ''] : []),
+          r.selling_value,
+          r.low_stock_count,
+          r.out_of_stock_count,
+        ]),
+      )
+      return
+    }
+    if (filters.view !== 'products') return
+    setExportBusy(true)
+    try {
+      if (scope === 'page') {
+        writeCsv(breakdownQuery.data?.items ?? [], 'page')
+        return
+      }
+      const result = await exportInventoryStock({
+        ...valuationFilters,
+        scope: 'filtered',
+        page: 1,
+        pageSize: PAGE_SIZE,
+      })
+      writeCsv(result.items, 'filtered')
+    } finally {
+      setExportBusy(false)
+    }
   }
 
   const handleViewBranchStock = (branchId: string) => {
     setFilters({ branchId, view: 'products', page: 1 })
   }
 
+  const handleViewBranchSuppliers = (branchId: string) => {
+    setFilters({ branchId, view: 'suppliers', page: 1 })
+  }
+
   const viewLoading =
     (filters.view === 'products' && breakdownQuery.isFetching) ||
     (filters.view === 'variants' && variantQuery.isFetching) ||
-    (filters.view === 'low-stock' && lowStockQuery.isFetching)
+    (filters.view === 'low-stock' && lowStockQuery.isFetching) ||
+    (filters.view === 'suppliers' && supplierQuery.isFetching)
 
   const viewEmpty =
     (filters.view === 'products' && (breakdownQuery.data?.items.length ?? 0) === 0) ||
-    (filters.view === 'variants' && variantRows.length === 0) ||
-    (filters.view === 'low-stock' && (lowStockQuery.data?.items.length ?? 0) === 0)
+    (filters.view === 'variants' && (variantQuery.data?.items.length ?? 0) === 0) ||
+    (filters.view === 'low-stock' && (lowStockQuery.data?.items.length ?? 0) === 0) ||
+    (filters.view === 'suppliers' && (supplierQuery.data?.items.length ?? 0) === 0)
 
   return (
     <div className="mx-auto w-full max-w-[1440px] min-w-0 space-y-4 overflow-x-hidden px-3 sm:px-4 lg:px-0">
       <InventoryPageHeader
-        onExport={exportCsv}
-        exportDisabled={filters.view !== 'products' || (breakdownQuery.data?.items.length ?? 0) === 0}
+        onExportPage={() => void exportCsv('page')}
+        onExportAll={() => void exportCsv('filtered')}
+        exportDisabled={
+          exportBusy ||
+          (filters.view === 'products'
+            ? (breakdownQuery.data?.items.length ?? 0) === 0
+            : filters.view === 'suppliers'
+              ? (supplierQuery.data?.items.length ?? 0) === 0
+              : true)
+        }
+        exportBusy={exportBusy}
       />
 
       <InventoryFilterBar
@@ -227,15 +323,23 @@ export function StockOverviewPage() {
 
       {showInitialLoading ? <InventoryTableSkeleton /> : null}
 
-      {summaryQuery.error ? (
+      {filters.view !== 'suppliers' && summaryQuery.error ? (
         <InventoryEmptyState variant="error" onRetry={() => void summaryQuery.refetch()} />
       ) : null}
 
-      {summary && !summaryQuery.error ? (
+      {filters.view === 'suppliers' && supplierKpiQuery.error ? (
+        <InventoryEmptyState variant="error" onRetry={() => void supplierKpiQuery.refetch()} />
+      ) : null}
+
+      {filters.view !== 'suppliers' && summary && !summaryQuery.error ? (
         <InventoryKpiGrid summary={summary} canViewCost={canViewCost} />
       ) : null}
 
-      {summaryQuery.isFetching && summary ? (
+      {filters.view === 'suppliers' && supplierKpiQuery.data && !supplierKpiQuery.error ? (
+        <SupplierStockKpiGrid kpis={supplierKpiQuery.data} />
+      ) : null}
+
+      {filters.view !== 'suppliers' && summaryQuery.isFetching && summary ? (
         <p className="text-xs text-[#9CA3AF]">Updating summary…</p>
       ) : null}
 
@@ -250,6 +354,7 @@ export function StockOverviewPage() {
             canViewCost={canViewCost}
             selectedBranchId={filters.branchId ?? null}
             onViewStock={handleViewBranchStock}
+            onViewSupplierStock={handleViewBranchSuppliers}
           />
         )
       ) : null}
@@ -277,10 +382,29 @@ export function StockOverviewPage() {
             <p className="text-xs text-[#9CA3AF]">Refreshing variants…</p>
           ) : null}
           <VariantStockTable
-            rows={variantRows}
+            rows={variantQuery.data?.items ?? []}
             isLoading={variantQuery.isLoading && !variantQuery.data}
           />
           {viewEmpty && !variantQuery.isLoading ? (
+            <InventoryEmptyState onClear={() => setFilters(clearInventoryFilters())} />
+          ) : null}
+        </section>
+      ) : null}
+
+      {filters.view === 'suppliers' ? (
+        <section className="space-y-3">
+          {viewLoading && supplierQuery.data ? (
+            <p className="text-xs text-[#9CA3AF]">Refreshing suppliers…</p>
+          ) : null}
+          <SupplierStockTable
+            rows={supplierQuery.data?.items ?? []}
+            canViewCost={canViewCost}
+            isLoading={supplierQuery.isLoading && !supplierQuery.data}
+            branchId={filters.branchId}
+            includeNonSaleable={filters.includeNonSaleable}
+            onViewDetails={setSupplierDetails}
+          />
+          {viewEmpty && !supplierQuery.isLoading ? (
             <InventoryEmptyState onClear={() => setFilters(clearInventoryFilters())} />
           ) : null}
         </section>
@@ -331,6 +455,16 @@ export function StockOverviewPage() {
         canViewCost={canViewCost}
         onOpenChange={(open) => {
           if (!open) setDetailsRow(null)
+        }}
+      />
+
+      <SupplierStockDetailsDrawer
+        row={supplierDetails}
+        open={Boolean(supplierDetails)}
+        branchId={filters.branchId}
+        includeNonSaleable={filters.includeNonSaleable}
+        onOpenChange={(open) => {
+          if (!open) setSupplierDetails(null)
         }}
       />
     </div>

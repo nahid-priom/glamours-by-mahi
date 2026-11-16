@@ -40,6 +40,18 @@ export const queryKeys = {
     ['inventory-branch-summary', includeNonSaleable] as const,
   inventoryStockBreakdown: (filters: Record<string, unknown> = {}) =>
     ['inventory-stock-breakdown', filters] as const,
+  inventoryVariantBreakdown: (filters: Record<string, unknown> = {}) =>
+    ['inventory-variant-breakdown', filters] as const,
+  inventoryLowStock: (filters: Record<string, unknown> = {}) =>
+    ['inventory-low-stock', filters] as const,
+  inventorySupplierKpis: (filters: Record<string, unknown> = {}) =>
+    ['inventory-supplier-kpis', filters] as const,
+  inventorySupplierSummary: (filters: Record<string, unknown> = {}) =>
+    ['inventory-supplier-summary', filters] as const,
+  inventorySupplierBreakdown: (filters: Record<string, unknown> = {}) =>
+    ['inventory-supplier-breakdown', filters] as const,
+  inventorySupplierMovements: (filters: Record<string, unknown> = {}) =>
+    ['inventory-supplier-movements', filters] as const,
   accounts: ['accounts'] as const,
   couriers: ['couriers'] as const,
   paymentMethods: ['payment-methods'] as const,

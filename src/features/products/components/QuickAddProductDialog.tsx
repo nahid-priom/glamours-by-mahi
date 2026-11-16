@@ -14,6 +14,8 @@ import {
   searchBrands,
   searchCategories,
 } from '../repositories/catalog.repository'
+import { invalidateInventoryQueries } from '@/features/inventory/lib/invalidate-inventory-queries'
+import { seedInventoryPresence } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { QuickCreateNamedEntityDialog } from './QuickCreateNamedEntityDialog'
 import { supabase } from '@/lib/supabase/client'
 
@@ -137,15 +139,14 @@ export function QuickAddProductDialog({
           },
         })
         if (error) throw error
+      } else if (variantId) {
+        await seedInventoryPresence([{ variant_id: variantId, branch_id: branchId }])
       }
 
       return variantId
     },
     onSuccess: async (variantId) => {
-      await qc.invalidateQueries({ queryKey: ['products'] })
-      await qc.invalidateQueries({ queryKey: ['pos-products'] })
-      await qc.invalidateQueries({ queryKey: ['inventory-balances'] })
-      await qc.invalidateQueries({ queryKey: ['stock-overview'] })
+      invalidateInventoryQueries(qc)
       onCreated(variantId)
       onOpenChange(false)
     },

@@ -23,6 +23,10 @@ const HEADERS = [
   'selling_price',
   'opening_stock',
   'status',
+  'size',
+  'color',
+  'variant_sku',
+  'variant_barcode',
 ] as const
 
 const ALIASES: Record<string, string[]> = {
@@ -35,6 +39,10 @@ const ALIASES: Record<string, string[]> = {
   selling_price: ['price', 'mrp', 'sell_price', 'sale_price'],
   opening_stock: ['stock', 'qty', 'quantity', 'opening_qty'],
   status: ['product_status', 'lifecycle'],
+  size: ['volume', 'variant_size', 'option1'],
+  color: ['shade', 'variant_color', 'option2'],
+  variant_sku: ['sku_variant', 'child_sku'],
+  variant_barcode: ['barcode_variant', 'child_barcode', 'ean_variant'],
 }
 
 function validateProductRow(row: ImportPreviewRow): ImportPreviewRow {
@@ -42,19 +50,29 @@ function validateProductRow(row: ImportPreviewRow): ImportPreviewRow {
   const name = row.values.name?.trim() ?? ''
   if (!name) errors.push('Name is required')
   if (name.length > 200) errors.push('Name too long')
+
+  const category = row.values.category?.trim() ?? ''
+  const status = (row.values.status || 'draft').toLowerCase()
+  if (status === 'active' && !category) {
+    errors.push('Category is required to activate')
+  }
+
   const purchase = parseNonNegativeNumber(row.values.purchase_price ?? '')
   const selling = parseNonNegativeNumber(row.values.selling_price ?? '')
   const stock = parseNonNegativeNumber(row.values.opening_stock ?? '0')
   if (row.values.purchase_price && purchase == null) errors.push('Invalid purchase price')
   if (row.values.selling_price && selling == null) errors.push('Invalid selling price')
   if (row.values.opening_stock && stock == null) errors.push('Invalid opening stock')
-  const status = (row.values.status || 'draft').toLowerCase()
   if (!['draft', 'active', 'archived'].includes(status) && row.values.status) {
     errors.push('Status must be draft, active, or archived')
   }
-  if (!row.matchKey && !name) {
-    /* already covered */
+
+  const size = row.values.size?.trim() ?? ''
+  const color = row.values.color?.trim() ?? ''
+  if ((size && !color) || (!size && color)) {
+    errors.push('Size/volume and color/shade are both required for variant rows')
   }
+
   if (errors.length) {
     return { ...row, action: 'error', errors, diff: [] }
   }
@@ -64,16 +82,25 @@ function validateProductRow(row: ImportPreviewRow): ImportPreviewRow {
   return { ...row, errors: [] }
 }
 
+function groupKey(row: ImportPreviewRow): string {
+  const sku = row.values.sku?.trim().toLowerCase()
+  if (sku) return `sku:${sku}`
+  return `name:${row.values.name.trim().toLowerCase()}`
+}
+
 export const productsAdapter: BulkImportAdapter = {
   entityType: 'products',
   title: 'Import products',
-  description: 'Upload a CSV, review matches, then create or update products.',
+  description: 'Upload a CSV for simple or variant products, review matches, then commit.',
   listPath: '/products',
   permission: 'products.import',
   columns: [
     { key: 'name', label: 'Name' },
     { key: 'sku', label: 'SKU' },
     { key: 'barcode', label: 'Barcode' },
+    { key: 'size', label: 'Size' },
+    { key: 'color', label: 'Color' },
+    { key: 'variant_sku', label: 'Variant SKU' },
     { key: 'category', label: 'Category' },
     { key: 'brand', label: 'Brand' },
     { key: 'purchase_price', label: 'Purchase' },
@@ -83,21 +110,28 @@ export const productsAdapter: BulkImportAdapter = {
   ],
   templateHeaders: [...HEADERS],
   templateSample: [
-    'Sample Product',
-    'Skincare',
-    'Brand A',
-    'SKU-001',
+    'Matte Lipstick',
+    'Makeup',
+    'Maybelline',
+    'MAT-LIP',
+    '',
+    '550',
+    '850',
+    '12',
+    'active',
+    '3.5g',
+    'Ruby Red',
+    'MAT-LIP-RR-35',
     '8901234567890',
-    '100',
-    '150',
-    '10',
-    'draft',
   ],
   columnGuide: [
     'Match key: sku, then barcode.',
+    'Variant rows: set size + color (and optional variant_sku / variant_barcode).',
+    'Rows that share the same name/base SKU are grouped into one variant product on create.',
     'Blank cells on update leave existing values unchanged.',
     'Missing category/brand names are created automatically on commit.',
     'Opening stock applies on create only (active branch).',
+    'Category is required to activate.',
   ],
   headerAliases: ALIASES,
   parseRows(matrix) {
@@ -107,8 +141,14 @@ export const productsAdapter: BulkImportAdapter = {
       const values: Record<string, string> = {}
       for (const key of HEADERS) values[key] = cellAt(cells, idx[key])
       const sku = values.sku
-      const barcode = values.barcode
-      const matchKey = sku || barcode
+      const barcode = values.barcode || values.variant_barcode
+      const size = values.size?.trim()
+      const color = values.color?.trim()
+      // Variant rows share base SKU; uniqueness is per combination / variant identity.
+      const matchKey =
+        size && color
+          ? `${sku || values.name}::${color}::${size}`
+          : values.variant_sku?.trim() || sku || barcode
       const base: ImportPreviewRow = {
         rowNum: i + 2,
         action: 'create',
@@ -125,12 +165,13 @@ export const productsAdapter: BulkImportAdapter = {
   },
   async enrichMatches(rows) {
     const skus = rows.map((r) => r.values.sku).filter(Boolean)
-    const barcodes = rows.map((r) => r.values.barcode).filter(Boolean)
+    const barcodes = rows
+      .map((r) => r.values.barcode || r.values.variant_barcode)
+      .filter(Boolean)
     let matches: Awaited<ReturnType<typeof lookupProductsForImport>> = []
     try {
       matches = await lookupProductsForImport(skus, barcodes)
     } catch {
-      // Fallback: continue as create-only if RPC unavailable
       matches = []
     }
     const bySku = new Map<string, (typeof matches)[0]>()
@@ -150,13 +191,16 @@ export const productsAdapter: BulkImportAdapter = {
     return rows.map((row) => {
       if (row.action === 'error') return row
       const sku = row.values.sku.trim()
-      const barcode = row.values.barcode.trim()
+      const barcode = row.values.barcode.trim() || row.values.variant_barcode.trim()
       const hit = (sku && bySku.get(sku.toLowerCase())) || (barcode && byBarcode.get(barcode)) || null
       const notes: string[] = []
       const catName = row.values.category.trim().toLowerCase()
       const brandName = row.values.brand.trim().toLowerCase()
       if (catName && !catByName.has(catName)) notes.push(`Will create category “${row.values.category}”`)
       if (brandName && !brandByName.has(brandName)) notes.push(`Will create brand “${row.values.brand}”`)
+      if (row.values.size.trim() && row.values.color.trim()) {
+        notes.push('Variant row (size/color)')
+      }
 
       if (!hit) {
         return validateProductRow({ ...row, action: 'create', existingId: null, diff: [], notes })
@@ -202,55 +246,74 @@ export const productsAdapter: BulkImportAdapter = {
     })
   },
   revalidateRow(row) {
-    const matchKey = row.values.sku.trim() || row.values.barcode.trim()
+    const size = row.values.size?.trim()
+    const color = row.values.color?.trim()
+    const matchKey =
+      size && color
+        ? `${row.values.sku.trim() || row.values.name.trim()}::${color}::${size}`
+        : row.values.variant_sku.trim() ||
+          row.values.sku.trim() ||
+          row.values.barcode.trim() ||
+          row.values.variant_barcode.trim()
     return validateProductRow({ ...row, matchKey })
   },
   async commitRow(row, ctx: ImportCommitContext) {
     if (row.action === 'skip' || row.action === 'error') return
     if (!ctx.organizationId) throw new Error('Missing organization')
 
-    let categoryId: string | null = null
-    let brandId: string | null = null
-    const catName = row.values.category.trim()
-    const brandName = row.values.brand.trim()
-
-    if (catName) {
-      const cats = await listCategories({ pageSize: 500, search: catName })
-      const found = cats.items.find((c) => c.name.trim().toLowerCase() === catName.toLowerCase())
-      if (found) categoryId = found.id
-      else {
-        const created = await createCategory(ctx.organizationId, {
-          name: catName,
-          code: null,
-          description: null,
-          sort_order: 0,
-          is_active: true,
-        })
-        categoryId = created.id
-      }
-    }
-
-    if (brandName) {
-      const brands = await listBrands({ pageSize: 500, search: brandName })
-      const found = brands.items.find((b) => b.name.trim().toLowerCase() === brandName.toLowerCase())
-      if (found) brandId = found.id
-      else {
-        const created = await createBrand(ctx.organizationId, {
-          name: brandName,
-          code: null,
-          description: null,
-          is_active: true,
-        })
-        brandId = created.id
-      }
-    }
-
-    const purchase = parseNonNegativeNumber(row.values.purchase_price) ?? 0
-    const selling = parseNonNegativeNumber(row.values.selling_price) ?? 0
-    const stock = parseNonNegativeNumber(row.values.opening_stock) ?? 0
-    const status = (row.values.status || 'draft').toLowerCase()
-
     if (row.action === 'create') {
+      const key = groupKey(row)
+      const siblings = (ctx.allRows ?? [row]).filter(
+        (r) => r.action === 'create' && groupKey(r) === key,
+      )
+      const leader = siblings.reduce((a, b) => (a.rowNum <= b.rowNum ? a : b), row)
+      ctx.committedGroupKeys ??= new Set()
+      if (ctx.committedGroupKeys.has(key)) return
+      if (leader.rowNum !== row.rowNum) return
+      ctx.committedGroupKeys.add(key)
+
+      let categoryId: string | null = null
+      let brandId: string | null = null
+      const catName = row.values.category.trim()
+      const brandName = row.values.brand.trim()
+
+      if (catName) {
+        const cats = await listCategories({ pageSize: 500, search: catName })
+        const found = cats.items.find((c) => c.name.trim().toLowerCase() === catName.toLowerCase())
+        if (found) categoryId = found.id
+        else {
+          const created = await createCategory(ctx.organizationId, {
+            name: catName,
+            code: null,
+            description: null,
+            sort_order: 0,
+            is_active: true,
+          })
+          categoryId = created.id
+        }
+      }
+
+      if (brandName) {
+        const brands = await listBrands({ pageSize: 500, search: brandName })
+        const found = brands.items.find((b) => b.name.trim().toLowerCase() === brandName.toLowerCase())
+        if (found) brandId = found.id
+        else {
+          const created = await createBrand(ctx.organizationId, {
+            name: brandName,
+            code: null,
+            description: null,
+            is_active: true,
+          })
+          brandId = created.id
+        }
+      }
+
+      const purchase = parseNonNegativeNumber(row.values.purchase_price) ?? 0
+      const selling = parseNonNegativeNumber(row.values.selling_price) ?? 0
+      const status = (row.values.status || 'draft').toLowerCase()
+      const variantRows = siblings.filter((r) => r.values.size?.trim() && r.values.color?.trim())
+      const hasVariants = variantRows.length > 0
+
       const payload: Record<string, unknown> = {
         name: row.values.name.trim(),
         base_sku: row.values.sku || null,
@@ -260,22 +323,116 @@ export const productsAdapter: BulkImportAdapter = {
         category_id: categoryId,
         brand_id: brandId,
         status: status === 'active' && categoryId ? 'active' : 'draft',
-        has_variants: false,
+        has_variants: hasVariants,
+        product_type: hasVariants ? 'variable' : 'simple',
+        client_txn_key: crypto.randomUUID(),
       }
-      if (stock > 0 && ctx.activeBranchId) {
-        payload.opening_stock = [
-          {
-            branch_id: ctx.activeBranchId,
-            quantity: stock,
-            unit_cost: purchase,
-          },
+
+      if (hasVariants) {
+        const sizes = Array.from(new Set(variantRows.map((r) => r.values.size.trim())))
+        const colors = Array.from(new Set(variantRows.map((r) => r.values.color.trim())))
+        const comboKeys = new Set<string>()
+        for (const r of variantRows) {
+          const key = `${r.values.color.trim()}::${r.values.size.trim()}`
+          if (comboKeys.has(key)) {
+            throw new Error(`Duplicate variant combination ${key} in import group`)
+          }
+          comboKeys.add(key)
+        }
+        payload.options = [
+          { name: 'Size', values: sizes.map((v) => ({ value: v })) },
+          { name: 'Color', values: colors.map((v) => ({ value: v })) },
         ]
+        payload.variants = variantRows.map((r) => {
+          const size = r.values.size.trim()
+          const color = r.values.color.trim()
+          const vPurchase = parseNonNegativeNumber(r.values.purchase_price) ?? purchase
+          const vSelling = parseNonNegativeNumber(r.values.selling_price) ?? selling
+          return {
+            key: `${color}::${size}`,
+            size,
+            color,
+            sku: r.values.variant_sku.trim() || r.values.sku.trim() || undefined,
+            barcode: r.values.variant_barcode.trim() || r.values.barcode.trim() || null,
+            name: `${color} / ${size}`,
+            purchase_price: vPurchase,
+            selling_price: vSelling,
+            is_active: true,
+          }
+        })
+
+        if (ctx.activeBranchId) {
+          const stockEntries = variantRows
+            .map((r) => {
+              const qty = parseNonNegativeNumber(r.values.opening_stock) ?? 0
+              if (qty <= 0) return null
+              return {
+                branch_id: ctx.activeBranchId,
+                variant_key: `${r.values.color.trim()}::${r.values.size.trim()}`,
+                quantity: qty,
+                unit_cost: parseNonNegativeNumber(r.values.purchase_price) ?? purchase,
+              }
+            })
+            .filter(Boolean)
+          if (stockEntries.length > 0) payload.opening_stock = stockEntries
+        }
+      } else {
+        const stock = parseNonNegativeNumber(row.values.opening_stock) ?? 0
+        if (stock > 0 && ctx.activeBranchId) {
+          payload.opening_stock = [
+            {
+              branch_id: ctx.activeBranchId,
+              quantity: stock,
+              unit_cost: purchase,
+            },
+          ]
+        }
       }
+
       await createProductAtomic(payload)
       return
     }
 
     if (row.action === 'update' && row.existingId) {
+      let categoryId: string | null = null
+      let brandId: string | null = null
+      const catName = row.values.category.trim()
+      const brandName = row.values.brand.trim()
+      const purchase = parseNonNegativeNumber(row.values.purchase_price) ?? 0
+      const selling = parseNonNegativeNumber(row.values.selling_price) ?? 0
+      const status = (row.values.status || 'draft').toLowerCase()
+
+      if (catName) {
+        const cats = await listCategories({ pageSize: 500, search: catName })
+        const found = cats.items.find((c) => c.name.trim().toLowerCase() === catName.toLowerCase())
+        if (found) categoryId = found.id
+        else {
+          const created = await createCategory(ctx.organizationId, {
+            name: catName,
+            code: null,
+            description: null,
+            sort_order: 0,
+            is_active: true,
+          })
+          categoryId = created.id
+        }
+      }
+
+      if (brandName) {
+        const brands = await listBrands({ pageSize: 500, search: brandName })
+        const found = brands.items.find((b) => b.name.trim().toLowerCase() === brandName.toLowerCase())
+        if (found) brandId = found.id
+        else {
+          const created = await createBrand(ctx.organizationId, {
+            name: brandName,
+            code: null,
+            description: null,
+            is_active: true,
+          })
+          brandId = created.id
+        }
+      }
+
       const current = await getProduct(row.existingId)
       if (!current) throw new Error('Product no longer exists')
       const incoming: Partial<ProductInput> = {}

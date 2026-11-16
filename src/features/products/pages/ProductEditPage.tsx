@@ -1,19 +1,19 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/auth-session'
 import { useToast } from '@/components/ui/toast'
 import { queryKeys } from '@/lib/query/keys'
+import { invalidateInventoryQueries } from '@/features/inventory/lib/invalidate-inventory-queries'
 import { invalidateStorefrontCache } from '@/features/storefront/storefront.service'
-import { ProductForm } from '../components/ProductForm'
+import { ProductCreateWizard } from '../components/wizard/ProductCreateWizard'
 import { getProduct } from '../repositories/catalog.repository'
 
 export function ProductEditPage() {
   const { id = '' } = useParams<{ id: string }>()
   const { profile } = useAuth()
   const { toast } = useToast()
-  const navigate = useNavigate()
   const qc = useQueryClient()
 
   const { data: product, isLoading, error } = useQuery({
@@ -49,17 +49,15 @@ export function ProductEditPage() {
   }
 
   return (
-    <ProductForm
+    <ProductCreateWizard
       orgId={profile.organization_id}
       editing={product}
-      title={product.name}
       onSaved={async () => {
-        await qc.invalidateQueries({ queryKey: ['products'] })
+        invalidateInventoryQueries(qc)
         await qc.invalidateQueries({ queryKey: queryKeys.product(id) })
-        await qc.invalidateQueries({ queryKey: ['pos-products'] })
+        await qc.invalidateQueries({ queryKey: ['variants'] })
         invalidateStorefrontCache()
         toast('Product updated')
-        navigate('/products')
       }}
       onError={(m) => toast(m, 'error')}
     />
