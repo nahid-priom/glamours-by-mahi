@@ -83,6 +83,8 @@ export type CommissionFilters = {
   dateFrom?: string | null
   /** Inclusive calendar date (Asia/Dhaka); converted to exclusive end bound */
   dateTo?: string | null
+  /** UI active branch context — server still enforces branch access on RPCs */
+  branchId?: string | null
   page?: number
   pageSize?: number
 }
@@ -374,6 +376,7 @@ async function listCommissions(filters: CommissionFilters = {}): Promise<Commiss
     .range(from, to)
   if (filters.status) q = q.eq('status', filters.status)
   if (filters.employeeId) q = q.eq('employee_id', filters.employeeId)
+  if (filters.branchId) q = q.eq('branch_id', filters.branchId)
   // Date semantic: accrual/created_at in Asia/Dhaka (inclusive start, exclusive end)
   if (filters.dateFrom) q = q.gte('created_at', `${filters.dateFrom}T00:00:00+06:00`)
   if (filters.dateTo) q = q.lt('created_at', nextDhakaDayIso(filters.dateTo))
@@ -490,7 +493,10 @@ async function getSaleCommissionAudit(saleId: string): Promise<SaleCommissionAud
 }
 
 async function summarizeSalesCommissions(
-  filters: Pick<CommissionFilters, 'status' | 'employeeId' | 'dateFrom' | 'dateTo'> = {},
+  filters: Pick<
+    CommissionFilters,
+    'status' | 'employeeId' | 'dateFrom' | 'dateTo' | 'branchId'
+  > = {},
 ): Promise<SalesCommissionsSummary> {
   const { data, error } = await untypedRpc('summarize_sales_commissions', {
     p_status: filters.status ?? null,
@@ -498,6 +504,7 @@ async function summarizeSalesCommissions(
     p_employee_id: filters.employeeId ?? null,
     p_from: filters.dateFrom ?? null,
     p_to: filters.dateTo ?? null,
+    p_branch_id: filters.branchId ?? null,
   })
   if (error) throw error
   const payload = (data ?? {}) as Record<string, unknown>

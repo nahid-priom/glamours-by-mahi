@@ -81,7 +81,12 @@ export function StoresPage() {
     mutationFn: (data: StoreFormInput) => storesService.create(data),
     onSuccess: () => {
       invalidate()
-      toast('Store created successfully')
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-branches'] })
+      void queryClient.invalidateQueries({ queryKey: ['accessible-branches'] })
+      // Explicit grant policy: new branches are NOT auto-granted to all users.
+      toast(
+        'Store created. Assign branch access under Administration → Users (not granted automatically).',
+      )
     },
     onError: (e: Error) => toastRpcError(toast, e),
   })

@@ -218,7 +218,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: profileErr.message }, 500);
     }
 
-    const { error: linkErr } = await admin
+    // Race-safe link: only when still unlinked. On failure, compensate Auth user.
+    const { data: linkedRows, error: linkErr } = await admin
       .from("employees")
       .update({
         profile_id: userId,
@@ -227,14 +228,25 @@ Deno.serve(async (req) => {
       .eq("id", employeeId)
       .eq("organization_id", orgId)
       .is("deleted_at", null)
-      .is("profile_id", null);
+      .is("profile_id", null)
+      .select("id");
 
-    if (linkErr) {
-      console.error("employee link failed", linkErr.message);
-      return jsonResponse({ error: "User created but employee link failed: " + linkErr.message }, 500);
+    if (linkErr || !linkedRows?.length) {
+      console.error("employee link failed", linkErr?.message ?? "already linked or missing");
+      await admin.from("profiles").update({
+        is_active: false,
+        deleted_at: new Date().toISOString(),
+        updated_by: callerData.user.id,
+      }).eq("id", userId);
+      await admin.auth.admin.deleteUser(userId);
+      return jsonResponse({
+        error: linkErr
+          ? "User created but employee link failed: " + linkErr.message
+          : "Employee was linked by another request; auth user rolled back",
+      }, 409);
     }
 
-    // Align commission structures + ledger with the new login profile
+    // Align active rule subjects with login profile (config, not historical amounts)
     const { error: rulesSyncErr } = await admin
       .from("salesman_commission_rules")
       .update({
@@ -249,6 +261,7 @@ Deno.serve(async (req) => {
       console.error("commission rules profile sync failed", rulesSyncErr.message);
     }
 
+    // Fill null profile_id on existing ledger rows only — never rewrite amounts/attribution
     const { error: ledgerSyncErr } = await admin
       .from("salesman_commissions")
       .update({
@@ -274,7 +287,29 @@ Deno.serve(async (req) => {
       ),
     );
 
+    const branchWarnings: string[] = [];
     for (const branchId of branchIds) {
+      // Revive soft-deleted grant if present
+      const { data: revived, error: reviveErr } = await admin
+        .from("user_branch_access")
+        .update({
+          deleted_at: null,
+          updated_by: callerData.user.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("branch_id", branchId)
+        .eq("organization_id", orgId)
+        .not("deleted_at", "is", null)
+        .select("id");
+
+      if (reviveErr) {
+        console.error("user_branch_access revive failed", reviveErr.message);
+        branchWarnings.push(branchId);
+        continue;
+      }
+      if (revived?.length) continue;
+
       const { error: branchErr } = await admin.from("user_branch_access").insert({
         user_id: userId,
         branch_id: branchId,
@@ -283,7 +318,11 @@ Deno.serve(async (req) => {
         updated_by: callerData.user.id,
       });
       if (branchErr) {
-        console.error("user_branch_access insert failed", branchErr.message);
+        // Unique conflict = already granted
+        if (!/duplicate|unique/i.test(branchErr.message)) {
+          console.error("user_branch_access insert failed", branchErr.message);
+          branchWarnings.push(branchId);
+        }
       }
     }
 
@@ -301,6 +340,8 @@ Deno.serve(async (req) => {
         full_name: fullName,
         role_id: roleId,
         employee_id: employeeId,
+        branch_ids: branchIds,
+        branch_grant_warnings: branchWarnings,
       },
       p_reason: null,
       p_request_meta: { source: "admin-create-user" },
@@ -313,6 +354,10 @@ Deno.serve(async (req) => {
       full_name: fullName,
       employee_id: employeeId,
       created: true,
+      branch_ids: branchIds,
+      warnings: branchWarnings.length
+        ? [`Branch grant incomplete for: ${branchWarnings.join(", ")}`]
+        : [],
     });
   } catch (e) {
     console.error("admin-create-user error", e);

@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/toast'
+import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT, formatDateShort } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { cn } from '@/lib/utils'
@@ -96,6 +97,7 @@ const PAGE_SIZE = 50
 export function SalesCommissionsPage() {
   const { toast } = useToast()
   const qc = useQueryClient()
+  const { activeBranchId } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [payAccountId, setPayAccountId] = useState<string>('')
   const [employeeId, setEmployeeId] = useState(searchParams.get('employee') || 'all')
@@ -120,6 +122,7 @@ export function SalesCommissionsPage() {
     status: statusFilter === 'all' ? null : statusFilter,
     dateFrom: dateFrom || null,
     dateTo: dateTo || null,
+    branchId: activeBranchId,
     page,
     pageSize: PAGE_SIZE,
   }
@@ -134,6 +137,7 @@ export function SalesCommissionsPage() {
     employeeId: filters.employeeId,
     dateFrom: filters.dateFrom,
     dateTo: filters.dateTo,
+    branchId: filters.branchId,
   }
 
   const { data: summary } = useQuery({

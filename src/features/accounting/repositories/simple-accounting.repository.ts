@@ -3,6 +3,7 @@ import { todayYmd, toQueryBounds } from '@/lib/datetime/bd'
 import {
   accountKindToMethodCodes,
 } from '@/lib/payments/resolve-payment-account'
+import { summarizePeriodCashFlow } from '../lib/cash-flow-metrics'
 import type { Json } from '@/types/database'
 
 export type TxnDirection = 'in' | 'out' | 'all'
@@ -665,6 +666,34 @@ async function createExpense(payload: {
   return data
 }
 
+async function postCashMovement(payload: {
+  direction: 'in' | 'out'
+  account_id: string
+  amount: number
+  branch_id: string
+  note?: string
+  client_txn_key?: string
+}) {
+  const clientTxnKey = payload.client_txn_key ?? newClientTxnKey()
+  const { data, error } = await (supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: { payload: Json },
+    ) => Promise<{ data: unknown; error: Error | null }>
+  }).rpc('post_account_cash_movement', {
+    payload: {
+      direction: payload.direction,
+      account_id: payload.account_id,
+      amount: payload.amount,
+      branch_id: payload.branch_id,
+      note: payload.note ?? null,
+      client_txn_key: clientTxnKey,
+    } as unknown as Json,
+  })
+  if (error) throw error
+  return data
+}
+
 async function transferBalance(payload: {
   from_account_id: string
   to_account_id: string
@@ -926,9 +955,7 @@ async function getDashboardKpis(branchId?: string | null, date?: string): Promis
   const todayCogs = await sumSaleItemsCost(todaySalesBundle.ids)
   const todayProfit = todaySalesBundle.total - todayCogs - todayExpenses
 
-  const monthTxns = await listTransactions({ from: monthStart, to: day, branchId, limit: 500 })
-  const moneyIn = monthTxns.filter((t) => t.direction === 'in' && !t.voided).reduce((s, t) => s + t.amount, 0)
-  const moneyOut = monthTxns.filter((t) => t.direction === 'out' && !t.voided).reduce((s, t) => s + t.amount, 0)
+  const cashFlow = await getPeriodCashFlow(monthStart, day, branchId)
 
   return {
     cashBalance,
@@ -936,8 +963,8 @@ async function getDashboardKpis(branchId?: string | null, date?: string): Promis
     cashDrawerBalance: cashOnly,
     bankBalance,
     mobileBalance,
-    moneyIn,
-    moneyOut,
+    moneyIn: cashFlow.moneyIn,
+    moneyOut: cashFlow.moneyOut,
     customerDue,
     supplierDue,
     netProfit: monthPl.netProfit,
@@ -1158,6 +1185,396 @@ async function getExpectedCash(branchId?: string | null, accountId?: string | nu
   return cashAccounts.reduce((s, a) => s + n(a.current_balance), 0)
 }
 
+export type PartyDueAging = {
+  party: 'customer' | 'supplier'
+  totalDue: number
+  undated: number
+  current: number
+  overdue: number
+  dueDateSupported: boolean
+  asOf: string
+}
+
+export type PeriodCashFlow = {
+  moneyIn: number
+  moneyOut: number
+  transferVolume: number
+  netCashFlow: number
+  txnCount: number
+  from: string
+  to: string
+  complete: boolean
+}
+
+export type OpenDueDocument = {
+  id: string
+  invoiceNo: string
+  docDate: string
+  dueDate: string | null
+  grandTotal: number
+  paidTotal: number
+  remainingDue: number
+  paymentStatus: string
+}
+
+export type PartyLedgerEntry = {
+  id: string
+  entryType: string
+  debit: number
+  credit: number
+  balanceAfter: number
+  notes: string | null
+  occurredAt: string
+  referenceType: string | null
+  referenceId: string | null
+}
+
+export type ProfitLossReport = ProfitLossResult & {
+  grossMarginPct: number
+  netProfitMarginPct: number
+  trendGrain?: 'day' | 'week' | 'month'
+  trendCoversFullRange?: boolean
+  byBranch: Array<{
+    branchId: string
+    branchName: string
+    netSales: number
+    productCost: number
+    grossProfit: number
+    expenses: number
+    otherIncome: number
+    operatingProfit: number
+  }>
+  byProduct: Array<{
+    productId: string | null
+    productName: string
+    qty: number
+    revenue: number
+    cost: number
+    grossProfit: number
+  }>
+  bySale: Array<{
+    saleId: string
+    invoiceNo: string
+    saleDate: string
+    netSales: number
+    productCost: number
+    grossProfit: number
+  }>
+  trend: Array<{
+    date: string
+    label: string
+    income: number
+    expense: number
+    profit: number
+  }>
+}
+
+async function getPeriodCashFlow(
+  from: string,
+  to: string,
+  branchId?: string | null,
+): Promise<PeriodCashFlow> {
+  const { data, error } = await (supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: { p_from: string; p_to: string; p_branch_id: string | null },
+    ) => Promise<{ data: unknown; error: Error | null }>
+  }).rpc('get_accounts_period_cash_flow', {
+    p_from: from,
+    p_to: to,
+    p_branch_id: branchId ?? null,
+  })
+  if (!error && data) {
+    const row = data as Record<string, unknown>
+    return {
+      moneyIn: n(row.money_in),
+      moneyOut: n(row.money_out),
+      transferVolume: n(row.transfer_volume),
+      netCashFlow: n(row.net_cash_flow),
+      txnCount: Number(row.txn_count ?? 0),
+      from,
+      to,
+      complete: Boolean(row.complete ?? true),
+    }
+  }
+
+  // Fallback: page through all posted FT rows (never truncate silently at 200).
+  const pageSize = 1000
+  const all: SimpleTransaction[] = []
+  let offset = 0
+  for (;;) {
+    const bounds = toQueryBounds(from, to)
+    let q = db
+      .from('financial_transactions')
+      .select(
+        `
+        id, account_id, direction, amount, balance_after,
+        transaction_type, transaction_date, note, reference, status,
+        source_type, source_id, branch_id,
+        financial_accounts ( name )
+      `,
+      )
+      .is('deleted_at', null)
+      .eq('status', 'posted')
+      .order('transaction_date', { ascending: false })
+      .range(offset, offset + pageSize - 1)
+    if (branchId) q = q.eq('branch_id', branchId)
+    if (bounds.fromIso) q = q.gte('transaction_date', bounds.fromIso)
+    if (bounds.toIso) q = q.lte('transaction_date', bounds.toIso)
+    const { data: page, error: pageErr } = await q
+    if (pageErr) throw pageErr
+    const mapped = ((page ?? []) as Parameters<typeof mapFinancialTxn>[0][]).map(mapFinancialTxn)
+    all.push(...mapped)
+    if (mapped.length < pageSize) break
+    offset += pageSize
+    if (offset > 100_000) break
+  }
+  const flow = summarizePeriodCashFlow(all)
+  return {
+    ...flow,
+    txnCount: all.length,
+    from,
+    to,
+    complete: true,
+  }
+}
+
+async function listOpenCustomerInvoices(customerId: string, limit = 50): Promise<OpenDueDocument[]> {
+  // due_date is additive (Accounts 2.0); generated Database types may lag behind DB.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (db as any)
+    .from('sales')
+    .select(
+      'id, invoice_no, completed_at, created_at, due_date, grand_total, paid_total, due_total, payment_status',
+    )
+    .eq('customer_id', customerId)
+    .eq('status', 'completed')
+    .is('deleted_at', null)
+    .gt('due_total', 0)
+    .order('completed_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return ((data ?? []) as Array<Record<string, unknown>>).map((s) => ({
+    id: String(s.id),
+    invoiceNo: String(s.invoice_no ?? ''),
+    docDate: String(s.completed_at ?? s.created_at).slice(0, 10),
+    dueDate: s.due_date != null ? String(s.due_date) : null,
+    grandTotal: n(s.grand_total),
+    paidTotal: n(s.paid_total),
+    remainingDue: n(s.due_total),
+    paymentStatus: String(s.payment_status ?? ''),
+  }))
+}
+
+async function listOpenSupplierPurchases(supplierId: string, limit = 50): Promise<OpenDueDocument[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (db as any)
+    .from('purchases')
+    .select(
+      'id, invoice_no, completed_at, created_at, due_date, grand_total, paid_total, due_total, payment_status',
+    )
+    .eq('supplier_id', supplierId)
+    .eq('status', 'completed')
+    .is('deleted_at', null)
+    .gt('due_total', 0)
+    .order('completed_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return ((data ?? []) as Array<Record<string, unknown>>).map((p) => ({
+    id: String(p.id),
+    invoiceNo: String(p.invoice_no ?? ''),
+    docDate: String(p.completed_at ?? p.created_at).slice(0, 10),
+    dueDate: p.due_date != null ? String(p.due_date) : null,
+    grandTotal: n(p.grand_total),
+    paidTotal: n(p.paid_total),
+    remainingDue: n(p.due_total),
+    paymentStatus: String(p.payment_status ?? ''),
+  }))
+}
+
+async function listCustomerLedgerEntries(customerId: string, limit = 30): Promise<PartyLedgerEntry[]> {
+  const { data, error } = await supabase
+    .from('customer_ledger')
+    .select('id, entry_type, debit, credit, balance_after, notes, occurred_at, reference_type, reference_id')
+    .eq('customer_id', customerId)
+    .is('deleted_at', null)
+    .order('occurred_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    entryType: r.entry_type,
+    debit: n(r.debit),
+    credit: n(r.credit),
+    balanceAfter: n(r.balance_after),
+    notes: r.notes,
+    occurredAt: String(r.occurred_at),
+    referenceType: r.reference_type,
+    referenceId: r.reference_id,
+  }))
+}
+
+async function listSupplierLedgerEntries(supplierId: string, limit = 30): Promise<PartyLedgerEntry[]> {
+  const { data, error } = await supabase
+    .from('supplier_ledger')
+    .select('id, entry_type, debit, credit, balance_after, notes, occurred_at, reference_type, reference_id')
+    .eq('supplier_id', supplierId)
+    .is('deleted_at', null)
+    .order('occurred_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    entryType: r.entry_type,
+    debit: n(r.debit),
+    credit: n(r.credit),
+    balanceAfter: n(r.balance_after),
+    notes: r.notes,
+    occurredAt: String(r.occurred_at),
+    referenceType: r.reference_type,
+    referenceId: r.reference_id,
+  }))
+}
+
+async function getPartyDueAging(party: 'customer' | 'supplier'): Promise<PartyDueAging> {
+  const { data, error } = await (supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: { p_party: string },
+    ) => Promise<{ data: unknown; error: Error | null }>
+  }).rpc('get_party_due_aging', {
+    p_party: party,
+  })
+  if (error) {
+    // Additive RPC may not be applied yet — fail honest with undated = total.
+    const list =
+      party === 'customer' ? await listCustomerDues(500) : await listSupplierDues(500)
+    const totalDue = list.reduce((s, r) => s + r.due, 0)
+    return {
+      party,
+      totalDue,
+      undated: totalDue,
+      current: 0,
+      overdue: 0,
+      dueDateSupported: false,
+      asOf: todayIso(),
+    }
+  }
+  const row = (data ?? {}) as Record<string, unknown>
+  return {
+    party,
+    totalDue: n(row.total_due),
+    undated: n(row.undated),
+    current: n(row.current),
+    overdue: n(row.overdue),
+    dueDateSupported: Boolean(row.due_date_supported ?? true),
+    asOf: String(row.as_of ?? todayIso()),
+  }
+}
+
+async function getProfitLossReport(
+  from: string,
+  to: string,
+  branchId?: string | null,
+): Promise<ProfitLossReport> {
+  const { data, error } = await (supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: { p_from: string; p_to: string; p_branch_id: string | null },
+    ) => Promise<{ data: unknown; error: Error | null }>
+  }).rpc('get_profit_loss_report', {
+    p_from: from,
+    p_to: to,
+    p_branch_id: branchId ?? null,
+  })
+  if (error) {
+    // Fallback: base P&L + empty breakdowns (never invent COGS-less profit on hub).
+    const base = await getProfitLoss({ from, to, branchId })
+    const grossMarginPct = base.netSales > 0 ? (base.grossProfit / base.netSales) * 100 : 0
+    return {
+      ...base,
+      grossMarginPct,
+      netProfitMarginPct: base.margin,
+      trendGrain: undefined,
+      trendCoversFullRange: false,
+      byBranch: [],
+      byProduct: [],
+      bySale: [],
+      trend: [],
+    }
+  }
+  const row = (data ?? {}) as Record<string, unknown>
+  const netSales = n(row.net_sales)
+  const productCost = n(row.product_cost)
+  const grossProfit = n(row.gross_profit)
+  const otherIncome = n(row.other_income)
+  const expenses = n(row.expenses)
+  const netProfit = n(row.net_profit)
+  const grossMarginPct = netSales > 0 ? (grossProfit / netSales) * 100 : 0
+  const netProfitMarginPct = netSales > 0 ? (netProfit / netSales) * 100 : 0
+  const grainRaw = String(row.trend_grain ?? 'day')
+  const trendGrain =
+    grainRaw === 'week' || grainRaw === 'month' || grainRaw === 'day' ? grainRaw : 'day'
+
+  return {
+    netSales,
+    productCost,
+    grossProfit,
+    otherIncome,
+    expenses,
+    netProfit,
+    margin: netProfitMarginPct,
+    gross: grossProfit + otherIncome,
+    from,
+    to,
+    grossMarginPct,
+    netProfitMarginPct,
+    trendGrain,
+    trendCoversFullRange: Boolean(row.trend_covers_full_range ?? true),
+    byBranch: Array.isArray(row.by_branch)
+      ? (row.by_branch as Array<Record<string, unknown>>).map((b) => ({
+          branchId: String(b.branch_id ?? ''),
+          branchName: String(b.branch_name ?? 'Branch'),
+          netSales: n(b.net_sales),
+          productCost: n(b.product_cost),
+          grossProfit: n(b.gross_profit),
+          expenses: n(b.expenses),
+          otherIncome: n(b.other_income),
+          operatingProfit: n(b.operating_profit),
+        }))
+      : [],
+    byProduct: Array.isArray(row.by_product)
+      ? (row.by_product as Array<Record<string, unknown>>).map((p) => ({
+          productId: p.product_id != null ? String(p.product_id) : null,
+          productName: String(p.product_name ?? 'Product'),
+          qty: n(p.qty),
+          revenue: n(p.revenue),
+          cost: n(p.cost),
+          grossProfit: n(p.gross_profit),
+        }))
+      : [],
+    bySale: Array.isArray(row.by_sale)
+      ? (row.by_sale as Array<Record<string, unknown>>).map((s) => ({
+          saleId: String(s.sale_id ?? ''),
+          invoiceNo: String(s.invoice_no ?? ''),
+          saleDate: String(s.sale_date ?? ''),
+          netSales: n(s.net_sales),
+          productCost: n(s.product_cost),
+          grossProfit: n(s.gross_profit),
+        }))
+      : [],
+    trend: Array.isArray(row.trend)
+      ? (row.trend as Array<Record<string, unknown>>).map((t) => ({
+          date: String(t.date ?? ''),
+          label: String(t.label ?? t.date ?? ''),
+          income: n(t.income),
+          expense: n(t.expense),
+          profit: n(t.profit),
+        }))
+      : [],
+  }
+}
+
 export const simpleAccountingRepository = {
   getDashboardKpis,
   listFinancialAccounts,
@@ -1168,6 +1585,7 @@ export const simpleAccountingRepository = {
   listAccountTransactions,
   createIncome,
   createExpense,
+  postCashMovement,
   transferBalance,
   closeBusinessDay,
   voidTransaction,
@@ -1180,6 +1598,13 @@ export const simpleAccountingRepository = {
   collectDue,
   paySupplier,
   getProfitLoss,
+  getProfitLossReport,
+  getPeriodCashFlow,
+  getPartyDueAging,
+  listOpenCustomerInvoices,
+  listOpenSupplierPurchases,
+  listCustomerLedgerEntries,
+  listSupplierLedgerEntries,
   listIncomeCategories,
   listExpenseCategories,
   getAccountSettings,

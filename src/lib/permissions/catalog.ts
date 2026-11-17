@@ -182,6 +182,7 @@ export const MODULE_PERMISSIONS: Record<string, Permission[]> = {
   expenses: ['accounts.read', 'expense.create'],
   'customer-due': ['accounts.read', 'customer_due.collect'],
   'supplier-due': ['accounts.read', 'supplier_due.pay'],
+  dues: ['accounts.read', 'customer_due.collect', 'supplier_due.pay'],
   'daily-closing': ['accounts.read', 'daily_closing.create'],
   'profit-loss': ['accounts.read', 'profit_loss.read'],
   'account-settings': ['accounts.manage', 'account_settings.manage'],

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { simpleAccountingRepository, type AccountKind } from '../../repositories/simple-accounting.repository'
 import { PageHeader, ErrorText, EmptyState, Money } from '../../components/AccountingUi'
@@ -29,6 +30,7 @@ export function CashBankPage() {
   const { profile, activeBranchId } = useAuth()
   const qc = useQueryClient()
   const { toast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [mode, setMode] = useState<DialogMode>(null)
   const [accountId, setAccountId] = useState<string | null>(null)
   const [toAccountId, setToAccountId] = useState<string | null>(null)
@@ -41,18 +43,6 @@ export function CashBankPage() {
   const { data = [], isLoading, error } = useQuery({
     queryKey: [...queryKeys.accounts, 'cash-bank', activeBranchId],
     queryFn: () => simpleAccountingRepository.listFinancialAccounts(activeBranchId),
-  })
-
-  const { data: incomeCats = [] } = useQuery({
-    queryKey: [...queryKeys.accounts, 'income-cats', profile?.organization_id],
-    enabled: Boolean(profile?.organization_id),
-    queryFn: () => simpleAccountingRepository.listIncomeCategories(profile!.organization_id),
-  })
-
-  const { data: expenseCats = [] } = useQuery({
-    queryKey: [...queryKeys.accounts, 'expense-cats', profile?.organization_id],
-    enabled: Boolean(profile?.organization_id),
-    queryFn: () => simpleAccountingRepository.listExpenseCategories(profile!.organization_id),
   })
 
   const activeAccounts = useMemo(() => data.filter((a) => a.is_active), [data])
@@ -68,27 +58,21 @@ export function CashBankPage() {
       if (!amt || amt <= 0) throw new Error('Enter a valid amount')
       if (!accountId) throw new Error('Select an account')
       if (mode === 'deposit') {
-        const category_id =
-          incomeCats.find((c) => /deposit|other/i.test(c.name))?.id ?? incomeCats[0]?.id
-        if (!category_id) throw new Error('No income category configured')
-        return simpleAccountingRepository.createIncome({
+        return simpleAccountingRepository.postCashMovement({
+          direction: 'in',
           amount: amt,
           account_id: accountId,
-          category_id,
           branch_id: activeBranchId,
-          note: note || 'Deposit',
+          note: note || 'Cash deposit',
         })
       }
       if (mode === 'withdraw') {
-        const category_id =
-          expenseCats.find((c) => /withdraw|misc/i.test(c.name))?.id ?? expenseCats[0]?.id
-        if (!category_id) throw new Error('No expense category configured')
-        return simpleAccountingRepository.createExpense({
+        return simpleAccountingRepository.postCashMovement({
+          direction: 'out',
           amount: amt,
           account_id: accountId,
-          category_id,
           branch_id: activeBranchId,
-          note: note || 'Withdraw',
+          note: note || 'Cash withdrawal',
         })
       }
       if (mode === 'transfer') {
@@ -151,6 +135,24 @@ export function CashBankPage() {
     setAmount('')
     setNote('')
   }
+
+  useEffect(() => {
+    const action = searchParams.get('action')
+    if (action !== 'deposit' && action !== 'withdraw' && action !== 'transfer') return
+    setMode(action)
+    setAmount('')
+    setNote('')
+    const next = new URLSearchParams(searchParams)
+    next.delete('action')
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deep-link once on mount/query
+  }, [])
+
+  useEffect(() => {
+    if ((mode === 'deposit' || mode === 'withdraw' || mode === 'transfer') && !accountId && activeAccounts[0]) {
+      setAccountId(activeAccounts[0].id)
+    }
+  }, [mode, accountId, activeAccounts])
 
   return (
     <div className="mx-auto w-full max-w-5xl min-w-0 space-y-4">

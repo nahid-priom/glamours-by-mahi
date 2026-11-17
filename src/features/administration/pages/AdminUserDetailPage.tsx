@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { useAuth } from '@/features/auth/auth-session'
 import { listAccessibleBranches } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
@@ -20,6 +21,7 @@ export function AdminUserDetailPage() {
   const { id = '' } = useParams()
   const { toast } = useToast()
   const qc = useQueryClient()
+  const { profile, refreshProfile } = useAuth()
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [roleId, setRoleId] = useState('')
@@ -97,6 +99,12 @@ export function AdminUserDetailPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['admin-user', id] })
       await qc.invalidateQueries({ queryKey: ['admin-users'] })
+      await qc.invalidateQueries({ queryKey: ['accessible-branches'] })
+      await qc.invalidateQueries({ queryKey: ['dashboard-branches'] })
+      // If editing the signed-in user, refresh session grants immediately.
+      if (profile?.id === id) {
+        await refreshProfile()
+      }
       toast('User updated')
     },
     onError: (e: Error) => toastRpcError(toast, e),

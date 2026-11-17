@@ -39,19 +39,24 @@ export function DailyClosingPage() {
     queryFn: () => simpleAccountingRepository.getExpectedCash(activeBranchId, accountId),
   })
 
-  const countedNum = Number(counted) || 0
-  const difference = countedNum - expected
+  const countedEntered = counted.trim() !== ''
+  const countedNum = countedEntered ? Number(counted) : NaN
+  const difference = countedEntered && Number.isFinite(countedNum) ? countedNum - expected : null
 
   const closeDay = useMutation({
-    mutationFn: () =>
-      simpleAccountingRepository.closeBusinessDay({
+    mutationFn: () => {
+      if (!countedEntered || !Number.isFinite(countedNum) || countedNum < 0) {
+        throw new Error('Enter counted cash before closing')
+      }
+      return simpleAccountingRepository.closeBusinessDay({
         business_date: businessDate,
         counted_cash: countedNum,
         expected_cash: expected,
         notes: notes || undefined,
         branch_id: activeBranchId,
         financial_account_id: accountId,
-      }),
+      })
+    },
     onSuccess: () => {
       toast('Day closed')
       setNotes('')
@@ -73,8 +78,16 @@ export function DailyClosingPage() {
         <KpiCard label="Expected (system)" value={formatBDT(expected)} />
         <KpiCard
           label="Difference"
-          value={formatBDT(difference)}
-          hint={difference === 0 ? 'Matched' : difference > 0 ? 'Over' : 'Short'}
+          value={difference == null ? 'Not calculated' : formatBDT(difference)}
+          hint={
+            difference == null
+              ? 'Enter counted cash'
+              : difference === 0
+                ? 'Matched'
+                : difference > 0
+                  ? 'Surplus'
+                  : 'Shortage'
+          }
         />
       </div>
 
@@ -112,10 +125,10 @@ export function DailyClosingPage() {
           <Label>Notes</Label>
           <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
         </div>
-        <PermissionGate permission={['accounts.manage', 'accounts.post']}>
+        <PermissionGate permission={['daily_closing.create', 'accounts.manage', 'accounts.post']}>
           <Button
             className="w-full"
-            disabled={closeDay.isPending || counted === ''}
+            disabled={closeDay.isPending || !countedEntered || !Number.isFinite(countedNum)}
             onClick={() => closeDay.mutate()}
           >
             Close day

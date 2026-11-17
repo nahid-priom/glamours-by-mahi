@@ -255,6 +255,11 @@ export const CustomerDuePage = lazy(() =>
 export const SupplierDuePage = lazy(() =>
   import('@/features/accounting/pages/simple/SupplierDuePage').then((m) => ({ default: m.SupplierDuePage })),
 )
+export const DueManagementPage = lazy(() =>
+  import('@/features/accounting/pages/simple/DueManagementPage').then((m) => ({
+    default: m.DueManagementPage,
+  })),
+)
 export const DailyClosingPage = lazy(() =>
   import('@/features/accounting/pages/simple/DailyClosingPage').then((m) => ({ default: m.DailyClosingPage })),
 )

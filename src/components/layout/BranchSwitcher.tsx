@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2 } from 'lucide-react'
 import { useAuth } from '@/features/auth/auth-session'
@@ -24,11 +25,16 @@ function invalidateBranchScopedQueries(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['stock-ledger'] })
   void qc.invalidateQueries({ queryKey: ['product-catalog-kpis'] })
   void qc.invalidateQueries({ queryKey: queryKeys.accounts })
+  void qc.invalidateQueries({ queryKey: ['sales'] })
+  void qc.invalidateQueries({ queryKey: ['sales-commissions'] })
+  void qc.invalidateQueries({ queryKey: ['held-sales'] })
+  void qc.invalidateQueries({ queryKey: queryKeys.dashboardBranches })
 }
 
 export function BranchSwitcher({ className, allowAll = true, size = 'sm' }: BranchSwitcherProps) {
-  const { activeBranchId, setActiveBranchId, branchIds, profile } = useAuth()
+  const { activeBranchId, setActiveBranchId, branchIds, profile, can } = useAuth()
   const qc = useQueryClient()
+  const canSeeAllBranches = can('settings.manage') || can('*')
 
   const { data: branches = [] } = useQuery({
     queryKey: queryKeys.dashboardBranches,
@@ -37,11 +43,44 @@ export function BranchSwitcher({ className, allowAll = true, size = 'sm' }: Bran
     staleTime: 60_000,
   })
 
-  const allowed = branchIds.length
-    ? branches.filter((b) => branchIds.includes(b.id))
-    : branches
+  // Explicit grants are the UI SSOT; settings.manage may list all org branches.
+  // Empty grants for non-settings users must NOT fall back to every branch.
+  const allowed = canSeeAllBranches
+    ? branches
+    : branchIds.length
+      ? branches.filter((b) => branchIds.includes(b.id))
+      : []
 
-  const value = activeBranchId ?? ''
+  const grantKey = branchIds.slice().sort().join(',')
+
+  // Active branch is UI context only — never keep a revoked/unauthorized selection.
+  useEffect(() => {
+    if (!activeBranchId) return
+    if (canSeeAllBranches) return
+    if (branchIds.includes(activeBranchId)) return
+
+    const fallback =
+      (profile?.default_branch_id && branchIds.includes(profile.default_branch_id)
+        ? profile.default_branch_id
+        : null) ??
+      (branchIds[0] ?? null)
+
+    setActiveBranchId(fallback)
+    invalidateBranchScopedQueries(qc)
+  }, [
+    activeBranchId,
+    branchIds,
+    canSeeAllBranches,
+    grantKey,
+    profile?.default_branch_id,
+    qc,
+    setActiveBranchId,
+  ])
+
+  const value =
+    activeBranchId && (canSeeAllBranches || branchIds.includes(activeBranchId))
+      ? activeBranchId
+      : ''
 
   return (
     <label

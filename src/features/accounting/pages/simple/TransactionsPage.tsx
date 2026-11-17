@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { simpleAccountingRepository, type TxnDirection } from '../../repositories/simple-accounting.repository'
 import {
@@ -22,10 +23,19 @@ function monthRange() {
 
 export function TransactionsPage() {
   const { activeBranchId } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [range, setRange] = useState(monthRange)
   const [direction, setDirection] = useState<TxnDirection>('all')
-  const [accountId, setAccountId] = useState<string | null>(null)
+  const [accountId, setAccountId] = useState<string | null>(() => searchParams.get('accountId'))
   const [search, setSearch] = useState('')
+
+  const setAccountFilter = (id: string | null) => {
+    setAccountId(id)
+    const next = new URLSearchParams(searchParams)
+    if (id) next.set('accountId', id)
+    else next.delete('accountId')
+    setSearchParams(next, { replace: true })
+  }
 
   const { data: accounts = [] } = useQuery({
     queryKey: [...queryKeys.accounts, 'fa', activeBranchId],
@@ -76,7 +86,7 @@ export function TransactionsPage() {
         <select
           className="h-9 rounded-md border border-border bg-white px-2 text-sm"
           value={accountId ?? ''}
-          onChange={(e) => setAccountId(e.target.value || null)}
+          onChange={(e) => setAccountFilter(e.target.value || null)}
         >
           <option value="">All accounts</option>
           {accounts.map((a) => (

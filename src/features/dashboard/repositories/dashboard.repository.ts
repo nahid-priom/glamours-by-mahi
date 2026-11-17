@@ -371,9 +371,24 @@ async function getDashboardOverviewClient(params: DashboardQueryParams = {}): Pr
   const recentSales = recentSalesRes.data ?? []
   const netCashFlow = today.collection - todayExpenses
   const yesterdayNet = yesterday.collection - yesterdayExpenses
-  // Client fallback cannot compute COGS without line joins; approximate net profit as sales − expenses.
-  const profitToday = today.sales - todayExpenses
-  const prevProfit = yesterday.sales - yesterdayExpenses
+  // Fail closed on COGS: reuse accounting getProfitLoss (snapshot cost) — never sales−expenses alone.
+  const { simpleAccountingRepository } = await import(
+    '@/features/accounting/repositories/simple-accounting.repository'
+  )
+  const [plToday, plYesterday] = await Promise.all([
+    simpleAccountingRepository.getProfitLoss({
+      from: todayDate,
+      to: todayDate,
+      branchId,
+    }),
+    simpleAccountingRepository.getProfitLoss({
+      from: yesterdayDate,
+      to: yesterdayDate,
+      branchId,
+    }),
+  ])
+  const profitToday = plToday.netProfit
+  const prevProfit = plYesterday.netProfit
 
   const { count: productCount } = await supabase
     .from('products')
