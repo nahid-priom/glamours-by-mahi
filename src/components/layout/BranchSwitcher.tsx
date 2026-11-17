@@ -34,7 +34,8 @@ function invalidateBranchScopedQueries(qc: ReturnType<typeof useQueryClient>) {
 export function BranchSwitcher({ className, allowAll = true, size = 'sm' }: BranchSwitcherProps) {
   const { activeBranchId, setActiveBranchId, branchIds, profile, can } = useAuth()
   const qc = useQueryClient()
-  const canSeeAllBranches = can('settings.manage') || can('*')
+  // Super Admin/Owner sessions include '*' in permissions; hasPermission treats that as all keys.
+  const canSeeAllBranches = can('settings.manage')
 
   const { data: branches = [] } = useQuery({
     queryKey: queryKeys.dashboardBranches,
