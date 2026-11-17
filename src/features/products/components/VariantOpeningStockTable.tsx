@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { queryKeys } from '@/lib/query/keys'
 import { listAccessibleBranches } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { listStockLocations } from '@/features/inventory/repositories/inventory.repository'
+import { pickDefaultSaleableLocation } from '@/features/inventory/lib/resolve-saleable-location'
 import { MoneyValue } from '@/features/inventory/components/InventoryValuationUi'
 import type { VariantDraft } from '../lib/variant-matrix'
 import { VariantImageUploader } from './VariantImageUploader'
@@ -31,6 +32,7 @@ type Props = {
   disabled?: boolean
   pendingImages?: Record<string, File | null>
   onPendingImageChange?: (variantKey: string, file: File | null) => void
+  lockedBranchId?: string | null
 }
 
 const ROW_STAGGER_MS = 70
@@ -47,6 +49,7 @@ export function VariantOpeningStockTable({
   disabled,
   pendingImages,
   onPendingImageChange,
+  lockedBranchId,
 }: Props) {
   const variantSignature = useMemo(() => variants.map((v) => v.key).join('|'), [variants])
   const [visibleCount, setVisibleCount] = useState(0)
@@ -58,15 +61,24 @@ export function VariantOpeningStockTable({
     queryFn: listAccessibleBranches,
   })
 
+  const branchId = lockedBranchId || meta.branchId
+  const branchName = branches.find((b) => b.id === branchId)?.name
+
   const { data: locations = [] } = useQuery({
-    queryKey: queryKeys.stockLocations(meta.branchId),
-    queryFn: () => listStockLocations(meta.branchId),
-    enabled: Boolean(meta.branchId),
+    queryKey: queryKeys.stockLocations(branchId),
+    queryFn: () => listStockLocations(branchId),
+    enabled: Boolean(branchId),
   })
 
-  const saleableLocations = locations.filter(
-    (l) => l.location_type === 'saleable' && l.is_active && !l.deleted_at,
-  )
+  const saleable = pickDefaultSaleableLocation(locations)
+  const locationId = saleable?.id || ''
+
+  useEffect(() => {
+    if (!branchId) return
+    if (meta.branchId === branchId && meta.locationId === locationId) return
+    onMetaChange({ ...meta, branchId, locationId })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchId, locationId, lockedBranchId])
 
   useEffect(() => {
     const count = variantSignature ? variantSignature.split('|').filter(Boolean).length : 0
@@ -120,45 +132,26 @@ export function VariantOpeningStockTable({
       <div>
         <p className="text-sm font-semibold text-[#111827]">Variant opening stock</p>
         <p className="text-xs text-[#6B7280]">
-          Select branch and enter opening quantity per variant.
+          Enter opening quantity per variant for the active branch.
           {requiresExpiry ? ' Cosmetics products require batch and expiry date.' : ''}
           {showImages ? ' Optional image per variant uploads after save.' : ''}
         </p>
       </div>
 
+      <div className="rounded-md border border-border bg-white px-3 py-2 text-xs text-[#6B7280]">
+        {branchId ? (
+          <>
+            Branch: <span className="font-semibold text-[#111827]">{branchName ?? 'Selected'}</span>
+            {saleable ? null : (
+              <span className="text-[#E11D48]"> · no saleable location configured</span>
+            )}
+          </>
+        ) : (
+          <span className="text-[#E11D48]">Select a branch in the header before posting stock.</span>
+        )}
+      </div>
+
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1">
-          <Label className="text-xs">Branch</Label>
-          <select
-            className="flex h-9 w-full rounded-md border border-border bg-white px-2.5 text-sm"
-            disabled={disabled}
-            value={meta.branchId}
-            onChange={(e) => onMetaChange({ ...meta, branchId: e.target.value, locationId: '' })}
-          >
-            <option value="">Select branch</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Location</Label>
-          <select
-            className="flex h-9 w-full rounded-md border border-border bg-white px-2.5 text-sm"
-            disabled={disabled || !meta.branchId}
-            value={meta.locationId}
-            onChange={(e) => onMetaChange({ ...meta, locationId: e.target.value })}
-          >
-            <option value="">Select location</option>
-            {saleableLocations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
         <div className="space-y-1">
           <Label className="text-xs">Unit cost (৳)</Label>
           <Input

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AppDateField } from '@/components/date-picker'
 import { Label } from '@/components/ui/label'
@@ -5,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { queryKeys } from '@/lib/query/keys'
 import { listAccessibleBranches } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { listStockLocations } from '@/features/inventory/repositories/inventory.repository'
+import { pickDefaultSaleableLocation } from '@/features/inventory/lib/resolve-saleable-location'
 import { MoneyValue } from '@/features/inventory/components/InventoryValuationUi'
 
 export type OpeningStockInput = {
@@ -24,6 +26,8 @@ type Props = {
   variantCount?: number
   requiresExpiry?: boolean
   disabled?: boolean
+  /** Force branch from active branch context (hides branch selector). */
+  lockedBranchId?: string | null
 }
 
 export function OpeningStockFields({
@@ -34,21 +38,36 @@ export function OpeningStockFields({
   variantCount = 1,
   requiresExpiry = false,
   disabled,
+  lockedBranchId,
 }: Props) {
   const { data: branches = [] } = useQuery({
     queryKey: queryKeys.branches,
     queryFn: listAccessibleBranches,
   })
 
+  const branchId = lockedBranchId || value.branchId
+  const branchName = branches.find((b) => b.id === branchId)?.name
+
   const { data: locations = [] } = useQuery({
-    queryKey: queryKeys.stockLocations(value.branchId),
-    queryFn: () => listStockLocations(value.branchId),
-    enabled: Boolean(value.branchId),
+    queryKey: queryKeys.stockLocations(branchId),
+    queryFn: () => listStockLocations(branchId),
+    enabled: Boolean(branchId),
   })
 
-  const saleableLocations = locations.filter(
-    (l) => l.location_type === 'saleable' && l.is_active && !l.deleted_at,
-  )
+  const saleable = pickDefaultSaleableLocation(locations)
+  const locationId = saleable?.id || ''
+
+  useEffect(() => {
+    if (!branchId) return
+    if (value.branchId === branchId && value.locationId === locationId) return
+    onChange({
+      ...value,
+      branchId,
+      locationId,
+      quantity: lockedBranchId && value.branchId && value.branchId !== branchId ? 0 : value.quantity,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync meta only
+  }, [branchId, locationId, lockedBranchId])
 
   const totalQty = value.quantity * variantCount
   const totalCost = totalQty * (value.unitCost || purchasePrice)
@@ -59,47 +78,31 @@ export function OpeningStockFields({
       <div>
         <p className="text-sm font-semibold text-[#111827]">Opening stock</p>
         <p className="text-xs text-[#6B7280]">
-          Branch, location, quantity and unit purchase cost are required when adding stock.
+          Quantity and unit purchase cost for the active branch. Stock location is resolved
+          automatically.
           {requiresExpiry ? ' Cosmetics products also require batch and expiry date.' : ''}
         </p>
       </div>
 
+      <div className="rounded-md border border-border bg-white px-3 py-2 text-sm">
+        {branchId ? (
+          <p className="text-[#6B7280]">
+            Branch:{' '}
+            <span className="font-semibold text-[#111827]">
+              {branchName ?? 'Selected branch'}
+            </span>
+            {saleable ? null : (
+              <span className="text-[#E11D48]"> · no saleable location configured</span>
+            )}
+          </p>
+        ) : (
+          <p className="text-[#E11D48]">
+            Select a branch in the header before posting opening stock.
+          </p>
+        )}
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Branch</Label>
-          <select
-            className="flex h-10 w-full rounded-md border border-border bg-white px-3 text-sm"
-            value={value.branchId}
-            disabled={disabled}
-            onChange={(e) =>
-              onChange({ ...value, branchId: e.target.value, locationId: '' })
-            }
-          >
-            <option value="">Select branch</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-                {b.is_central ? ' (Head Office)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Location</Label>
-          <select
-            className="flex h-10 w-full rounded-md border border-border bg-white px-3 text-sm"
-            value={value.locationId}
-            disabled={disabled || !value.branchId}
-            onChange={(e) => onChange({ ...value, locationId: e.target.value })}
-          >
-            <option value="">Select location</option>
-            {saleableLocations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
         <div className="space-y-1.5">
           <Label htmlFor="opening-qty">
             {variantCount > 1 ? 'Quantity per variant' : 'Quantity'}
@@ -109,10 +112,15 @@ export function OpeningStockFields({
             type="number"
             min={0}
             step="1"
-            disabled={disabled}
+            disabled={disabled || !branchId || !locationId}
             value={value.quantity || ''}
             onChange={(e) =>
-              onChange({ ...value, quantity: Math.max(0, Number(e.target.value) || 0) })
+              onChange({
+                ...value,
+                branchId,
+                locationId,
+                quantity: Math.max(0, Number(e.target.value) || 0),
+              })
             }
           />
         </div>
@@ -123,10 +131,15 @@ export function OpeningStockFields({
             type="number"
             min={0}
             step="0.01"
-            disabled={disabled}
+            disabled={disabled || !branchId || !locationId}
             value={value.unitCost || ''}
             onChange={(e) =>
-              onChange({ ...value, unitCost: Math.max(0, Number(e.target.value) || 0) })
+              onChange({
+                ...value,
+                branchId,
+                locationId,
+                unitCost: Math.max(0, Number(e.target.value) || 0),
+              })
             }
           />
         </div>

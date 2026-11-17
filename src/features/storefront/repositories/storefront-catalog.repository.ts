@@ -1,6 +1,12 @@
 import { supabase } from '@/lib/supabase/client'
 import { STOREFRONT_ORG_SLUG } from '@/config/catalog'
 import { resolveStorageUrl } from '@/features/products/repositories/catalog.repository'
+import {
+  buildBranchPriceIndex,
+  resolvePriceFromIndex,
+  type BranchPriceIndex,
+  type BranchPriceRow,
+} from '@/features/products/lib/resolve-branch-price'
 
 export type CatalogVariantRow = {
   id: string
@@ -43,9 +49,16 @@ export type CatalogProductRow = {
   productImagePaths: string[]
   variants: CatalogVariantRow[]
   totalStock: number
+  fulfillmentBranchId: string | null
 }
 
 let cachedOrgId: string | null = null
+let cachedFulfillment: {
+  orgId: string
+  branchId: string | null
+  locationIds: string[]
+  priceIndex: BranchPriceIndex
+} | null = null
 
 export async function resolveStorefrontOrgId(): Promise<string> {
   if (cachedOrgId) return cachedOrgId
@@ -59,6 +72,62 @@ export async function resolveStorefrontOrgId(): Promise<string> {
   if (!data?.id) throw new Error(`Storefront organization "${STOREFRONT_ORG_SLUG}" not found`)
   cachedOrgId = data.id
   return data.id
+}
+
+export async function resolveStorefrontFulfillmentContext(orgId?: string): Promise<{
+  branchId: string | null
+  locationIds: string[]
+  priceIndex: BranchPriceIndex
+}> {
+  const resolvedOrgId = orgId ?? (await resolveStorefrontOrgId())
+  if (cachedFulfillment?.orgId === resolvedOrgId) {
+    return {
+      branchId: cachedFulfillment.branchId,
+      locationIds: cachedFulfillment.locationIds,
+      priceIndex: cachedFulfillment.priceIndex,
+    }
+  }
+
+  const { data, error } = await supabase.rpc('get_storefront_fulfillment_context', {
+    p_org_id: resolvedOrgId,
+  })
+  if (error) throw error
+
+  const payload = (data ?? {}) as {
+    branch_id?: string | null
+    saleable_location_ids?: string[]
+    prices?: Array<{
+      product_id: string
+      variant_id: string | null
+      retail_price: number | null
+      discount_price: number | null
+      effective_from: string
+      effective_to: string | null
+    }>
+  }
+
+  const priceRows: BranchPriceRow[] = (payload.prices ?? []).map((p) => ({
+    product_id: p.product_id,
+    variant_id: p.variant_id,
+    retail_price: p.retail_price,
+    discount_price: p.discount_price,
+    wholesale_price: null,
+    effective_from: p.effective_from,
+    effective_to: p.effective_to,
+  }))
+
+  const ctx = {
+    orgId: resolvedOrgId,
+    branchId: payload.branch_id ?? null,
+    locationIds: payload.saleable_location_ids ?? [],
+    priceIndex: buildBranchPriceIndex(priceRows),
+  }
+  cachedFulfillment = ctx
+  return {
+    branchId: ctx.branchId,
+    locationIds: ctx.locationIds,
+    priceIndex: ctx.priceIndex,
+  }
 }
 
 type RawProduct = {
@@ -102,6 +171,7 @@ type RawProduct = {
     inventory_balances: Array<{
       quantity: number
       qty_reserved?: number
+      location_id?: string | null
       deleted_at: string | null
     }> | null
   }> | null
@@ -132,11 +202,18 @@ const PRODUCT_SELECT = `
       product_options(name, deleted_at),
       product_option_values(value, deleted_at)
     ),
-    inventory_balances(quantity, qty_reserved, deleted_at)
+    inventory_balances(quantity, qty_reserved, location_id, deleted_at)
   )
 `
 
-async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
+async function mapRawProduct(
+  row: RawProduct,
+  fulfillment: {
+    branchId: string | null
+    locationIds: string[]
+    priceIndex: BranchPriceIndex
+  },
+): Promise<CatalogProductRow> {
   const allImages = (row.product_images ?? []).filter((i) => !i.deleted_at).sort((a, b) => {
     if (a.is_cover && !b.is_cover) return -1
     if (!a.is_cover && b.is_cover) return 1
@@ -152,16 +229,26 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
   }
   const cover = productImages.find((i) => i.is_cover) ?? productImages[0] ?? allImages[0]
 
+  const locationSet = new Set(fulfillment.locationIds)
+  const canClaimStock = Boolean(fulfillment.branchId && locationSet.size > 0)
+
   const variants = (row.product_variants ?? [])
     .filter((v) => !v.deleted_at && v.is_active)
     .map((v) => {
-      const stockQty = (v.inventory_balances ?? [])
-        .filter((b) => !b.deleted_at)
-        .reduce((sum, b) => {
-          const available =
-            Number(b.quantity ?? 0) - Number(b.qty_reserved ?? 0)
-          return sum + Math.max(available, 0)
-        }, 0)
+      const stockQty = canClaimStock
+        ? (v.inventory_balances ?? [])
+            .filter(
+              (b) =>
+                !b.deleted_at &&
+                b.location_id != null &&
+                locationSet.has(b.location_id),
+            )
+            .reduce((sum, b) => {
+              const available =
+                Number(b.quantity ?? 0) - Number(b.qty_reserved ?? 0)
+              return sum + Math.max(available, 0)
+            }, 0)
+        : 0
       const optionValues = (v.variant_option_values ?? [])
         .filter((ov) => !ov.deleted_at)
         .map((ov) => ({
@@ -169,12 +256,18 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
           value: ov.product_option_values?.value ?? '',
         }))
         .filter((ov) => ov.value)
+      const selling_price = resolvePriceFromIndex(fulfillment.priceIndex, {
+        productId: row.id,
+        variantId: v.id,
+        variantSellingPrice: Number(v.selling_price),
+        productSellingPrice: Number(row.selling_price),
+      })
       return {
         id: v.id,
         sku: v.sku,
         barcode: v.barcode,
         name: v.name,
-        selling_price: Number(v.selling_price),
+        selling_price,
         purchase_price: 0,
         is_active: v.is_active,
         imagePath: v.image_path ?? imagesByVariant.get(v.id) ?? null,
@@ -186,6 +279,10 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
 
   const totalStock = variants.reduce((sum, v) => sum + v.stockQty, 0)
   const productImagePaths = productImages.map((i) => i.storage_path)
+  const productPrice =
+    variants.length > 0
+      ? Math.min(...variants.map((v) => v.selling_price))
+      : Number(row.selling_price)
 
   return {
     id: row.id,
@@ -193,7 +290,7 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
     description: row.description,
     base_sku: row.base_sku,
     base_barcode: row.base_barcode,
-    selling_price: Number(row.selling_price),
+    selling_price: productPrice,
     purchase_price: 0,
     unit: row.unit,
     wholesale_price: null,
@@ -215,11 +312,13 @@ async function mapRawProduct(row: RawProduct): Promise<CatalogProductRow> {
     productImagePaths,
     variants,
     totalStock,
+    fulfillmentBranchId: fulfillment.branchId,
   }
 }
 
 export async function fetchPublishedCatalog(): Promise<CatalogProductRow[]> {
   const orgId = await resolveStorefrontOrgId()
+  const fulfillment = await resolveStorefrontFulfillmentContext(orgId)
   const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
@@ -231,11 +330,14 @@ export async function fetchPublishedCatalog(): Promise<CatalogProductRow[]> {
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return Promise.all(((data ?? []) as unknown as RawProduct[]).map(mapRawProduct))
+  return Promise.all(
+    ((data ?? []) as unknown as RawProduct[]).map((row) => mapRawProduct(row, fulfillment)),
+  )
 }
 
 export async function fetchPublishedProductById(id: string): Promise<CatalogProductRow | null> {
   const orgId = await resolveStorefrontOrgId()
+  const fulfillment = await resolveStorefrontFulfillmentContext(orgId)
   const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_SELECT)
@@ -249,7 +351,7 @@ export async function fetchPublishedProductById(id: string): Promise<CatalogProd
 
   if (error) throw error
   if (!data) return null
-  return mapRawProduct(data as unknown as RawProduct)
+  return mapRawProduct(data as unknown as RawProduct, fulfillment)
 }
 
 export async function resolveCatalogImageUrls(paths: string[]): Promise<string[]> {
@@ -259,4 +361,5 @@ export async function resolveCatalogImageUrls(paths: string[]): Promise<string[]
 
 export function invalidateStorefrontOrgCache() {
   cachedOrgId = null
+  cachedFulfillment = null
 }

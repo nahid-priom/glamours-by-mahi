@@ -1,5 +1,10 @@
 import { supabase } from '@/lib/supabase/client'
 import { resolveStorageUrl } from '@/features/products/repositories/catalog.repository'
+import {
+  loadBranchPriceIndex,
+  resolvePriceFromIndex,
+  type BranchPriceIndex,
+} from '@/features/products/lib/resolve-branch-price'
 import type { Json, TablesInsert } from '@/types/database'
 import { normalizeBdPhone } from '@/lib/phone-utils'
 import { calcCartTotals, calcLineTotal, normalizeBarcode } from '../cart-utils'
@@ -56,6 +61,7 @@ function mapVariantRow(
   row: Record<string, unknown>,
   locationIds: string[],
   thumbnailUrl: string | null,
+  priceIndex?: BranchPriceIndex | null,
 ): PosVariant | null {
   const product = row.products as
     | {
@@ -65,6 +71,7 @@ function mapVariantRow(
         deleted_at: string | null
         status?: string
         category_id?: string | null
+        selling_price?: number
         categories?: { name: string } | { name: string }[] | null
         product_images?: Array<{
           storage_path: string
@@ -99,6 +106,12 @@ function mapVariantRow(
   const variantLabel = (row.name as string | null) || 'Default'
   const cat = product.categories
   const categoryName = Array.isArray(cat) ? cat[0]?.name : cat?.name
+  const unitPrice = resolvePriceFromIndex(priceIndex, {
+    productId: product.id,
+    variantId: row.id as string,
+    variantSellingPrice: Number(row.selling_price ?? 0),
+    productSellingPrice: Number(product.selling_price ?? row.selling_price ?? 0),
+  })
 
   return {
     variantId: row.id as string,
@@ -108,7 +121,7 @@ function mapVariantRow(
     sku: row.sku as string,
     barcode: (row.barcode as string | null) ?? null,
     thumbnailUrl,
-    unitPrice: Number(row.selling_price ?? 0),
+    unitPrice,
     availableStock,
     categoryId: product.category_id ?? null,
     categoryName: categoryName ?? null,
@@ -202,7 +215,10 @@ export async function listPosCatalogue({
 }: ListPosCatalogueArgs): Promise<ListPosCatalogueResult> {
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
 
-  const locationIds = await getSaleableLocationIds(branchId)
+  const [locationIds, priceIndex] = await Promise.all([
+    getSaleableLocationIds(branchId),
+    loadBranchPriceIndex(branchId),
+  ])
 
   let builder = supabase
     .from('product_variants')
@@ -224,6 +240,7 @@ export async function listPosCatalogue({
         status,
         deleted_at,
         category_id,
+        selling_price,
         categories ( name ),
         product_images (
           storage_path,
@@ -258,7 +275,7 @@ export async function listPosCatalogue({
   const mapped = await Promise.all(
     rows.map(async (row) => {
       const thumb = await resolveThumbnail(pickCoverPath(row), null)
-      return mapVariantRow(row, locationIds, thumb)
+      return mapVariantRow(row, locationIds, thumb, priceIndex)
     }),
   )
 

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
@@ -11,6 +11,7 @@ import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateInventoryQueries } from '../lib/invalidate-inventory-queries'
 import { toastRpcError } from '@/lib/errors/rpc-error'
+import { pickDefaultSaleableLocation } from '../lib/resolve-saleable-location'
 import {
   createTransfer,
   listStockLocations,
@@ -48,12 +49,24 @@ export function TransferFormPage() {
     enabled: Boolean(toBranchId),
   })
 
+  useEffect(() => {
+    setFromLocationId(pickDefaultSaleableLocation(fromLocations)?.id ?? '')
+  }, [fromLocations, activeBranchId])
+
+  useEffect(() => {
+    setToLocationId(pickDefaultSaleableLocation(toLocations)?.id ?? '')
+  }, [toLocations, toBranchId])
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (!profile?.organization_id) throw new Error('No organization')
-      if (!activeBranchId) throw new Error('Select source branch')
+      if (!activeBranchId) throw new Error('Select source branch in the header')
       if (!toBranchId) throw new Error('Select destination branch')
-      if (!fromLocationId || !toLocationId) throw new Error('Select locations')
+      if (!fromLocationId || !toLocationId) {
+        throw new Error(
+          'Saleable stock locations could not be resolved for source or destination branch.',
+        )
+      }
       const items = lines
         .filter((l) => l.variant_id)
         .map((l) => ({
@@ -114,39 +127,13 @@ export function TransferFormPage() {
             placeholder="To branch"
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>From location</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              value={fromLocationId}
-              onChange={(e) => setFromLocationId(e.target.value)}
-            >
-              <option value="">Select…</option>
-              {fromLocations.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>To location</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-              value={toLocationId}
-              onChange={(e) => setToLocationId(e.target.value)}
-              disabled={!toBranchId}
-            >
-              <option value="">Select…</option>
-              {toLocations.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <p className="text-xs text-[#6B7280]">
+          Source and destination saleable locations are resolved automatically for each branch.
+          {!fromLocationId && activeBranchId
+            ? ' Source branch has no saleable location.'
+            : null}
+          {toBranchId && !toLocationId ? ' Destination branch has no saleable location.' : null}
+        </p>
         <div className="space-y-1.5">
           <Label>Notes</Label>
           <Input value={notes} onChange={(e) => setNotes(e.target.value)} />

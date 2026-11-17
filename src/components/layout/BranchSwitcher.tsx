@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2 } from 'lucide-react'
 import { useAuth } from '@/features/auth/auth-session'
 import { listDashboardBranches } from '@/features/dashboard/repositories/dashboard.repository'
@@ -12,8 +12,23 @@ interface BranchSwitcherProps {
   size?: 'sm' | 'md'
 }
 
+function invalidateBranchScopedQueries(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ['products'] })
+  void qc.invalidateQueries({ queryKey: ['pos-products'] })
+  void qc.invalidateQueries({ queryKey: ['stock-overview'] })
+  void qc.invalidateQueries({ queryKey: ['inventory'] })
+  void qc.invalidateQueries({ queryKey: ['inventory-stock-breakdown'] })
+  void qc.invalidateQueries({ queryKey: ['inventory-valuation-summary'] })
+  void qc.invalidateQueries({ queryKey: ['inventory-low-stock'] })
+  void qc.invalidateQueries({ queryKey: ['low-stock'] })
+  void qc.invalidateQueries({ queryKey: ['stock-ledger'] })
+  void qc.invalidateQueries({ queryKey: ['product-catalog-kpis'] })
+  void qc.invalidateQueries({ queryKey: queryKeys.accounts })
+}
+
 export function BranchSwitcher({ className, allowAll = true, size = 'sm' }: BranchSwitcherProps) {
   const { activeBranchId, setActiveBranchId, branchIds, profile } = useAuth()
+  const qc = useQueryClient()
 
   const { data: branches = [] } = useQuery({
     queryKey: queryKeys.dashboardBranches,
@@ -44,7 +59,11 @@ export function BranchSwitcher({ className, allowAll = true, size = 'sm' }: Bran
           size === 'md' && 'max-w-[200px] text-sm',
         )}
         value={value}
-        onChange={(e) => setActiveBranchId(e.target.value || null)}
+        onChange={(e) => {
+          const next = e.target.value || null
+          setActiveBranchId(next)
+          invalidateBranchScopedQueries(qc)
+        }}
         aria-label="Select branch"
       >
         {allowAll ? <option value="">All Branches</option> : null}

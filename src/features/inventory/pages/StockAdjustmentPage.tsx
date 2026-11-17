@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { EntityCombobox } from '@/components/entity-combobox'
@@ -10,6 +10,7 @@ import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateInventoryQueries } from '../lib/invalidate-inventory-queries'
 import { toastRpcError } from '@/lib/errors/rpc-error'
+import { pickDefaultSaleableLocation } from '../lib/resolve-saleable-location'
 import {
   createAdjustment,
   listStockLocations,
@@ -42,10 +43,19 @@ export function StockAdjustmentPage() {
     enabled: Boolean(activeBranchId),
   })
 
+  useEffect(() => {
+    const saleable = pickDefaultSaleableLocation(locations)
+    setLocationId(saleable?.id ?? '')
+  }, [locations, activeBranchId])
+
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!activeBranchId) throw new Error('Select a branch')
-      if (!locationId) throw new Error('Select a location')
+      if (!activeBranchId) throw new Error('Select a branch in the header (All Branches is reporting-only)')
+      if (!locationId) {
+        throw new Error(
+          'No saleable stock location configured for this branch. Add a default saleable location in inventory settings.',
+        )
+      }
       const items = lines
         .filter((l) => l.variant_id)
         .map((l) => ({
@@ -84,22 +94,13 @@ export function StockAdjustmentPage() {
       ) : null}
 
       <div className="space-y-3 rounded-xl border border-border bg-white p-4">
-        <div className="space-y-1.5">
-          <Label>Location</Label>
-          <select
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-            value={locationId}
-            onChange={(e) => setLocationId(e.target.value)}
-            disabled={!activeBranchId}
-          >
-            <option value="">Select location…</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.name} ({loc.location_type})
-              </option>
-            ))}
-          </select>
-        </div>
+        <p className="text-xs text-[#6B7280]">
+          Adjustments post to the active branch’s default saleable location
+          {locationId ? ' (resolved automatically).' : '.'}
+          {!locationId && activeBranchId
+            ? ' No saleable location configured for this branch.'
+            : null}
+        </p>
         <div className="space-y-1.5">
           <Label>Reason</Label>
           <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Cycle count, damage…" />

@@ -9174,6 +9174,10 @@ export type Database = {
         Args: { reason: string; txn_id: string }
         Returns: string
       }
+      get_storefront_fulfillment_context: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
       void_purchase_return: {
         Args: { reason: string; return_id: string }
         Returns: Json

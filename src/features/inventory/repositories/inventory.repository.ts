@@ -91,6 +91,25 @@ export async function listStockLocations(branchId: string): Promise<StockLocatio
   return data ?? []
 }
 
+/** Resolve default saleable location for a branch (mirrors `_saleable_location`). */
+export async function resolveDefaultSaleableLocation(
+  branchId: string,
+): Promise<StockLocation | null> {
+  const { data, error } = await supabase
+    .from('stock_locations')
+    .select('*')
+    .eq('branch_id', branchId)
+    .eq('location_type', 'saleable')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('is_default', { ascending: false })
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 async function resolveStockVariantIds(search?: string): Promise<string[] | null> {
   const s = search?.trim()
   if (!s) return null
@@ -595,6 +614,7 @@ export async function searchVariants(query: string): Promise<EntityOption[]> {
 
 export const inventoryRepository = {
   listStockLocations,
+  resolveDefaultSaleableLocation,
   branchStock,
   cancelTransfer,
   lowStock,

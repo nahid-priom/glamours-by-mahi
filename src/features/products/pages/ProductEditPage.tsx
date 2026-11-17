@@ -8,6 +8,7 @@ import { queryKeys } from '@/lib/query/keys'
 import { invalidateInventoryQueries } from '@/features/inventory/lib/invalidate-inventory-queries'
 import { invalidateStorefrontCache } from '@/features/storefront/storefront.service'
 import { ProductCreateWizard } from '../components/wizard/ProductCreateWizard'
+import { BranchPriceEditor } from '../components/BranchPriceEditor'
 import { getProduct } from '../repositories/catalog.repository'
 
 export function ProductEditPage() {
@@ -49,17 +50,22 @@ export function ProductEditPage() {
   }
 
   return (
-    <ProductCreateWizard
-      orgId={profile.organization_id}
-      editing={product}
-      onSaved={async () => {
-        invalidateInventoryQueries(qc)
-        await qc.invalidateQueries({ queryKey: queryKeys.product(id) })
-        await qc.invalidateQueries({ queryKey: ['variants'] })
-        invalidateStorefrontCache()
-        toast('Product updated')
-      }}
-      onError={(m) => toast(m, 'error')}
-    />
+    <div className="space-y-6">
+      <ProductCreateWizard
+        orgId={profile.organization_id}
+        editing={product}
+        onSaved={async () => {
+          invalidateInventoryQueries(qc)
+          await qc.invalidateQueries({ queryKey: queryKeys.product(id) })
+          await qc.invalidateQueries({ queryKey: ['variants'] })
+          invalidateStorefrontCache()
+          toast('Product updated')
+        }}
+        onError={(m) => toast(m, 'error')}
+      />
+      <div className="mx-auto w-full max-w-5xl px-3 sm:px-4 lg:px-0">
+        <BranchPriceEditor productId={product.id} />
+      </div>
+    </div>
   )
 }

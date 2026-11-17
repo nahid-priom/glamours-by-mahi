@@ -140,7 +140,7 @@ export function ProductForm({
   onSaved,
   onError,
 }: Props) {
-  const { can } = useAuth()
+  const { can, activeBranchId } = useAuth()
   const { toast } = useToast()
   const canCreate = can('products.create')
   const canApprove = can('products.approve')
@@ -428,8 +428,18 @@ export function ProductForm({
             }))
 
           if (stockEntries.length > 0) {
-            if (!openingStock.branchId || !openingStock.locationId) {
-              throw new Error('Select branch and location for opening stock.')
+            if (!activeBranchId) {
+              throw new Error(
+                'Select a branch in the header before posting opening stock. All Branches is reporting-only.',
+              )
+            }
+            if (!openingStock.branchId || openingStock.branchId !== activeBranchId) {
+              throw new Error('Opening stock must post to the active branch selected in the header.')
+            }
+            if (!openingStock.locationId) {
+              throw new Error(
+                'No saleable stock location configured for this branch. Add a default saleable location in inventory settings.',
+              )
             }
             if (unitCost <= 0) {
               throw new Error('Opening stock requires a unit purchase cost.')
@@ -452,8 +462,18 @@ export function ProductForm({
             payload.branch_prices = branchPrices
           }
         } else if (openingStock.quantity > 0) {
-          if (!openingStock.branchId || !openingStock.locationId) {
-            throw new Error('Select branch and location for opening stock.')
+          if (!activeBranchId) {
+            throw new Error(
+              'Select a branch in the header before posting opening stock. All Branches is reporting-only.',
+            )
+          }
+          if (!openingStock.branchId || openingStock.branchId !== activeBranchId) {
+            throw new Error('Opening stock must post to the active branch selected in the header.')
+          }
+          if (!openingStock.locationId) {
+            throw new Error(
+              'No saleable stock location configured for this branch. Add a default saleable location in inventory settings.',
+            )
           }
           if (unitCost <= 0) {
             throw new Error('Opening stock requires a unit purchase cost.')
@@ -724,6 +744,7 @@ export function ProductForm({
               variants={variantDrafts}
               quantities={variantStock}
               meta={variantOpeningMeta}
+              lockedBranchId={activeBranchId}
               onMetaChange={(next) =>
                 setOpeningStock((prev) => ({
                   ...prev,
@@ -761,6 +782,7 @@ export function ProductForm({
               sellingPrice={Number(form.selling_price) || 0}
               variantCount={1}
               requiresExpiry={form.productKind === 'cosmetics'}
+              lockedBranchId={activeBranchId}
             />
           ) : null
         ) : null}

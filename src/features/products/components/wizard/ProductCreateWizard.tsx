@@ -78,7 +78,7 @@ export function ProductCreateWizard({
   onCreated,
   onSaved,
 }: Props) {
-  const { can } = useAuth()
+  const { can, activeBranchId } = useAuth()
   const navigate = useNavigate()
   const canCreate = can('products.create')
   const canApprove = can('products.approve')
@@ -468,9 +468,19 @@ export function ProductCreateWizard({
       const presenceRows = stockRows.filter((r) => r.branchId && r.locationId)
 
       if (stockEntries.length > 0) {
+        if (!activeBranchId) {
+          throw new Error(
+            'Select a branch in the header before posting opening stock. All Branches is reporting-only.',
+          )
+        }
         const first = stockEntries[0]
-        if (!first.branch_id || !first.location_id) {
-          throw new Error('Select branch and location for opening stock.')
+        if (!first.branch_id || first.branch_id !== activeBranchId) {
+          throw new Error('Opening stock must post to the active branch selected in the header.')
+        }
+        if (!first.location_id) {
+          throw new Error(
+            'No saleable stock location configured for this branch. Add a default saleable location in inventory settings.',
+          )
         }
         if (stockEntries.some((e) => e.unit_cost <= 0)) {
           throw new Error('Opening stock requires a unit purchase cost.')
@@ -963,6 +973,7 @@ export function ProductCreateWizard({
                 variants={stockVariants}
                 rows={stockRows}
                 onRowsChange={setStockRows}
+                defaultBranchId={activeBranchId ?? undefined}
                 requiresExpiry={form.productKind === 'cosmetics'}
                 batchNumber={batchNumber}
                 expiresAt={expiresAt}
@@ -993,22 +1004,8 @@ export function ProductCreateWizard({
                     )}
                   />
                   <Metric
-                    label="Barcodes"
-                    value={
-                      isEdit
-                        ? String(
-                            existingVariants.length > 0
-                              ? existingVariants.filter((v) => v.barcode).length
-                              : form.base_barcode
-                                ? 1
-                                : 0,
-                          )
-                        : isMatrixKind
-                          ? String(variantDrafts.filter((v) => v.barcode).length)
-                          : form.base_barcode
-                            ? '1'
-                            : '0'
-                    }
+                    label="Branch"
+                    value={activeBranchId ? 'Active branch' : 'Not selected'}
                   />
                   <Metric
                     label={isEdit ? 'On-hand stock' : 'Opening stock'}

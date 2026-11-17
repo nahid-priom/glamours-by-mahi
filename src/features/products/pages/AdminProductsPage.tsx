@@ -68,7 +68,7 @@ function productToBarcodeItems(product: ProductListItem): BarcodePrintItem[] {
 
 export function AdminProductsPage() {
   const { toast } = useToast()
-  const { can } = useAuth()
+  const { can, activeBranchId } = useAuth()
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -86,9 +86,15 @@ export function AdminProductsPage() {
     [setSearchParams],
   )
 
+  const branchScope = activeBranchId ?? 'all'
+
   const listParams = useMemo(
-    () => ({ ...catalogFiltersToListParams(filters), pageSize: 24 }),
-    [filters],
+    () => ({
+      ...catalogFiltersToListParams(filters),
+      pageSize: 24,
+      branchId: activeBranchId ?? null,
+    }),
+    [filters, activeBranchId],
   )
 
   const { data: categoryCounts } = useQuery({
@@ -97,7 +103,7 @@ export function AdminProductsPage() {
   })
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({
-    queryKey: ['product-catalog-kpis'],
+    queryKey: ['product-catalog-kpis', branchScope],
     queryFn: getProductCatalogKpis,
   })
 
@@ -118,6 +124,7 @@ export function AdminProductsPage() {
       search: listParams.search,
       categoryId: listParams.categoryId,
       brandId: listParams.brandId,
+      branchId: activeBranchId ?? null,
       stockStatus:
         listParams.stockStatus === 'low_stock' || listParams.stockStatus === 'out_of_stock'
           ? listParams.stockStatus
@@ -133,7 +140,7 @@ export function AdminProductsPage() {
       sortDirection:
         listParams.sort === 'value_asc' || listParams.sort === 'stock_asc' ? ('asc' as const) : ('desc' as const),
     }),
-    [listParams],
+    [listParams, activeBranchId],
   )
 
   const { data: valuation } = useQuery({
@@ -284,6 +291,12 @@ export function AdminProductsPage() {
   return (
     <div className="mx-auto w-full max-w-7xl min-w-0 space-y-4 px-3 sm:px-4 lg:px-0">
       <ProductsPageHeader onPrintBarcodes={openBulkBarcode} onExport={exportCsv} />
+
+      <p className="text-xs text-[#6B7280]">
+        {activeBranchId
+          ? 'Stock badges show quantities for the active branch selected in the header.'
+          : 'All Branches selected — stock badges show organization-wide totals (reporting only).'}
+      </p>
 
       <ProductKpiCards
         kpis={kpis}

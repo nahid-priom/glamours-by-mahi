@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AppDateField } from '@/components/date-picker'
 import { Input } from '@/components/ui/input'
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { queryKeys } from '@/lib/query/keys'
 import { listAccessibleBranches } from '@/features/inventory/repositories/inventory-valuation.repository'
 import { listStockLocations } from '@/features/inventory/repositories/inventory.repository'
+import { pickDefaultSaleableLocation } from '@/features/inventory/lib/resolve-saleable-location'
 import { formatBDT } from '@/lib/format'
 import type { VariantDraft } from '../../lib/variant-matrix'
 
@@ -19,9 +20,9 @@ export type StockMatrixRow = {
 
 type Props = {
   variants: Array<Pick<VariantDraft, 'key' | 'label' | 'purchase_price'>>
-  /** Simple product uses a single synthetic key "default". */
   rows: StockMatrixRow[]
   onRowsChange: (rows: StockMatrixRow[]) => void
+  /** Required operational branch from active branch context. */
   defaultBranchId?: string
   requiresExpiry?: boolean
   batchNumber?: string
@@ -44,23 +45,46 @@ export function BranchStockMatrix({
     queryFn: listAccessibleBranches,
   })
 
-  const branchId =
-    rows[0]?.branchId ||
-    defaultBranchId ||
-    branches.find((b) => b.is_central)?.id ||
-    branches[0]?.id ||
-    ''
+  const branchId = defaultBranchId || ''
+  const branchName =
+    branches.find((b) => b.id === branchId)?.name ??
+    (branchId ? 'Selected branch' : 'No branch selected')
 
-  const { data: locations = [] } = useQuery({
+  const { data: locations = [], isLoading: loadingLocations } = useQuery({
     queryKey: queryKeys.stockLocations(branchId),
     queryFn: () => listStockLocations(branchId),
     enabled: Boolean(branchId),
   })
 
-  const saleable = locations.filter(
-    (l) => l.location_type === 'saleable' && l.is_active && !l.deleted_at,
-  )
-  const locationId = rows[0]?.locationId || saleable[0]?.id || ''
+  const saleable = pickDefaultSaleableLocation(locations)
+  const locationId = saleable?.id || ''
+  const onRowsChangeRef = useRef(onRowsChange)
+  onRowsChangeRef.current = onRowsChange
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
+
+  // When active branch or resolved location changes, rewrite row meta (keep qty/cost).
+  // If branch switches, clear quantities so opening stock is not silently moved.
+  const prevBranchRef = useRef(branchId)
+  useEffect(() => {
+    if (!branchId || !locationId || !variants.length) return
+    const branchChanged = prevBranchRef.current !== branchId
+    prevBranchRef.current = branchId
+    const current = rowsRef.current
+    const byKey = new Map(current.map((r) => [r.variantKey, r]))
+    onRowsChangeRef.current(
+      variants.map((v) => {
+        const existing = byKey.get(v.key)
+        return {
+          variantKey: v.key,
+          branchId,
+          locationId,
+          quantity: branchChanged ? 0 : (existing?.quantity ?? 0),
+          unitCost: existing?.unitCost ?? v.purchase_price ?? 0,
+        }
+      }),
+    )
+  }, [branchId, locationId, variants])
 
   const ensureRows = useMemo(() => {
     if (!variants.length || !branchId) return rows
@@ -79,24 +103,23 @@ export function BranchStockMatrix({
     })
   }, [variants, rows, branchId, locationId])
 
-  const setMeta = (nextBranch: string, nextLocation: string) => {
-    const next = ensureRows.map((r) => ({
-      ...r,
-      branchId: nextBranch,
-      locationId: nextLocation,
-    }))
-    onRowsChange(next)
-  }
-
   const setQty = (variantKey: string, quantity: number) => {
     onRowsChange(
-      ensureRows.map((r) => (r.variantKey === variantKey ? { ...r, quantity } : r)),
+      ensureRows.map((r) =>
+        r.variantKey === variantKey
+          ? { ...r, branchId, locationId, quantity }
+          : { ...r, branchId, locationId },
+      ),
     )
   }
 
   const setCost = (variantKey: string, unitCost: number) => {
     onRowsChange(
-      ensureRows.map((r) => (r.variantKey === variantKey ? { ...r, unitCost } : r)),
+      ensureRows.map((r) =>
+        r.variantKey === variantKey
+          ? { ...r, branchId, locationId, unitCost }
+          : { ...r, branchId, locationId },
+      ),
     )
   }
 
@@ -111,38 +134,30 @@ export function BranchStockMatrix({
 
   return (
     <div className="product-module space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Branch</Label>
-          <select
-            className="flex h-10 w-full rounded-md border border-border bg-white px-3 text-sm"
-            value={branchId}
-            onChange={(e) => setMeta(e.target.value, '')}
-          >
-            <option value="">Select branch</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Location</Label>
-          <select
-            className="flex h-10 w-full rounded-md border border-border bg-white px-3 text-sm"
-            value={locationId}
-            onChange={(e) => setMeta(branchId, e.target.value)}
-            disabled={!branchId}
-          >
-            <option value="">Select location</option>
-            {saleable.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="rounded-xl border border-border bg-[#F9FAFB] px-3 py-2 text-sm">
+        <p className="font-medium text-[#111827]">Branch opening stock</p>
+        <p className="text-[#6B7280]">
+          {branchId ? (
+            <>
+              Posting to <span className="font-semibold text-[#111827]">{branchName}</span>
+              {saleable ? (
+                <> · internal location resolved automatically</>
+              ) : loadingLocations ? (
+                <> · resolving stock location…</>
+              ) : (
+                <>
+                  {' '}
+                  · <span className="text-[#E11D48]">no saleable location configured</span>
+                </>
+              )}
+            </>
+          ) : (
+            <span className="text-[#E11D48]">
+              Select a branch in the header before posting opening stock (All Branches is
+              reporting-only).
+            </span>
+          )}
+        </p>
       </div>
 
       {onBatchChange ? (
@@ -188,6 +203,7 @@ export function BranchStockMatrix({
                       type="number"
                       min={0}
                       className="h-8 w-24"
+                      disabled={!branchId || !locationId}
                       value={qty}
                       onChange={(e) => setQty(v.key, Math.max(0, Number(e.target.value) || 0))}
                     />
@@ -198,6 +214,7 @@ export function BranchStockMatrix({
                       min={0}
                       step="0.01"
                       className="h-8 w-28"
+                      disabled={!branchId || !locationId}
                       value={cost}
                       onChange={(e) => setCost(v.key, Math.max(0, Number(e.target.value) || 0))}
                     />
