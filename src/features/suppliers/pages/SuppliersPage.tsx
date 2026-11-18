@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { Loader2, Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,18 +8,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useToast } from '@/components/ui/toast'
+import { PageShell } from '@/components/layout/PageShell'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { toastRpcError } from '@/lib/errors/rpc-error'
+import { SupplierCard } from '../components/SupplierCard'
+import {
+  SupplierDirectoryFilters,
+  type SupplierSortKey,
+} from '../components/SupplierDirectoryFilters'
+import { SupplierDirectoryKPIs } from '../components/SupplierDirectoryKPIs'
+import type { SupplierDirectoryViewMode } from '../types/supplier-360.types'
+import { formatActivityDate, stockQuantityLabel } from '../utils/supplier-display'
 import {
   createSupplier,
-  listSuppliers,
+  getSupplierDirectorySummary,
+  listSupplierDirectoryCards,
   softDeleteSupplier,
   updateSupplier,
   type Supplier,
+  type SupplierDirectoryCard,
 } from '../repositories/suppliers.repository'
 
 type FormState = {
@@ -40,25 +51,69 @@ const empty: FormState = {
   status: 'active',
 }
 
+const pageSize = 30
+
+function sortKeyToRpc(sort: SupplierSortKey): string {
+  switch (sort) {
+    case 'due':
+      return 'due'
+    case 'activity':
+      return 'activity'
+    case 'purchased':
+      return 'purchases'
+    case 'paid':
+      return 'paid'
+    default:
+      return 'name'
+  }
+}
+
 export function SuppliersPage() {
   const { profile } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const dueOnly = searchParams.get('due') === '1'
+
   const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('')
+  const [sortBy, setSortBy] = useState<SupplierSortKey>('name')
+  const [viewMode, setViewMode] = useState<SupplierDirectoryViewMode>('cards')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<Supplier | null>(null)
+  const [editing, setEditing] = useState<Supplier | SupplierDirectoryCard | null>(null)
   const [form, setForm] = useState<FormState>(empty)
 
-  const filters = useMemo(
-    () => ({ search, page, pageSize: 30, dueOnly }),
-    [search, page, dueOnly],
+  useEffect(() => {
+    if (location.pathname === '/suppliers/new') {
+      setEditing(null)
+      setForm(empty)
+      setOpen(true)
+    }
+  }, [location.pathname])
+
+  const cardFilters = useMemo(
+    () => ({
+      search,
+      status: status || null,
+      dueOnly,
+      page,
+      pageSize,
+      sortBy: sortKeyToRpc(sortBy),
+      sortDir: sortBy === 'name' ? ('asc' as const) : ('desc' as const),
+    }),
+    [search, status, dueOnly, page, sortBy],
   )
+
+  const { data: summary, isLoading: summaryLoading } = useQuery({
+    queryKey: queryKeys.supplierDirectorySummary({}),
+    queryFn: () => getSupplierDirectorySummary(),
+  })
+
   const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.suppliers(filters),
-    queryFn: () => listSuppliers(filters),
+    queryKey: queryKeys.supplierDirectoryCards(cardFilters),
+    queryFn: () => listSupplierDirectoryCards(cardFilters),
   })
 
   const saveMutation = useMutation({
@@ -78,6 +133,8 @@ export function SuppliersPage() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['suppliers'] })
+      void qc.invalidateQueries({ queryKey: ['supplier-directory-summary'] })
+      void qc.invalidateQueries({ queryKey: ['supplier-directory-cards'] })
       toast(editing ? 'Supplier updated' : 'Supplier created')
       setOpen(false)
       setEditing(null)
@@ -90,6 +147,8 @@ export function SuppliersPage() {
     mutationFn: softDeleteSupplier,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['suppliers'] })
+      void qc.invalidateQueries({ queryKey: ['supplier-directory-summary'] })
+      void qc.invalidateQueries({ queryKey: ['supplier-directory-cards'] })
       toast('Supplier deleted')
     },
     onError: (e: Error) => toastRpcError(toast, e),
@@ -101,7 +160,7 @@ export function SuppliersPage() {
     setOpen(true)
   }
 
-  function openEdit(row: Supplier) {
+  function openEdit(row: Supplier | SupplierDirectoryCard) {
     setEditing(row)
     setForm({
       name: row.name,
@@ -114,15 +173,23 @@ export function SuppliersPage() {
     setOpen(true)
   }
 
-  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 30))
+  function setDueOnly(next: boolean) {
+    const params = new URLSearchParams(searchParams)
+    if (next) params.set('due', '1')
+    else params.delete('due')
+    setSearchParams(params, { replace: true })
+    setPage(1)
+  }
+
+  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / pageSize))
+  const items = data?.items ?? []
 
   return (
-    <div className="mx-auto w-full max-w-6xl min-w-0 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-[#111827]">Suppliers</h1>
-          <p className="text-sm text-[#6B7280]">Manage purchase partners and payables.</p>
-        </div>
+    <PageShell
+      title="Supplier directory"
+      description="Manage suppliers, track dues, stock and performance in one place."
+      className="mx-auto max-w-6xl"
+      actions={
         <div className="flex flex-wrap gap-2">
           <PermissionGate permission="suppliers.import">
             <Button size="sm" variant="outline" asChild>
@@ -139,106 +206,128 @@ export function SuppliersPage() {
             </Button>
           </PermissionGate>
         </div>
-      </div>
+      }
+    >
+      <SupplierDirectoryKPIs summary={summary} isLoading={summaryLoading} />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          placeholder="Search name, phone, email…"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setPage(1)
-          }}
-          className="max-w-sm"
-        />
-        <Button
-          type="button"
-          size="sm"
-          variant={dueOnly ? 'default' : 'outline'}
-          onClick={() => {
-            const next = new URLSearchParams(searchParams)
-            if (dueOnly) next.delete('due')
-            else next.set('due', '1')
-            setSearchParams(next, { replace: true })
-            setPage(1)
-          }}
-        >
-          Due only
-        </Button>
-      </div>
+      <SupplierDirectoryFilters
+        search={search}
+        onSearchChange={(v) => {
+          setSearch(v)
+          setPage(1)
+        }}
+        status={status}
+        onStatusChange={(v) => {
+          setStatus(v)
+          setPage(1)
+        }}
+        dueOnly={dueOnly}
+        onDueOnlyChange={setDueOnly}
+        sortBy={sortBy}
+        onSortByChange={(v) => {
+          setSortBy(v)
+          setPage(1)
+        }}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-[#6B7280]">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading suppliers…
         </div>
       ) : null}
       {error ? <p className="text-sm text-[#E11D48]">Failed to load suppliers.</p> : null}
 
-      <div className="rounded-xl border border-border bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Due</TableHead>
-              <TableHead className="w-24" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(data?.items ?? []).map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>
-                  <Link
-                    to={`/suppliers/${row.id}`}
-                    className="font-medium text-[#E11D48] hover:underline"
-                  >
-                    {row.name}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-[#6B7280]">
-                  <div>{row.phone || '—'}</div>
-                  <div className="text-xs text-[#9CA3AF]">{row.email || ''}</div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={row.status === 'active' ? 'success' : 'default'}>
-                    {row.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right font-medium text-[#E11D48]">
-                  {Number(row.current_due) > 0 ? formatBDT(Number(row.current_due)) : '—'}
-                </TableCell>
-                <TableCell>
-                  <PermissionGate permission="suppliers.manage">
-                    <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(row)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          if (confirm(`Delete ${row.name}?`)) deleteMutation.mutate(row.id)
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-[#E11D48]" />
-                      </Button>
-                    </div>
-                  </PermissionGate>
-                </TableCell>
+      {viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {items.map((row) => (
+            <SupplierCard key={row.id} supplier={row} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border bg-white">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Due</TableHead>
+                <TableHead className="text-right">Paid</TableHead>
+                <TableHead className="text-right">In stock</TableHead>
+                <TableHead>Last activity</TableHead>
+                <TableHead className="w-24" />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        {!isLoading && (data?.items.length ?? 0) === 0 ? (
-          <p className="p-6 text-center text-sm text-[#6B7280]">No suppliers found.</p>
-        ) : null}
-      </div>
+            </TableHeader>
+            <TableBody>
+              {items.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <Link
+                      to={`/suppliers/${row.id}?tab=ledger`}
+                      className="font-medium text-[#2563EB] hover:underline"
+                    >
+                      {row.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <div>{row.phone || '—'}</div>
+                    <div className="text-xs">{row.email || ''}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={row.status === 'active' ? 'success' : 'default'}>
+                      {row.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-medium text-[#E11D48]">
+                    {Number(row.current_due) > 0 ? formatBDT(Number(row.current_due)) : '—'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatBDT(row.total_paid)}
+                  </TableCell>
+                  <TableCell className="text-right text-sm">
+                    {stockQuantityLabel(row.stock_on_hand)}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatActivityDate(row.last_activity_at)}
+                  </TableCell>
+                  <TableCell>
+                    <PermissionGate permission="suppliers.manage">
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(row)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            if (confirm(`Delete ${row.name}?`)) deleteMutation.mutate(row.id)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-[#E11D48]" />
+                        </Button>
+                      </div>
+                    </PermissionGate>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {!isLoading && items.length === 0 ? (
+        <p className="text-center text-sm text-muted-foreground">No suppliers found.</p>
+      ) : null}
 
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
           Prev
         </Button>
+        <span className="self-center text-sm text-muted-foreground">
+          Page {page} / {totalPages}
+        </span>
         <Button
           size="sm"
           variant="outline"
@@ -249,7 +338,16 @@ export function SuppliersPage() {
         </Button>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v)
+          if (!v) {
+            setEditing(null)
+            setForm(empty)
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit supplier' : 'New supplier'}</DialogTitle>
@@ -295,7 +393,7 @@ export function SuppliersPage() {
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
                 value={form.status}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, status: e.target.value as 'active' | 'inactive' }))
+                  setForm((f) => ({ ...f, status: e.target.value as FormState['status'] }))
                 }
               >
                 <option value="active">Active</option>
@@ -320,6 +418,6 @@ export function SuppliersPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   )
 }

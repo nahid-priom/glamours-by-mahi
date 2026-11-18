@@ -13,7 +13,9 @@ import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
   useReconciliationDryRun,
   useReconciliationReport,
+  useSupplierRepairApply,
 } from '../../hooks/use-reconciliation'
+import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 
 function toCsv(rows: Array<Record<string, unknown>>, filename: string) {
   if (rows.length === 0) return
@@ -45,6 +47,9 @@ export function ReconciliationCenterPage() {
   const partiesDry = useReconciliationDryRun('parties')
   const financialDry = useReconciliationDryRun('financial')
   const partialDry = useReconciliationDryRun('partial')
+  const supplier360Dry = useReconciliationDryRun('supplier360')
+  const openingSignRepair = useSupplierRepairApply('opening_sign')
+  const partySyncRepair = useSupplierRepairApply('party_sync')
   const { toast } = useToast()
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -143,10 +148,99 @@ export function ReconciliationCenterPage() {
               >
                 Dry-run partial sales
               </Button>
-              <Button disabled title="Production apply is blocked for this rollout">
+              <Button
+                variant="outline"
+                disabled={supplier360Dry.isPending}
+                onClick={() => runDry(supplier360Dry, 'Supplier 360 financial')}
+              >
+                Dry-run supplier 360
+              </Button>
+              <Button disabled title="Legacy batch apply remains blocked">
                 Apply repairs (disabled)
               </Button>
             </div>
+            <PermissionGate permission="accounts.manage">
+              <div className="mt-4 space-y-2 border-t border-border pt-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
+                  Supplier 360 audited repairs
+                </h3>
+                <p className="text-xs text-[#6B7280]">
+                  Dry-run first, then apply. Opening-sign converts erroneous opening credits to
+                  debits via supersede + new ledger rows. Party sync rebuilds current_due from
+                  ledger totals. Requires accounts.manage.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={openingSignRepair.isPending}
+                    onClick={() =>
+                      openingSignRepair.mutate('dry_run', {
+                        onSuccess: (r) => {
+                          setLastDryRun(r)
+                          toast('Opening-sign dry-run complete', 'success')
+                        },
+                        onError: (e: Error) => toastRpcError(toast, e),
+                      })
+                    }
+                  >
+                    Dry-run opening sign
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={openingSignRepair.isPending}
+                    onClick={() => {
+                      if (!window.confirm('Apply opening-sign repair to live supplier ledgers?')) return
+                      openingSignRepair.mutate('apply', {
+                        onSuccess: (r) => {
+                          setLastDryRun(r)
+                          toast('Opening-sign repair applied', 'success')
+                          void refetch()
+                        },
+                        onError: (e: Error) => toastRpcError(toast, e),
+                      })
+                    }}
+                  >
+                    Apply opening sign
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={partySyncRepair.isPending}
+                    onClick={() =>
+                      partySyncRepair.mutate('dry_run', {
+                        onSuccess: (r) => {
+                          setLastDryRun(r)
+                          toast('Party sync dry-run complete', 'success')
+                        },
+                        onError: (e: Error) => toastRpcError(toast, e),
+                      })
+                    }
+                  >
+                    Dry-run party sync
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={partySyncRepair.isPending}
+                    onClick={() => {
+                      if (!window.confirm('Apply party due sync from supplier_ledger?')) return
+                      partySyncRepair.mutate('apply', {
+                        onSuccess: (r) => {
+                          setLastDryRun(r)
+                          toast('Party sync applied', 'success')
+                          void refetch()
+                        },
+                        onError: (e: Error) => toastRpcError(toast, e),
+                      })
+                    }}
+                  >
+                    Apply party sync
+                  </Button>
+                </div>
+              </div>
+            </PermissionGate>
             {lastDryRun ? (
               <pre className="mt-3 max-h-48 overflow-auto rounded-md bg-[#F9FAFB] p-3 text-xs">
                 {JSON.stringify(lastDryRun, null, 2)}

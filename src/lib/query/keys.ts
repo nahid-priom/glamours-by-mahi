@@ -20,6 +20,15 @@ export const queryKeys = {
   customer: (id: string) => ['customer', id] as const,
   suppliers: (filters: Record<string, unknown> = {}) => ['suppliers', filters] as const,
   supplier: (id: string) => ['supplier', id] as const,
+  supplierDirectorySummary: (filters: Record<string, unknown> = {}) =>
+    ['supplier-directory-summary', filters] as const,
+  supplierDirectoryCards: (filters: Record<string, unknown> = {}) =>
+    ['supplier-directory-cards', filters] as const,
+  supplierLedgerStatement: (filters: Record<string, unknown>) =>
+    ['supplier-ledger-statement', filters] as const,
+  supplierDocuments: (supplierId: string) => ['supplier-documents', supplierId] as const,
+  supplierPurchases: (supplierId: string, filters: Record<string, unknown> = {}) =>
+    ['supplier-purchases', supplierId, filters] as const,
   dashboard: (filters: Record<string, unknown> = {}) => ['dashboard', filters] as const,
   dashboardBranches: ['dashboard-branches'] as const,
   sales: (filters: Record<string, unknown>) => ['sales', filters] as const,

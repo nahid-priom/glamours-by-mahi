@@ -230,16 +230,32 @@ async function paySupplier(payload: PaySupplierPayload) {
 }
 
 async function listSupplierPayments(limit = 100) {
+  // Party-level pay_supplier posts supplier_ledger (not always purchase_payments).
   const { data, error } = await supabase
-    .from('purchase_payments')
+    .from('supplier_ledger')
     .select(
-      'id, amount, method, reference, created_at, purchase_id, purchases(invoice_no, supplier_id, suppliers(name))',
+      'id, supplier_id, credit, debit, entry_type, notes, occurred_at, reference_id, reference_type, suppliers(name)',
     )
+    .in('entry_type', ['supplier_payment', 'purchase_payment', 'payment'])
+    .gt('credit', 0)
     .is('deleted_at', null)
-    .order('created_at', { ascending: false })
+    .order('occurred_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    amount: Number(row.credit ?? 0),
+    method: row.entry_type,
+    reference: row.notes,
+    created_at: row.occurred_at,
+    purchase_id: row.reference_type === 'purchase' ? row.reference_id : null,
+    purchases: {
+      invoice_no: row.reference_id,
+      supplier_id: row.supplier_id,
+      suppliers: (row as { suppliers?: { name?: string } | null }).suppliers ?? null,
+    },
+  }))
 }
 
 async function listFinancialAccounts() {

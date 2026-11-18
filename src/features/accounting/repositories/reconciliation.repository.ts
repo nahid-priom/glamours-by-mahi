@@ -65,10 +65,35 @@ async function dryRun(fn: string, extra: Record<string, unknown> = {}) {
   return data
 }
 
+async function supplierFinancialDryRun() {
+  const { data, error } = await rpc('recon_supplier_financial_dry_run', { payload: {} })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+async function repairSupplierOpeningSign(mode: 'dry_run' | 'apply', clientTxnKey?: string) {
+  const { data, error } = await rpc('repair_supplier_opening_sign', {
+    payload: { mode, client_txn_key: clientTxnKey },
+  })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+async function repairSupplierPartySync(mode: 'dry_run' | 'apply', clientTxnKey?: string) {
+  const { data, error } = await rpc('repair_supplier_party_sync', {
+    payload: { mode, client_txn_key: clientTxnKey },
+  })
+  if (error) throw new Error(error.message)
+  return data
+}
+
 export const reconciliationRepository = {
   getReport,
   dryRunOpeningStock: () => dryRun('recon_opening_stock_ledger'),
   dryRunOpeningParties: () => dryRun('recon_opening_party_balances'),
   dryRunFinancialBalances: () => dryRun('recon_rebuild_financial_running_balances'),
   dryRunPartialSales: () => dryRun('recon_repair_partial_sale_summaries'),
+  supplierFinancialDryRun,
+  repairSupplierOpeningSign,
+  repairSupplierPartySync,
 }
