@@ -71,6 +71,10 @@ export const queryKeys = {
   inventoryBalances: (filters: Record<string, unknown> = {}) =>
     ['inventory-balances', filters] as const,
   customersLedger: (customerId: string) => ['customers-ledger', customerId] as const,
+  customerLedgerStatement: (filters: Record<string, unknown>) =>
+    ['customer-ledger-statement', filters] as const,
+  customerSales: (customerId: string, filters: Record<string, unknown> = {}) =>
+    ['customer-sales', customerId, filters] as const,
   suppliersLedger: (supplierId: string) => ['suppliers-ledger', supplierId] as const,
   accountingAccounts: (filters: Record<string, unknown> = {}) =>
     ['accounting-accounts', filters] as const,

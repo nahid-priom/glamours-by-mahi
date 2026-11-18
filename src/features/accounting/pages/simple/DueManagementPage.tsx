@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { simpleAccountingRepository } from '../../repositories/simple-accounting.repository'
@@ -74,6 +74,21 @@ export function DueManagementPage() {
   const rows = tab === 'customers' ? (customersQuery.data ?? []) : (suppliersQuery.data ?? [])
   const isLoading = tab === 'customers' ? customersQuery.isLoading : suppliersQuery.isLoading
   const error = tab === 'customers' ? customersQuery.error : suppliersQuery.error
+
+  // Deep-link from customer/supplier profile Collect/Pay CTAs
+  useEffect(() => {
+    const customerId = params.get('customerId')
+    const supplierId = params.get('supplierId')
+    if (tab === 'customers' && customerId && customersQuery.data) {
+      const match = customersQuery.data.find((r) => r.id === customerId)
+      if (match) setSelected(match)
+    }
+    if (tab === 'suppliers' && supplierId && suppliersQuery.data) {
+      const match = suppliersQuery.data.find((r) => r.id === supplierId)
+      if (match) setSelected(match)
+    }
+  }, [tab, params, customersQuery.data, suppliersQuery.data])
+
   const partyDueTotal = rows.reduce((s, r) => s + r.due, 0)
   const invoiceDueTotal = agingQuery.data?.totalDue ?? null
   const reconDiff =

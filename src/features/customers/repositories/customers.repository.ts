@@ -163,10 +163,16 @@ export async function listCustomerLedger(
     .eq('customer_id', customerId)
     .is('deleted_at', null)
     .order('occurred_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit)
   if (error) throw error
   return data ?? []
 }
+
+/** Collection / payment credits that reduce AR (canonical + at-sale). */
+export const CUSTOMER_COLLECTION_ENTRY_TYPES = ['collection', 'sale_payment'] as const
+
+export const CUSTOMER_SALE_ENTRY_TYPES = ['sale_invoice', 'sale_due', 'opening'] as const
 
 /** Collection entries from customer_ledger. */
 export async function listCustomerCollections(
@@ -177,13 +183,130 @@ export async function listCustomerCollections(
     .from('customer_ledger')
     .select('*')
     .is('deleted_at', null)
-    .eq('entry_type', 'collection')
+    .in('entry_type', [...CUSTOMER_COLLECTION_ENTRY_TYPES])
+    .gt('credit', 0)
     .order('occurred_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit)
   if (customerId) builder = builder.eq('customer_id', customerId)
   const { data, error } = await builder
   if (error) throw error
   return data ?? []
+}
+
+export type CustomerLedgerStatement = {
+  customer_id: string
+  opening_balance: number
+  total_sales: number
+  total_collections: number
+  total_returns: number
+  total_adjustments: number
+  closing_due: number
+  page: number
+  page_size: number
+  total_count: number
+  lines: Array<{
+    id: string
+    occurred_at: string
+    branch_id: string | null
+    entry_type: string
+    reference_type: string | null
+    reference_id: string | null
+    notes: string | null
+    due_increase: number
+    due_decrease: number
+    running_balance: number
+  }>
+}
+
+export async function getCustomerLedgerStatement(params: {
+  customerId: string
+  from?: string | null
+  to?: string | null
+  branchId?: string | null
+  entryTypes?: string[] | null
+  search?: string | null
+  page?: number
+  pageSize?: number
+}): Promise<CustomerLedgerStatement> {
+  const { data, error } = await (supabase as unknown as {
+    rpc: (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: Error | null }>
+  }).rpc('get_customer_ledger_statement', {
+    p_customer_id: params.customerId,
+    p_from: params.from ?? null,
+    p_to: params.to ?? null,
+    p_branch_id: params.branchId ?? null,
+    p_entry_types: params.entryTypes ?? null,
+    p_search: params.search?.trim() || null,
+    p_page: params.page ?? 1,
+    p_page_size: params.pageSize ?? 50,
+  })
+  if (error) throw error
+  const raw = (data ?? {}) as Record<string, unknown>
+  const lines = Array.isArray(raw.lines) ? raw.lines : []
+  return {
+    customer_id: String(raw.customer_id ?? params.customerId),
+    opening_balance: Number(raw.opening_balance ?? 0),
+    total_sales: Number(raw.total_sales ?? 0),
+    total_collections: Number(raw.total_collections ?? 0),
+    total_returns: Number(raw.total_returns ?? 0),
+    total_adjustments: Number(raw.total_adjustments ?? 0),
+    closing_due: Number(raw.closing_due ?? 0),
+    page: Number(raw.page ?? 1),
+    page_size: Number(raw.page_size ?? 50),
+    total_count: Number(raw.total_count ?? 0),
+    lines: lines.map((row) => {
+      const r = row as Record<string, unknown>
+      return {
+        id: String(r.id),
+        occurred_at: String(r.occurred_at),
+        branch_id: (r.branch_id as string | null) ?? null,
+        entry_type: String(r.entry_type ?? ''),
+        reference_type: (r.reference_type as string | null) ?? null,
+        reference_id: (r.reference_id as string | null) ?? null,
+        notes: (r.notes as string | null) ?? null,
+        due_increase: Number(r.due_increase ?? 0),
+        due_decrease: Number(r.due_decrease ?? 0),
+        running_balance: Number(r.running_balance ?? 0),
+      }
+    }),
+  }
+}
+
+export type CustomerSaleSummary = {
+  id: string
+  invoice_no: string
+  created_at: string
+  status: string
+  payment_status: string
+  grand_total: number
+  due_total: number
+}
+
+export async function listCustomerSales(
+  customerId: string,
+  limit = 20,
+): Promise<CustomerSaleSummary[]> {
+  const { data, error } = await supabase
+    .from('sales')
+    .select('id, invoice_no, created_at, status, payment_status, grand_total, due_total')
+    .eq('customer_id', customerId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    invoice_no: row.invoice_no,
+    created_at: row.created_at,
+    status: row.status,
+    payment_status: row.payment_status,
+    grand_total: Number(row.grand_total ?? 0),
+    due_total: Number(row.due_total ?? 0),
+  }))
 }
 
 export const customersRepository = {
@@ -195,4 +318,6 @@ export const customersRepository = {
   softDeleteCustomer,
   listCustomerLedger,
   listCustomerCollections,
+  getCustomerLedgerStatement,
+  listCustomerSales,
 }

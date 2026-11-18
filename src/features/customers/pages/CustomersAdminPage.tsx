@@ -254,7 +254,7 @@ export function CustomersAdminPage() {
               <TableRow key={row.id}>
                 <TableCell>
                   <Link
-                    to={`/customers/${row.id}`}
+                    to={`/customers/${row.id}?tab=ledger`}
                     className="font-medium text-[#E11D48] hover:underline"
                   >
                     {row.name}
