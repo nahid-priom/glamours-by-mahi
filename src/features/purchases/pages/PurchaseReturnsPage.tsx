@@ -10,6 +10,7 @@ import { simpleAccountingRepository } from '@/features/accounting/repositories/s
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { useAuth } from '@/features/auth/auth-session'
+import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -63,14 +64,6 @@ export function PurchaseReturnsPage() {
     queryFn: () => simpleAccountingRepository.listFinancialAccounts(activeBranchId),
     enabled: Boolean(activeBranchId) && showForm,
   })
-
-  const refundAccounts = useMemo(
-    () =>
-      accounts.filter(
-        (a) => a.is_active && (a.account_kind === 'cash' || a.account_kind === 'bank'),
-      ),
-    [accounts],
-  )
 
   useEffect(() => {
     if (!purchase?.purchase_items) return
@@ -253,26 +246,14 @@ export function PurchaseReturnsPage() {
               </div>
 
               {needsRefundAccount ? (
-                <label className="block text-sm font-medium">
-                  Refund account
-                  <select
-                    className="mt-1 flex h-10 w-full rounded-md border border-border bg-white px-3 text-sm"
-                    value={refundAccountId}
-                    onChange={(e) => setRefundAccountId(e.target.value)}
-                  >
-                    <option value="">Select cash/bank account…</option>
-                    {refundAccounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({a.account_kind}) · {formatBDT(a.current_balance)}
-                      </option>
-                    ))}
-                  </select>
-                  {refundAccounts.length === 0 ? (
-                    <p className="mt-1 text-xs text-[#6B7280]">
-                      No active cash/bank accounts for this branch.
-                    </p>
-                  ) : null}
-                </label>
+                <FinancialAccountSelectField
+                  label="Refund account"
+                  value={refundAccountId || null}
+                  onChange={(id) => setRefundAccountId(id ?? '')}
+                  accounts={accounts}
+                  kinds={['cash', 'bank']}
+                  emptyPlaceholder="Select cash/bank account…"
+                />
               ) : null}
 
               <Input

@@ -1,3 +1,4 @@
+import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -5,7 +6,7 @@ import { formatBDT } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { differenceLabel } from './ExchangeSummaryRail'
 
-type Account = { id: string; name: string }
+type Account = { id: string; name: string; account_kind?: string | null; current_balance?: number | null }
 
 type Props = {
   returnTotal: number
@@ -122,22 +123,12 @@ export function ExchangeConfirmStep({
             </button>
           </div>
           {!chargeAsDue ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="payment-account">Payment account</Label>
-              <select
-                id="payment-account"
-                className="flex h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
-                value={paymentAccountId}
-                onChange={(e) => onPaymentAccountChange(e.target.value)}
-              >
-                <option value="">Select account…</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FinancialAccountSelectField
+              label="Payment account"
+              value={paymentAccountId || null}
+              onChange={(id) => onPaymentAccountChange(id ?? '')}
+              accounts={accounts}
+            />
           ) : null}
         </div>
       ) : null}
@@ -173,22 +164,12 @@ export function ExchangeConfirmStep({
             </button>
           </div>
           {!creditAsAdvance ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="refund-account">Refund account</Label>
-              <select
-                id="refund-account"
-                className="flex h-10 w-full rounded-xl border border-input bg-background px-3 text-sm"
-                value={refundAccountId}
-                onChange={(e) => onRefundAccountChange(e.target.value)}
-              >
-                <option value="">Select account…</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FinancialAccountSelectField
+              label="Refund account"
+              value={refundAccountId || null}
+              onChange={(id) => onRefundAccountChange(id ?? '')}
+              accounts={accounts}
+            />
           ) : null}
         </div>
       ) : null}

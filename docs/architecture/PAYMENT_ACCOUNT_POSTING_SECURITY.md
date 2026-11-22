@@ -6,9 +6,9 @@
 4. Never rewrite historical `financial_account_id` on nonfinancial sale edits.
 5. Displayed confirmation account id must equal submitted id.
 
-## Shared DB helper (V4)
+## Shared DB helpers (V4)
 
-Migration `20260315000160_payment_account_v4_eligibility.sql`:
+### Migration `20260315000160_payment_account_v4_eligibility.sql`
 
 | Object | Role |
 |---|---|
@@ -18,6 +18,12 @@ Migration `20260315000160_payment_account_v4_eligibility.sql`:
 
 `edit_sale` posts the replacement via `complete_pos_sale`, so sale corrections inherit the same kind check.
 
-## Still client-primary for kind (helper ready)
+### Migration `20260315000161_payment_account_v4_collect_pay_assert.sql`
 
-`collect_customer_due` and `pay_supplier` validate FA org membership and `is_active`. Wire `_assert_payment_account_eligible` in a follow-up migration when those RPC bodies are next touched — do not fork a second payment engine.
+| Object | Role |
+|---|---|
+| `_validate_money_payment_accounts(org, branch, payments)` | Loops normalized money lines → `_assert_payment_account_eligible` |
+| `collect_customer_due` | Performs validate after `_normalize_money_payments` |
+| `pay_supplier` | Performs validate after `_normalize_money_payments` |
+
+No historical rows rewritten; posting semantics unchanged aside from stricter eligibility rejects.

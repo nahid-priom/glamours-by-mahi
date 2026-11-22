@@ -11,16 +11,9 @@ import {
   Wallet,
   XCircle,
 } from 'lucide-react'
+import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -484,21 +477,14 @@ export function PayrollRunDetailPage() {
           <PermissionGate permission="hr.payroll.pay">
             {canPay ? (
               <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-white p-3">
-                <div>
-                  <Label className="text-xs">Pay from account</Label>
-                  <Select value={accountId} onValueChange={setAccountId}>
-                    <SelectTrigger className="mt-1 h-9 w-[200px]">
-                      <SelectValue placeholder="Select account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <FinancialAccountSelectField
+                  label="Pay from account"
+                  className="min-w-[12rem] space-y-1"
+                  value={accountId || null}
+                  onChange={(id) => setAccountId(id ?? '')}
+                  accounts={accounts}
+                  showBalance={false}
+                />
                 <Button
                   size="sm"
                   disabled={!accountId || pay.isPending}

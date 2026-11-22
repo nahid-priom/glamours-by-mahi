@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { courierRepository } from '../repositories/courier.repository'
+import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import { formatBDT } from '@/lib/format'
@@ -76,21 +77,20 @@ export function CourierSettlementsPage() {
                   <td className="px-3 py-2">
                     {row.status === 'pending' || row.status === 'partially_settled' ? (
                       <PermissionGate permission="courier.settle">
-                        <div className="flex items-center gap-2">
-                          <select
-                            className="h-8 rounded border border-border px-2 text-xs"
-                            value={accountId}
-                            onChange={(e) =>
-                              setAccountBySettlement((m) => ({ ...m, [row.id]: e.target.value }))
+                        <div className="flex min-w-[16rem] items-end gap-2">
+                          <FinancialAccountSelectField
+                            label="Settle to"
+                            className="min-w-0 flex-1 space-y-0.5"
+                            value={accountId || null}
+                            onChange={(id) =>
+                              setAccountBySettlement((m) => ({
+                                ...m,
+                                [row.id]: id ?? '',
+                              }))
                             }
-                          >
-                            <option value="">Select account…</option>
-                            {accounts.map((a) => (
-                              <option key={a.id} value={a.id}>
-                                {a.name}
-                              </option>
-                            ))}
-                          </select>
+                            accounts={accounts}
+                            showBalance
+                          />
                           <Button
                             size="sm"
                             variant="outline"

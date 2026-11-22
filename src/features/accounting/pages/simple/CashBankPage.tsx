@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { simpleAccountingRepository, type AccountKind } from '../../repositories/simple-accounting.repository'
 import { PageHeader, ErrorText, EmptyState, Money } from '../../components/AccountingUi'
+import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -130,7 +131,8 @@ export function CashBankPage() {
 
   const openMove = (m: DialogMode, id?: string) => {
     setMode(m)
-    setAccountId(id ?? activeAccounts[0]?.id ?? null)
+    // Explicit only — header buttons leave empty; account cards pass id.
+    setAccountId(id ?? null)
     setToAccountId(null)
     setAmount('')
     setNote('')
@@ -147,12 +149,6 @@ export function CashBankPage() {
     setSearchParams(next, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deep-link once on mount/query
   }, [])
-
-  useEffect(() => {
-    if ((mode === 'deposit' || mode === 'withdraw' || mode === 'transfer') && !accountId && activeAccounts[0]) {
-      setAccountId(activeAccounts[0].id)
-    }
-  }, [mode, accountId, activeAccounts])
 
   return (
     <div className="mx-auto w-full max-w-5xl min-w-0 space-y-4">
@@ -232,38 +228,20 @@ export function CashBankPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>{mode === 'transfer' ? 'From account' : 'Account'}</Label>
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-                value={accountId ?? ''}
-                onChange={(e) => setAccountId(e.target.value || null)}
-              >
-                {activeAccounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({formatBDT(a.current_balance)})
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FinancialAccountSelectField
+              label={mode === 'transfer' ? 'From account' : 'Account'}
+              value={accountId}
+              onChange={setAccountId}
+              accounts={activeAccounts}
+            />
             {mode === 'transfer' ? (
-              <div className="space-y-1">
-                <Label>To account</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-                  value={toAccountId ?? ''}
-                  onChange={(e) => setToAccountId(e.target.value || null)}
-                >
-                  <option value="">Select…</option>
-                  {activeAccounts
-                    .filter((a) => a.id !== accountId)
-                    .map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
+              <FinancialAccountSelectField
+                label="To account"
+                value={toAccountId}
+                onChange={setToAccountId}
+                accounts={activeAccounts.filter((a) => a.id !== accountId)}
+                emptyPlaceholder="Select destination…"
+              />
             ) : null}
             <div className="space-y-1">
               <Label>Amount</Label>
@@ -273,7 +251,15 @@ export function CashBankPage() {
               <Label>Note</Label>
               <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
             </div>
-            <Button className="w-full" disabled={mutateMove.isPending} onClick={() => mutateMove.mutate()}>
+            <Button
+              className="w-full"
+              disabled={
+                mutateMove.isPending ||
+                !accountId ||
+                (mode === 'transfer' && !toAccountId)
+              }
+              onClick={() => mutateMove.mutate()}
+            >
               Save
             </Button>
           </div>

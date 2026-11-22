@@ -23,6 +23,7 @@ import {
   invalidateCustomerCollectionCaches,
   invalidateSupplierPaymentCaches,
 } from '@/lib/mutations/party-finance-cache'
+import { PaymentAccountSummary } from '@/components/payments/PaymentAccountSummary'
 import { ResolvedPaymentAccountField } from '@/components/payments/ResolvedPaymentAccountField'
 import {
   missingPaymentAccountMessage,
@@ -520,6 +521,16 @@ export function DueManagementPage() {
               methodCode={method}
               branchId={activeBranchId}
             />
+            {resolved ? (
+              <PaymentAccountSummary
+                transactionType={tab === 'customers' ? 'Customer collection' : 'Supplier payment'}
+                amount={Number(amount) || 0}
+                paymentMethod={payMethods.find((m) => m.code === method)?.name ?? method}
+                accountName={resolved.account.name}
+                accountKind={resolved.account.account_kind}
+                partyLabel={selected?.name}
+              />
+            ) : null}
             <div className="space-y-1">
               <Label>Reference</Label>
               <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Optional" />

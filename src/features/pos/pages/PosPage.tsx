@@ -177,14 +177,14 @@ export function PosPage() {
   useEffect(() => {
     if (accountsQuery.isLoading) return
     if (!payAccountDefaultedRef.current) {
-      const def = posAccounts.find((a) => a.is_default) ?? posAccounts[0]
+      // Visible default only — never invent accounts[0].
+      const def = posAccounts.find((a) => a.is_default)
       setPayAccountId(def?.id ?? null)
       payAccountDefaultedRef.current = true
       return
     }
     if (payAccountId !== null && !posAccounts.some((a) => a.id === payAccountId)) {
-      const def = posAccounts.find((a) => a.is_default) ?? posAccounts[0]
-      setPayAccountId(def?.id ?? null)
+      setPayAccountId(null)
     }
   }, [accountsQuery.isLoading, posAccounts, payAccountId])
 

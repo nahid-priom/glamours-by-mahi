@@ -9,6 +9,7 @@ import {
   EmptyState,
   KpiCard,
 } from '../../components/AccountingUi'
+import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -121,24 +122,12 @@ export function SimpleIncomePage() {
               ))}
             </select>
           </div>
-          <div className="space-y-1">
-            <Label>Into account</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
-              value={accountId ?? ''}
-              onChange={(e) => setAccountId(e.target.value || null)}
-              required
-            >
-              <option value="">Select account…</option>
-              {accounts
-                .filter((a) => a.is_active)
-                .map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} ({formatBDT(Number(a.current_balance))})
-                  </option>
-                ))}
-            </select>
-          </div>
+          <FinancialAccountSelectField
+            label="Into account"
+            value={accountId}
+            onChange={setAccountId}
+            accounts={accounts}
+          />
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
             <Label>Note</Label>
             <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />

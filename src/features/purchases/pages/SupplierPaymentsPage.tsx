@@ -17,6 +17,7 @@ import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
 import { toastRpcError } from '@/lib/errors/rpc-error'
 import { invalidateSupplierPaymentCaches } from '@/lib/mutations/party-finance-cache'
+import { PaymentAccountSummary } from '@/components/payments/PaymentAccountSummary'
 import { ResolvedPaymentAccountField } from '@/components/payments/ResolvedPaymentAccountField'
 import {
   missingPaymentAccountMessage,
@@ -325,13 +326,18 @@ export function SupplierPaymentsPage() {
         </div>
 
         {confirmOpen && validation.success && resolved ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
-            <p className="font-medium text-[#111827]">Confirm supplier payment</p>
-            <p className="mt-1 text-[#6B7280]">
-              Pay {formatBDT(amount)} to {supplier?.name} via {selectedMethod?.name ?? method} from{' '}
-              {resolved.account.name}?
-            </p>
-            <div className="mt-3 flex gap-2">
+          <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
+            <PaymentAccountSummary
+              transactionType="Supplier payment"
+              amount={amount}
+              paymentMethod={selectedMethod?.name ?? method}
+              accountName={resolved.account.name}
+              accountKind={resolved.account.account_kind}
+              partyLabel={supplier?.name}
+              branchLabel={activeBranchId ? 'Active branch' : null}
+              className="border-amber-100 bg-white"
+            />
+            <div className="flex gap-2">
               <Button size="sm" disabled={pay.isPending} onClick={() => pay.mutate()}>
                 {pay.isPending ? 'Processing…' : 'Confirm & pay'}
               </Button>

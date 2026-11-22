@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
 import { simpleAccountingRepository } from '@/features/accounting/repositories/simple-accounting.repository'
+import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { findVariantByBarcodeExact } from '@/features/pos/repositories/pos.repository'
 import { formatBDT } from '@/lib/format'
 import {
@@ -580,27 +581,15 @@ export function SaleEditPage() {
                 {dueLine ? (
                   <p className="text-xs text-[#6B7280]">Due / credit — no cash account required.</p>
                 ) : (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Financial account ({accountKindLabel(kind)})</Label>
-                    <select
-                      className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
-                      value={watched.payments?.[index]?.financial_account_id ?? ''}
-                      onChange={(e) =>
-                        form.setValue(
-                          `payments.${index}.financial_account_id`,
-                          e.target.value || null,
-                        )
-                      }
-                    >
-                      <option value="">Select account…</option>
-                      {eligible.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name} ({accountKindLabel(a.account_kind)}) ·{' '}
-                          {formatBDT(Number(a.current_balance))}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <FinancialAccountSelectField
+                    label={`Financial account (${accountKindLabel(kind)})`}
+                    value={watched.payments?.[index]?.financial_account_id ?? null}
+                    onChange={(id) =>
+                      form.setValue(`payments.${index}.financial_account_id`, id)
+                    }
+                    accounts={eligible}
+                    kinds={[kind]}
+                  />
                 )}
               </div>
             )

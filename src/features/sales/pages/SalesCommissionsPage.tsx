@@ -5,6 +5,7 @@ import { commissionsRepository } from '../repositories/commissions.repository'
 import type { SalesCommissionRow } from '../repositories/commissions.repository'
 import { listEmployees } from '@/features/hr/repositories/employees.repository'
 import { AppDateField } from '@/components/date-picker'
+import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
@@ -384,23 +385,15 @@ export function SalesCommissionsPage() {
           />
         </div>
 
-        {accounts.length > 0 ? (
-          <label className="space-y-1 text-sm">
-            <span className="text-[#6B7280]">Payment account</span>
-            <select
-              className="flex h-9 min-w-[12rem] rounded-md border border-border px-2"
-              value={defaultAccount}
-              onChange={(e) => setPayAccountId(e.target.value)}
-            >
-              <option value="">Select account…</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
+        <FinancialAccountSelectField
+          label="Payment account"
+          className="min-w-[12rem] space-y-1 text-sm"
+          value={defaultAccount || null}
+          onChange={(id) => setPayAccountId(id ?? '')}
+          accounts={accounts}
+          showBalance={false}
+          required={false}
+        />
 
         <PermissionGate permission={['sales.commission.manage', 'sales.commission.approve']}>
           <Button

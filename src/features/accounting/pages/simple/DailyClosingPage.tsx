@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { simpleAccountingRepository } from '../../repositories/simple-accounting.repository'
 import { PageHeader, ErrorText, KpiCard } from '../../components/AccountingUi'
+import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { AppDateField } from '@/components/date-picker'
 import { Button } from '@/components/ui/button'
@@ -99,25 +100,14 @@ export function DailyClosingPage() {
           <Label>Business date</Label>
           <AppDateField value={businessDate} onChange={setBusinessDate} />
         </div>
-        <div className="space-y-1">
-          <Label>Cash account</Label>
-          <select
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-            value={accountId ?? ''}
-            onChange={(e) => setAccountId(e.target.value || null)}
-            required
-          >
-            <option value="">Select cash account…</option>
-            {cashAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({formatBDT(Number(a.current_balance))})
-              </option>
-            ))}
-          </select>
-          {cashAccounts.length === 0 && !loadingAccounts ? (
-            <p className="text-xs text-[#E11D48]">No active Cash account for this branch.</p>
-          ) : null}
-        </div>
+        <FinancialAccountSelectField
+          label="Cash account"
+          value={accountId}
+          onChange={setAccountId}
+          accounts={loadingAccounts ? [] : cashAccounts}
+          kinds={['cash']}
+          emptyPlaceholder="Select cash account…"
+        />
         <div className="space-y-1">
           <Label>Counted cash</Label>
           <Input

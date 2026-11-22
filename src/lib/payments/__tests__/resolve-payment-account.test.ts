@@ -93,6 +93,25 @@ describe('resolvePaymentAccount', () => {
     expect(resolved).toBeNull()
   })
 
+  it('returns null for cash method when only bank accounts exist', () => {
+    const accounts = [
+      fa({ id: 'fa-bank', name: 'Bank', account_kind: 'bank', branch_id: 'br-1', is_default: true }),
+    ]
+    expect(
+      resolvePaymentAccount({
+        methodCode: 'cash',
+        branchId: 'br-1',
+        methods: [{ code: 'cash' }],
+        accounts,
+        settings: {
+          defaultCashAccountId: null,
+          defaultBankAccountId: 'fa-bank',
+          defaultPurchasePaymentAccountId: 'fa-bank',
+        },
+      }),
+    ).toBeNull()
+  })
+
   it('rejects method_link when linked FA kind mismatches', () => {
     const accounts = [
       fa({ id: 'fa-hq-bkash', name: 'bKash', account_kind: 'other', branch_id: null }),
@@ -242,6 +261,37 @@ describe('isAccountEligibleForMethod', () => {
         accountId: 'fa-cash',
         methodCode: 'cash',
         branchId: 'br-1',
+        accounts,
+      }),
+    ).toBe(true)
+  })
+
+  it('clears eligibility when method or branch changes', () => {
+    const accounts = [
+      fa({ id: 'fa-cash', name: 'Cash', account_kind: 'cash', branch_id: 'br-1' }),
+      fa({ id: 'fa-br2-cash', name: 'B2 Cash', account_kind: 'cash', branch_id: 'br-2' }),
+    ]
+    expect(
+      isAccountEligibleForMethod({
+        accountId: 'fa-cash',
+        methodCode: 'bkash',
+        branchId: 'br-1',
+        accounts,
+      }),
+    ).toBe(false)
+    expect(
+      isAccountEligibleForMethod({
+        accountId: 'fa-cash',
+        methodCode: 'cash',
+        branchId: 'br-2',
+        accounts,
+      }),
+    ).toBe(false)
+    expect(
+      isAccountEligibleForMethod({
+        accountId: 'fa-br2-cash',
+        methodCode: 'cash',
+        branchId: 'br-2',
         accounts,
       }),
     ).toBe(true)
