@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
+import { MissingBranchAccountsNotice } from '@/components/payments/ResolvedPaymentAccountField'
 import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { invalidateSaleCompletionCaches } from '@/lib/mutations/party-finance-cache'
@@ -512,6 +513,9 @@ export function PosPage() {
 
         {!fullyPaid ? (
           <>
+            {!accountsQuery.isLoading && posAccounts.length === 0 ? (
+              <MissingBranchAccountsNotice className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" />
+            ) : null}
             <div
               className="flex flex-nowrap items-center gap-1 overflow-x-auto pb-0.5"
               role="radiogroup"

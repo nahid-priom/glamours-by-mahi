@@ -229,7 +229,75 @@ async function paySupplier(payload: PaySupplierPayload) {
   return data
 }
 
-async function listSupplierPayments(limit = 100) {
+export type SupplierPaymentListItem = {
+  id: string
+  amount: number
+  /** Ledger entry_type (legacy); prefer method_label in UI when available. */
+  method: string
+  method_label: string
+  reference: string | null
+  created_at: string
+  supplier_id: string
+  supplier_name: string | null
+  /** Human payment document no from financial_transactions.reference (e.g. SPAY-…). */
+  payment_no: string | null
+  /** Allocated purchase invoice numbers (PO-…), newest allocation first. */
+  invoice_nos: string[]
+  /** Short cell text: invoice(s) preferred, else shortened payment no. */
+  display_ref: string
+  /** Full string for title/tooltip / copy. */
+  display_ref_full: string
+  purchase_id: string | null
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Short, readable payment / document ref for tables (never raw UUIDs). */
+export function formatSupplierPaymentRef(raw: string | null | undefined): string {
+  const t = (raw ?? '').trim()
+  if (!t) return '—'
+  if (UUID_RE.test(t)) return t.slice(0, 8).toUpperCase()
+  if (/^SPAY-/i.test(t) && t.length > 13) {
+    return `SPAY-${t.slice(5, 13).toUpperCase()}`
+  }
+  if (t.length > 18) return `${t.slice(0, 16)}…`
+  return t
+}
+
+function buildPaymentDisplayRef(invoiceNos: string[], paymentNo: string | null): {
+  display_ref: string
+  display_ref_full: string
+} {
+  if (invoiceNos.length === 1) {
+    return { display_ref: invoiceNos[0]!, display_ref_full: invoiceNos[0]! }
+  }
+  if (invoiceNos.length === 2) {
+    const full = `${invoiceNos[0]}, ${invoiceNos[1]}`
+    return { display_ref: full, display_ref_full: full }
+  }
+  if (invoiceNos.length > 2) {
+    const full = invoiceNos.join(', ')
+    return {
+      display_ref: `${invoiceNos[0]} +${invoiceNos.length - 1}`,
+      display_ref_full: full,
+    }
+  }
+  const short = formatSupplierPaymentRef(paymentNo)
+  return {
+    display_ref: short,
+    display_ref_full: paymentNo?.trim() || short,
+  }
+}
+
+function methodLabelFromEntryType(entryType: string): string {
+  if (entryType === 'supplier_payment' || entryType === 'purchase_payment' || entryType === 'payment') {
+    return 'Payment'
+  }
+  return entryType.replace(/_/g, ' ')
+}
+
+async function listSupplierPayments(limit = 100): Promise<SupplierPaymentListItem[]> {
   // Party-level pay_supplier posts supplier_ledger (not always purchase_payments).
   const { data, error } = await supabase
     .from('supplier_ledger')
@@ -243,19 +311,119 @@ async function listSupplierPayments(limit = 100) {
     .order('id', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    amount: Number(row.credit ?? 0),
-    method: row.entry_type,
-    reference: row.notes,
-    created_at: row.occurred_at,
-    purchase_id: row.reference_type === 'purchase' ? row.reference_id : null,
-    purchases: {
-      invoice_no: row.reference_id,
+
+  const rows = data ?? []
+
+  // pay_supplier: reference_id = payment uuid (= FT.source_id / allocation source_id)
+  const paymentSourceIds = [
+    ...new Set(
+      rows
+        .filter((r) => r.reference_type !== 'purchase' && r.reference_id)
+        .map((r) => r.reference_id as string),
+    ),
+  ]
+  const purchaseDirectIds = [
+    ...new Set(
+      rows
+        .filter((r) => r.reference_type === 'purchase' && r.reference_id)
+        .map((r) => r.reference_id as string),
+    ),
+  ]
+
+  const paymentNoBySource = new Map<string, string>()
+  if (paymentSourceIds.length) {
+    const { data: fts, error: ftErr } = await supabase
+      .from('financial_transactions')
+      .select('source_id, reference')
+      .in('source_id', paymentSourceIds)
+      .eq('transaction_type', 'supplier_payment')
+      .is('deleted_at', null)
+    if (ftErr) throw ftErr
+    for (const ft of fts ?? []) {
+      if (ft.source_id && ft.reference) paymentNoBySource.set(ft.source_id, ft.reference)
+    }
+  }
+
+  const invoiceNosByKey = new Map<string, string[]>()
+  const purchaseIdByPayment = new Map<string, string>()
+  const invoiceByPurchase = new Map<string, string>()
+
+  let allocs: Array<{ source_id: string; document_id: string }> = []
+  if (paymentSourceIds.length) {
+    const { data: allocData, error: allocErr } = await supabase
+      .from('payment_allocations')
+      .select('source_id, document_id')
+      .eq('party_type', 'supplier')
+      .eq('document_type', 'purchase')
+      .in('source_id', paymentSourceIds)
+      .is('deleted_at', null)
+    if (allocErr) throw allocErr
+    allocs = allocData ?? []
+  }
+
+  const allPurchaseIds = [
+    ...new Set([
+      ...allocs.map((a) => a.document_id),
+      ...purchaseDirectIds,
+    ]),
+  ]
+  if (allPurchaseIds.length) {
+    const { data: purchases, error: pErr } = await supabase
+      .from('purchases')
+      .select('id, invoice_no')
+      .in('id', allPurchaseIds)
+      .is('deleted_at', null)
+    if (pErr) throw pErr
+    for (const p of purchases ?? []) {
+      if (p.invoice_no) invoiceByPurchase.set(p.id, p.invoice_no)
+    }
+  }
+
+  for (const a of allocs) {
+    const inv = invoiceByPurchase.get(a.document_id)
+    if (!inv) continue
+    const list = invoiceNosByKey.get(a.source_id) ?? []
+    if (!list.includes(inv)) list.push(inv)
+    invoiceNosByKey.set(a.source_id, list)
+    if (!purchaseIdByPayment.has(a.source_id)) {
+      purchaseIdByPayment.set(a.source_id, a.document_id)
+    }
+  }
+  for (const id of purchaseDirectIds) {
+    const inv = invoiceByPurchase.get(id)
+    if (inv) invoiceNosByKey.set(id, [inv])
+  }
+
+  return rows.map((row) => {
+    const supplierName =
+      (row as { suppliers?: { name?: string } | null }).suppliers?.name ?? null
+    const refId = row.reference_id
+    const isPurchaseRef = row.reference_type === 'purchase'
+    const invoice_nos = refId ? (invoiceNosByKey.get(refId) ?? []) : []
+    const payment_no = !isPurchaseRef && refId ? (paymentNoBySource.get(refId) ?? null) : null
+    const { display_ref, display_ref_full } = buildPaymentDisplayRef(invoice_nos, payment_no)
+    const purchase_id = isPurchaseRef
+      ? refId
+      : refId
+        ? (purchaseIdByPayment.get(refId) ?? null)
+        : null
+
+    return {
+      id: row.id,
+      amount: Number(row.credit ?? 0),
+      method: row.entry_type,
+      method_label: methodLabelFromEntryType(row.entry_type),
+      reference: row.notes,
+      created_at: row.occurred_at,
       supplier_id: row.supplier_id,
-      suppliers: (row as { suppliers?: { name?: string } | null }).suppliers ?? null,
-    },
-  }))
+      supplier_name: supplierName,
+      payment_no,
+      invoice_nos,
+      display_ref,
+      display_ref_full,
+      purchase_id,
+    }
+  })
 }
 
 async function listFinancialAccounts() {

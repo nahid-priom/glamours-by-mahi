@@ -11,8 +11,9 @@ import { simpleAccountingRepository } from '@/features/accounting/repositories/s
 import { formatBDT } from '@/lib/format'
 import { toastRpcError } from '@/lib/errors/rpc-error'
 import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
+import { ResolvedPaymentAccountField } from '@/components/payments/ResolvedPaymentAccountField'
 import {
-  NO_PAYMENT_ACCOUNT_MESSAGE,
+  missingPaymentAccountMessage,
   resolvePaymentAccount,
 } from '@/lib/payments/resolve-payment-account'
 import { queryKeys } from '@/lib/query/keys'
@@ -97,7 +98,7 @@ export function CollectDueDialog({
       if (!amt || amt <= 0) throw new Error('Enter a valid amount')
       if (amt > target.dueTotal) throw new Error('Amount cannot exceed the current due')
       const receiveAccountId = resolved?.account.id ?? null
-      if (!receiveAccountId) throw new Error(NO_PAYMENT_ACCOUNT_MESSAGE)
+      if (!receiveAccountId) throw new Error(missingPaymentAccountMessage(method))
       return collectDue({
         customer_id: target.customerId,
         amount: amt,
@@ -183,16 +184,12 @@ export function CollectDueDialog({
               </select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Receiving Account</Label>
-              {resolved ? (
-                <div className="flex h-9 items-center rounded-md border border-border bg-[#F9FAFB] px-3 text-sm font-medium">
-                  {resolved.account.name} ({formatBDT(resolved.account.current_balance)})
-                </div>
-              ) : (
-                <p className="text-xs text-amber-700">{NO_PAYMENT_ACCOUNT_MESSAGE}</p>
-              )}
-            </div>
+            <ResolvedPaymentAccountField
+              label="Receiving Account"
+              resolved={resolved}
+              methodCode={method}
+              branchId={branchId}
+            />
 
             <div className="space-y-1.5">
               <Label htmlFor="collect-ref">Reference (Optional)</Label>

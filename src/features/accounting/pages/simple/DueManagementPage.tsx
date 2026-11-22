@@ -23,8 +23,9 @@ import {
   invalidateCustomerCollectionCaches,
   invalidateSupplierPaymentCaches,
 } from '@/lib/mutations/party-finance-cache'
+import { ResolvedPaymentAccountField } from '@/components/payments/ResolvedPaymentAccountField'
 import {
-  NO_PAYMENT_ACCOUNT_MESSAGE,
+  missingPaymentAccountMessage,
   resolvePaymentAccount,
 } from '@/lib/payments/resolve-payment-account'
 import { listPaymentMethods } from '@/features/sales/repositories/sales.repository'
@@ -151,7 +152,7 @@ export function DueManagementPage() {
       const amt = Number(amount)
       if (!amt || amt <= 0) throw new Error('Enter a valid amount')
       const receiveAccountId = resolved?.account.id ?? null
-      if (!receiveAccountId) throw new Error(NO_PAYMENT_ACCOUNT_MESSAGE)
+      if (!receiveAccountId) throw new Error(missingPaymentAccountMessage(method))
       return simpleAccountingRepository.collectCustomerDue({
         customer_id: selected.id,
         amount: amt,
@@ -189,7 +190,7 @@ export function DueManagementPage() {
       const amt = Number(amount)
       if (!amt || amt <= 0) throw new Error('Enter a valid amount')
       const fa = resolved?.account.id ?? null
-      if (!fa) throw new Error(NO_PAYMENT_ACCOUNT_MESSAGE)
+      if (!fa) throw new Error(missingPaymentAccountMessage(method))
       return simpleAccountingRepository.paySupplier({
         supplier_id: selected.id,
         amount: amt,
@@ -513,13 +514,21 @@ export function DueManagementPage() {
                 ))}
               </select>
             </div>
+            <ResolvedPaymentAccountField
+              label={tab === 'customers' ? 'Receive account' : 'Payment account'}
+              resolved={resolved}
+              methodCode={method}
+              branchId={activeBranchId}
+            />
             <div className="space-y-1">
               <Label>Reference</Label>
               <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Optional" />
             </div>
             <Button
               className="w-full"
-              disabled={tab === 'customers' ? collect.isPending : pay.isPending}
+              disabled={
+                !resolved || (tab === 'customers' ? collect.isPending : pay.isPending)
+              }
               onClick={() => (tab === 'customers' ? collect.mutate() : pay.mutate())}
             >
               {tab === 'customers' ? 'Collect' : 'Pay'}

@@ -20,7 +20,7 @@ export type ResolvePaymentAccountInput = {
 
 export type ResolvedPaymentAccount = {
   account: FinancialAccountRow
-  source: 'kind_default' | 'kind_first' | 'method_link' | 'settings' | 'fallback'
+  source: 'kind_default' | 'kind_first' | 'method_link' | 'settings'
 }
 
 /** Map payment method codes → financial account kinds. */
@@ -49,6 +49,13 @@ export function accountKindToMethodCodes(kind: AccountKind): string[] {
   return []
 }
 
+export function accountKindLabel(kind: AccountKind): string {
+  if (kind === 'cash') return 'Cash'
+  if (kind === 'bank') return 'Bank'
+  if (kind === 'mobile_money') return 'Mobile Money'
+  return 'Cash/Bank/Mobile'
+}
+
 function activeBranchAccounts(
   accounts: FinancialAccountRow[],
   branchId?: string | null,
@@ -58,6 +65,17 @@ function activeBranchAccounts(
     if (!branchId) return true
     return a.branch_id === branchId || a.branch_id == null
   })
+}
+
+/** Prefer branch-scoped accounts of a kind, then org-wide. */
+function preferBranchThenOrg(
+  ofKind: FinancialAccountRow[],
+  branchId?: string | null,
+): FinancialAccountRow[] {
+  if (!branchId) return ofKind
+  const branchLocal = ofKind.filter((a) => a.branch_id === branchId)
+  const orgWide = ofKind.filter((a) => a.branch_id == null)
+  return [...branchLocal, ...orgWide]
 }
 
 function findById(
@@ -70,7 +88,8 @@ function findById(
 
 /**
  * Resolve the single payment account for a method + branch.
- * Prefer branch kind defaults, then method link, then org settings, then any active FA.
+ * Prefer branch kind defaults, then org-wide of same kind, then kind-matching
+ * method link / settings. Never returns a wrong-kind account.
  */
 export function resolvePaymentAccount(
   input: ResolvePaymentAccountInput,
@@ -80,16 +99,26 @@ export function resolvePaymentAccount(
   if (!visible.length) return null
 
   const kind = methodCodeToAccountKind(methodCode)
-  const ofKind = visible.filter((a) => a.account_kind === kind)
+  const ofKind = preferBranchThenOrg(
+    visible.filter((a) => a.account_kind === kind),
+    branchId,
+  )
 
-  const kindDefault = ofKind.find((a) => a.is_default)
-  if (kindDefault) return { account: kindDefault, source: 'kind_default' }
-
-  if (ofKind[0]) return { account: ofKind[0], source: 'kind_first' }
+  // Within branch-first ordering: default of that slice, else first of that slice.
+  const branchSlice = branchId ? ofKind.filter((a) => a.branch_id === branchId) : ofKind
+  const orgSlice = branchId ? ofKind.filter((a) => a.branch_id == null) : []
+  for (const slice of [branchSlice, orgSlice, ofKind]) {
+    if (!slice.length) continue
+    const def = slice.find((a) => a.is_default)
+    if (def) return { account: def, source: 'kind_default' }
+    return { account: slice[0]!, source: 'kind_first' }
+  }
 
   const method = methods.find((m) => m.code === methodCode)
   const linked = findById(visible, method?.financial_account_id)
-  if (linked) return { account: linked, source: 'method_link' }
+  if (linked && linked.account_kind === kind) {
+    return { account: linked, source: 'method_link' }
+  }
 
   if (settings) {
     const settingsId =
@@ -99,12 +128,22 @@ export function resolvePaymentAccount(
           ? settings.defaultBankAccountId ?? settings.defaultPurchasePaymentAccountId
           : settings.defaultPurchasePaymentAccountId
     const fromSettings = findById(visible, settingsId)
-    if (fromSettings) return { account: fromSettings, source: 'settings' }
+    if (fromSettings && fromSettings.account_kind === kind) {
+      return { account: fromSettings, source: 'settings' }
+    }
   }
 
-  const fallback = visible.find((a) => a.is_default) ?? visible[0]
-  return fallback ? { account: fallback, source: 'fallback' } : null
+  return null
 }
 
 export const NO_PAYMENT_ACCOUNT_MESSAGE =
   'Create a Cash/Bank/Mobile account for this branch in Accounts → Cash & Bank.'
+
+/** Kind-specific missing-account copy for the active payment method. */
+export function missingPaymentAccountMessage(methodCode?: string | null): string {
+  if (!methodCode?.trim()) return NO_PAYMENT_ACCOUNT_MESSAGE
+  const kind = methodCodeToAccountKind(methodCode)
+  const label = accountKindLabel(kind)
+  if (kind === 'other') return NO_PAYMENT_ACCOUNT_MESSAGE
+  return `Create a ${label} account for this branch in Accounts → Cash & Bank.`
+}

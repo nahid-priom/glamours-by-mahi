@@ -18,8 +18,9 @@ import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { invalidateCustomerCollectionCaches } from '@/lib/mutations/party-finance-cache'
+import { ResolvedPaymentAccountField } from '@/components/payments/ResolvedPaymentAccountField'
 import {
-  NO_PAYMENT_ACCOUNT_MESSAGE,
+  missingPaymentAccountMessage,
   resolvePaymentAccount,
 } from '@/lib/payments/resolve-payment-account'
 import { listPaymentMethods } from '@/features/sales/repositories/sales.repository'
@@ -78,7 +79,7 @@ export function CustomerDuePage() {
       const amt = Number(amount)
       if (!amt || amt <= 0) throw new Error('Enter a valid amount')
       const receiveAccountId = resolved?.account.id ?? null
-      if (!receiveAccountId) throw new Error(NO_PAYMENT_ACCOUNT_MESSAGE)
+      if (!receiveAccountId) throw new Error(missingPaymentAccountMessage(method))
       return simpleAccountingRepository.collectCustomerDue({
         customer_id: selected.id,
         amount: amt,
@@ -158,16 +159,12 @@ export function CustomerDuePage() {
                 ))}
               </select>
             </div>
-            <div className="space-y-1">
-              <Label>Receive account</Label>
-              {resolved ? (
-                <div className="flex h-9 items-center rounded-md border border-border bg-[#F9FAFB] px-3 text-sm font-medium">
-                  {resolved.account.name} ({formatBDT(resolved.account.current_balance)})
-                </div>
-              ) : (
-                <p className="text-xs text-amber-700">{NO_PAYMENT_ACCOUNT_MESSAGE}</p>
-              )}
-            </div>
+            <ResolvedPaymentAccountField
+              label="Receive account"
+              resolved={resolved}
+              methodCode={method}
+              branchId={activeBranchId}
+            />
             <div className="space-y-1">
               <Label>Reference</Label>
               <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Optional" />

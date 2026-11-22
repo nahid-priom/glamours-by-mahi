@@ -16,8 +16,9 @@ import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
 import { toastRpcError } from '@/lib/errors/rpc-error'
 import { invalidatePurchaseCompletionCaches } from '@/lib/mutations/party-finance-cache'
+import { ResolvedPaymentAccountField } from '@/components/payments/ResolvedPaymentAccountField'
 import {
-  NO_PAYMENT_ACCOUNT_MESSAGE,
+  missingPaymentAccountMessage,
   resolvePaymentAccount,
 } from '@/lib/payments/resolve-payment-account'
 import { queryKeys } from '@/lib/query/keys'
@@ -90,7 +91,7 @@ export function PurchaseNewPage() {
       }
       if (payAmount > 0) {
         if (payMethod === 'due') throw new Error('Choose a payment method for pay-now amount')
-        if (!resolved?.account.id) throw new Error(NO_PAYMENT_ACCOUNT_MESSAGE)
+        if (!resolved?.account.id) throw new Error(missingPaymentAccountMessage(payMethod))
       }
       const payments =
         payAmount > 0
@@ -327,16 +328,12 @@ export function PurchaseNewPage() {
         </div>
 
         {payAmount > 0 && payMethod !== 'due' ? (
-          <div className="space-y-1">
-            <Label>Payment account</Label>
-            {resolved ? (
-              <div className="flex h-9 items-center rounded-md border border-border bg-[#F9FAFB] px-3 text-sm font-medium text-[#111827]">
-                {resolved.account.name} ({formatBDT(Number(resolved.account.current_balance))})
-              </div>
-            ) : (
-              <p className="text-xs text-amber-700">{NO_PAYMENT_ACCOUNT_MESSAGE}</p>
-            )}
-          </div>
+          <ResolvedPaymentAccountField
+            label="Payment account"
+            resolved={resolved}
+            methodCode={payMethod}
+            branchId={activeBranchId}
+          />
         ) : null}
 
         <p className="text-sm font-semibold">Grand total: {formatBDT(grandTotal)}</p>

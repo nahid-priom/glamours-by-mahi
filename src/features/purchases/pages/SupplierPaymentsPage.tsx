@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { Loader2 } from 'lucide-react'
@@ -16,8 +17,9 @@ import { useToast } from '@/components/ui/toast'
 import { formatBDT } from '@/lib/format'
 import { toastRpcError } from '@/lib/errors/rpc-error'
 import { invalidateSupplierPaymentCaches } from '@/lib/mutations/party-finance-cache'
+import { ResolvedPaymentAccountField } from '@/components/payments/ResolvedPaymentAccountField'
 import {
-  NO_PAYMENT_ACCOUNT_MESSAGE,
+  missingPaymentAccountMessage,
   resolvePaymentAccount,
 } from '@/lib/payments/resolve-payment-account'
 import { queryKeys } from '@/lib/query/keys'
@@ -26,7 +28,7 @@ import { supabase } from '@/lib/supabase/client'
 const paymentSchema = z.object({
   supplierId: z.string().uuid('Select a supplier'),
   amount: z.number().positive('Amount must be greater than zero'),
-  financialAccountId: z.string().uuid(NO_PAYMENT_ACCOUNT_MESSAGE),
+  financialAccountId: z.string().uuid('Select a payment account'),
   method: z.string().min(1, 'Select a payment method'),
 })
 
@@ -175,7 +177,7 @@ export function SupplierPaymentsPage() {
       return
     }
     if (!resolved) {
-      toast(NO_PAYMENT_ACCOUNT_MESSAGE, 'error')
+      toast(missingPaymentAccountMessage(method), 'error')
       return
     }
     if (!validation.success) {
@@ -240,18 +242,13 @@ export function SupplierPaymentsPage() {
                 ))}
               </select>
             </div>
-            <div className="sm:col-span-2">
-              <Label>Payment account</Label>
-              {resolved ? (
-                <div className="flex h-9 items-center rounded-md border border-border bg-[#F9FAFB] px-3 text-sm font-medium text-[#111827]">
-                  {resolved.account.name} ({formatBDT(Number(resolved.account.current_balance))})
-                </div>
-              ) : (
-                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  {NO_PAYMENT_ACCOUNT_MESSAGE}
-                </div>
-              )}
-            </div>
+            <ResolvedPaymentAccountField
+              className="sm:col-span-2 space-y-1.5"
+              label="Payment account"
+              resolved={resolved}
+              methodCode={method}
+              branchId={activeBranchId}
+            />
             <div className="sm:col-span-2">
               <Label>Reference</Label>
               <Input
@@ -260,7 +257,11 @@ export function SupplierPaymentsPage() {
                 onChange={(e) => setReference(e.target.value)}
               />
             </div>
-            <Button disabled={pay.isPending} onClick={handleSubmit} className="sm:col-span-2">
+            <Button
+              disabled={pay.isPending || !resolved}
+              onClick={handleSubmit}
+              className="sm:col-span-2"
+            >
               {pay.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
               Review payment
             </Button>
@@ -350,28 +351,35 @@ export function SupplierPaymentsPage() {
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
             <tr>
               <th className="px-3 py-2 text-left">Date</th>
-              <th className="px-3 py-2 text-left">Invoice</th>
+              <th className="px-3 py-2 text-left">Invoice / Ref</th>
               <th className="px-3 py-2 text-left">Supplier</th>
-              <th className="px-3 py-2 text-left">Method</th>
+              <th className="px-3 py-2 text-left">Type</th>
               <th className="px-3 py-2 text-left">Amount</th>
             </tr>
           </thead>
           <tbody>
-            {payments.map((p) => {
-              const purchase = p.purchases as unknown as {
-                invoice_no: string
-                suppliers: { name: string } | null
-              } | null
-              return (
-                <tr key={p.id} className="border-b last:border-0">
-                  <td className="px-3 py-2">{new Date(p.created_at).toLocaleString()}</td>
-                  <td className="px-3 py-2">{purchase?.invoice_no || '—'}</td>
-                  <td className="px-3 py-2">{purchase?.suppliers?.name || '—'}</td>
-                  <td className="px-3 py-2">{p.method}</td>
-                  <td className="px-3 py-2">{formatBDT(Number(p.amount))}</td>
-                </tr>
-              )
-            })}
+            {payments.map((p) => (
+              <tr key={p.id} className="border-b last:border-0">
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {new Date(p.created_at).toLocaleString()}
+                </td>
+                <td className="px-3 py-2 font-medium text-[#111827]" title={p.display_ref_full}>
+                  {p.purchase_id ? (
+                    <Link
+                      to={`/purchases/${p.purchase_id}`}
+                      className="text-[#111827] underline-offset-2 hover:underline"
+                    >
+                      {p.display_ref}
+                    </Link>
+                  ) : (
+                    p.display_ref
+                  )}
+                </td>
+                <td className="px-3 py-2">{p.supplier_name || '—'}</td>
+                <td className="px-3 py-2 text-[#6B7280]">{p.method_label}</td>
+                <td className="px-3 py-2">{formatBDT(Number(p.amount))}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
