@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { reportsRepository } from '../repositories/reports.repository'
 import { formatBDT } from '@/lib/format'
@@ -68,7 +69,7 @@ export function SalesReportPage() {
     <ReportPage>
       <ReportHeader
         title="Sales report"
-        subtitle={`${data.length} completed sales`}
+        subtitle={`${data.length} completed sales · Paid/Due are document settlement fields, not cash-book rows`}
         actions={
           <ExportActions
             onExport={() =>
@@ -98,9 +99,9 @@ export function SalesReportPage() {
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total sales', value: formatBDT(totals.sales) },
-          { label: 'Collected', value: formatBDT(totals.paid) },
-          { label: 'Due', value: formatBDT(totals.due) },
+          { label: 'Gross sales (docs)', value: formatBDT(totals.sales) },
+          { label: 'Paid on invoices', value: formatBDT(totals.paid) },
+          { label: 'Invoice due', value: formatBDT(totals.due) },
         ].map((k) => (
           <div key={k.label} className="rounded-xl border bg-white px-3 py-3 text-sm">
             <p className="text-[11px] uppercase text-[#6B7280]">{k.label}</p>
@@ -108,6 +109,13 @@ export function SalesReportPage() {
           </div>
         ))}
       </div>
+      <p className="text-xs text-[#6B7280]">
+        Credit sales increase revenue when completed; cash appears in the{' '}
+        <Link className="underline" to="/reports/cash-book">
+          cash book
+        </Link>{' '}
+        only when money is posted.
+      </p>
 
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
       {error ? <p className="text-sm text-[#E11D48]">Failed to load.</p> : null}

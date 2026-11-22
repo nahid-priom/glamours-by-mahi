@@ -366,6 +366,7 @@ export function EntityCombobox({
         ? createPortal(
             <div
               ref={panelRef}
+              data-entity-combobox-portal=""
               style={panelStyle}
               className="overflow-hidden rounded-xl border border-border bg-white shadow-lg"
             >

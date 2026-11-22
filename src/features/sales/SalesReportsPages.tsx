@@ -7,14 +7,15 @@ import { salesService } from '@/services/sales.service'
 import { SalesAnalyticsRow } from '@/features/sales/components/SalesAnalyticsRow'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 
+/** Live /reports routes only — nested sales report URLs are not registered. */
 const SUB_REPORTS = [
-  { to: '/reports/sales/channels', label: 'By Channel' },
-  { to: '/reports/sales/products', label: 'By Products' },
-  { to: '/reports/sales/customers', label: 'By Customers' },
-  { to: '/reports/sales/collections', label: 'Collections' },
-  { to: '/reports/sales/profit', label: 'Profit' },
-  { to: '/reports/sales/returns', label: 'Returns' },
-  { to: '/reports/sales/salesperson', label: 'Salesperson' },
+  { to: '/reports/sales', label: 'Sales register' },
+  { to: '/reports/product-performance', label: 'By Products' },
+  { to: '/reports/top-customers', label: 'By Customers' },
+  { to: '/sales/collections', label: 'Collections' },
+  { to: '/reports/profit', label: 'Profit & Loss' },
+  { to: '/reports/salesperson', label: 'Salesperson' },
+  { to: '/reports/branch', label: 'By Branch' },
 ]
 
 export function SalesReportsHubPage() {

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
-import { EntityCombobox } from '@/components/entity-combobox'
+import { EntityCombobox, type EntityOption } from '@/components/entity-combobox'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,9 @@ import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { useAuth } from '@/features/auth/auth-session'
 import { queryKeys } from '@/lib/query/keys'
 import { toastRpcError } from '@/lib/errors/rpc-error'
+import { QuickCreateNamedEntityDialog } from '../components/QuickCreateNamedEntityDialog'
 import {
+  createCategory,
   createSubcategory,
   listSubcategories,
   searchCategories,
@@ -48,6 +50,8 @@ export function SubcategoriesPage() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<SubcategoryRow | null>(null)
   const [form, setForm] = useState<FormState>(empty)
+  const [categoryLabel, setCategoryLabel] = useState<string | null>(null)
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false)
 
   const onSearchCategories = useCallback((q: string) => searchCategories(q), [])
 
@@ -56,6 +60,11 @@ export function SubcategoriesPage() {
     queryFn: () =>
       listSubcategories({ search, categoryId: filterCategoryId, pageSize: 100 }),
   })
+
+  const applyCategory = useCallback((id: string | null, option?: EntityOption | null) => {
+    setForm((f) => ({ ...f, category_id: id }))
+    setCategoryLabel(option?.label ?? null)
+  }, [])
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -78,6 +87,7 @@ export function SubcategoriesPage() {
       setOpen(false)
       setEditing(null)
       setForm(empty)
+      setCategoryLabel(null)
     },
     onError: (e: Error) => toastRpcError(toast, e, 'Could not save subcategory.'),
   })
@@ -91,6 +101,27 @@ export function SubcategoriesPage() {
     onError: (e: Error) => toastRpcError(toast, e, 'Could not delete subcategory.'),
   })
 
+  const openCreate = () => {
+    setEditing(null)
+    setForm({ ...empty, category_id: filterCategoryId })
+    setCategoryLabel(null)
+    setOpen(true)
+  }
+
+  const openEdit = (row: SubcategoryRow) => {
+    setEditing(row)
+    setForm({
+      category_id: row.category_id,
+      name: row.name,
+      code: row.code ?? '',
+      description: row.description ?? '',
+      sort_order: String(row.sort_order),
+      is_active: row.is_active,
+    })
+    setCategoryLabel(row.categories?.name ?? null)
+    setOpen(true)
+  }
+
   return (
     <div className="mx-auto w-full max-w-5xl min-w-0 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -99,14 +130,7 @@ export function SubcategoriesPage() {
           <p className="text-sm text-[#6B7280]">Nest product groups under a category.</p>
         </div>
         <PermissionGate permission="products.create">
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditing(null)
-              setForm({ ...empty, category_id: filterCategoryId })
-              setOpen(true)
-            }}
-          >
+          <Button size="sm" onClick={openCreate}>
             <Plus className="mr-1.5 h-4 w-4" />
             Add subcategory
           </Button>
@@ -163,18 +187,7 @@ export function SubcategoriesPage() {
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8"
-                        onClick={() => {
-                          setEditing(row)
-                          setForm({
-                            category_id: row.category_id,
-                            name: row.name,
-                            code: row.code ?? '',
-                            description: row.description ?? '',
-                            sort_order: String(row.sort_order),
-                            is_active: row.is_active,
-                          })
-                          setOpen(true)
-                        }}
+                        onClick={() => openEdit(row)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -200,7 +213,17 @@ export function SubcategoriesPage() {
         ) : null}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) {
+            setEditing(null)
+            setForm(empty)
+            setCategoryLabel(null)
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit subcategory' : 'New subcategory'}</DialogTitle>
@@ -216,10 +239,13 @@ export function SubcategoriesPage() {
               <Label>Category</Label>
               <EntityCombobox
                 value={form.category_id}
-                onChange={(id) => setForm((f) => ({ ...f, category_id: id }))}
+                onChange={applyCategory}
                 onSearch={onSearchCategories}
                 placeholder="Select category"
                 aria-label="Category"
+                initialLabel={categoryLabel}
+                onCreate={() => setCreateCategoryOpen(true)}
+                createLabel="Create new category"
               />
             </div>
             <div className="space-y-1.5">
@@ -270,6 +296,23 @@ export function SubcategoriesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <QuickCreateNamedEntityDialog
+        open={createCategoryOpen}
+        onOpenChange={setCreateCategoryOpen}
+        title="Create category"
+        namePlaceholder="Category name"
+        onSubmit={async ({ name }) => {
+          if (!profile?.organization_id) throw new Error('No organization')
+          const row = await createCategory(profile.organization_id, { name, is_active: true })
+          return { id: row.id, label: row.name, meta: { code: row.code ?? undefined } }
+        }}
+        onCreated={(opt) => {
+          applyCategory(opt.id, opt)
+          void qc.invalidateQueries({ queryKey: ['categories'] })
+        }}
+        onError={(message) => toast(message)}
+      />
     </div>
   )
 }

@@ -48,7 +48,7 @@ async function inventoryReport() {
   const { data, error } = await supabase
     .from('inventory_balances')
     .select(
-      'id, quantity, variant_id, location_id, product_variants(sku, name, products(name)), stock_locations(name, branch_id)',
+      'id, quantity, average_unit_cost, variant_id, location_id, product_variants(sku, name, products(name)), stock_locations(name, branch_id)',
     )
     .is('deleted_at', null)
     .gt('quantity', 0)
@@ -80,30 +80,31 @@ async function supplierDueReport() {
   return data ?? []
 }
 
-async function profitReport(range: ReportRange) {
-  const sales = await salesReport(range)
-  const { fromIso, toIso } = rangeBounds(range)
-  const { data: items, error } = await supabase
-    .from('sale_items')
-    .select('sale_id, line_total, cost_price, qty, sales!inner(completed_at, status, deleted_at)')
-    .is('deleted_at', null)
-    .eq('sales.status', 'completed')
-    .is('sales.deleted_at', null)
-    .gte('sales.completed_at', fromIso)
-    .lte('sales.completed_at', toIso)
+async function loadBranchNames(ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => id && id !== 'unknown'))]
+  if (!unique.length) return new Map<string, string>()
+  const { data, error } = await supabase.from('branches').select('id, name').in('id', unique)
   if (error) throw error
+  return new Map((data ?? []).map((b) => [b.id, b.name]))
+}
 
-  const revenue = sales.reduce((s, r) => s + Number(r.grand_total), 0)
-  const cogs = (items ?? []).reduce(
-    (s, i) => s + Number(i.cost_price ?? 0) * Number(i.qty ?? 0),
-    0,
-  )
-  return {
-    revenue,
-    cogs,
-    grossProfit: revenue - cogs,
-    saleCount: sales.length,
+async function loadSalespersonNames(ids: string[]) {
+  const unique = [...new Set(ids.filter((id) => id && id !== 'unassigned'))]
+  if (!unique.length) return new Map<string, string>()
+  const { data, error } = await supabase
+    .from('employees')
+    .select('id, full_name')
+    .in('id', unique)
+  if (error) {
+    // employees table may use different shape — fall back to profiles
+    const { data: profiles, error: pErr } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', unique)
+    if (pErr) throw error
+    return new Map((profiles ?? []).map((p) => [p.id, p.full_name || p.id]))
   }
+  return new Map((data ?? []).map((e) => [e.id, e.full_name || e.id]))
 }
 
 async function branchReport(range: ReportRange) {
@@ -116,7 +117,13 @@ async function branchReport(range: ReportRange) {
     cur.total += Number(s.grand_total)
     map.set(key, cur)
   }
-  return [...map.values()].sort((a, b) => b.total - a.total)
+  const names = await loadBranchNames([...map.keys()])
+  return [...map.values()]
+    .map((r) => ({
+      ...r,
+      branchName: r.branchId === 'unknown' ? 'Unassigned' : names.get(r.branchId) || r.branchId,
+    }))
+    .sort((a, b) => b.total - a.total)
 }
 
 async function salespersonReport(range: ReportRange) {
@@ -129,7 +136,16 @@ async function salespersonReport(range: ReportRange) {
     cur.total += Number(s.grand_total)
     map.set(key, cur)
   }
-  return [...map.values()].sort((a, b) => b.total - a.total)
+  const names = await loadSalespersonNames([...map.keys()])
+  return [...map.values()]
+    .map((r) => ({
+      ...r,
+      salespersonName:
+        r.salespersonId === 'unassigned'
+          ? 'Unassigned'
+          : names.get(r.salespersonId) || r.salespersonId,
+    }))
+    .sort((a, b) => b.total - a.total)
 }
 
 async function productPerformanceReport(range: ReportRange) {
@@ -138,7 +154,7 @@ async function productPerformanceReport(range: ReportRange) {
     .from('sale_items')
     .select(
       `
-      variant_id, qty, line_total, unit_price,
+      variant_id, qty, line_total, unit_price, cost_price,
       product_variants(sku, name, products(name)),
       sales!inner(completed_at, status, deleted_at)
     `,
@@ -152,7 +168,7 @@ async function productPerformanceReport(range: ReportRange) {
 
   const map = new Map<
     string,
-    { variantId: string; label: string; qty: number; revenue: number }
+    { variantId: string; label: string; qty: number; revenue: number; cogs: number }
   >()
   for (const row of data ?? []) {
     const v = row.product_variants as unknown as {
@@ -166,12 +182,20 @@ async function productPerformanceReport(range: ReportRange) {
       label,
       qty: 0,
       revenue: 0,
+      cogs: 0,
     }
-    cur.qty += Number(row.qty)
+    const qty = Number(row.qty)
+    cur.qty += qty
     cur.revenue += Number(row.line_total)
+    cur.cogs += Number(row.cost_price ?? 0) * qty
     map.set(row.variant_id, cur)
   }
-  return [...map.values()].sort((a, b) => b.revenue - a.revenue)
+  return [...map.values()]
+    .map((r) => ({
+      ...r,
+      grossProfit: r.revenue - r.cogs,
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
 }
 
 async function courierReturnsReport(range: ReportRange) {
@@ -204,7 +228,6 @@ export const reportsRepository = {
   inventoryReport,
   customerDueReport,
   supplierDueReport,
-  profitReport,
   branchReport,
   salespersonReport,
   productPerformanceReport,

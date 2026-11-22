@@ -1022,6 +1022,35 @@ export async function createVariant(
   return data
 }
 
+/** Mark a product as multi-variant after appending SKUs outside the create wizard. */
+export async function ensureProductHasVariants(productId: string) {
+  const { data: product, error: readErr } = await supabase
+    .from('products')
+    .select('id, has_variants, product_type')
+    .eq('id', productId)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (readErr) throw readErr
+  if (!product) throw new Error('Product not found')
+  if (product.has_variants && product.product_type === 'variable') return product
+
+  const patch: TablesUpdate<'products'> = {
+    has_variants: true,
+  }
+  if (product.product_type === 'simple' || !product.product_type) {
+    patch.product_type = 'variable'
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .update(patch)
+    .eq('id', productId)
+    .select('id, has_variants, product_type')
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function softDeleteVariant(id: string) {
   const { error } = await supabase
     .from('product_variants')
@@ -1548,6 +1577,7 @@ export const catalogRepository = {
   listVariants,
   updateVariant,
   createVariant,
+  ensureProductHasVariants,
   softDeleteVariant,
   uploadProductImage,
   softDeleteProductImage,

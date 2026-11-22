@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Pencil } from 'lucide-react'
+import { Loader2, Pencil, Plus } from 'lucide-react'
 import { EntityCombobox } from '@/components/entity-combobox'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -9,10 +9,13 @@ import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
+import { useAuth } from '@/features/auth/auth-session'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { toastRpcError } from '@/lib/errors/rpc-error'
 import {
+  createVariant,
+  ensureProductHasVariants,
   listVariants,
   searchProducts,
   updateVariant,
@@ -29,7 +32,23 @@ type EditForm = {
   is_active: boolean
 }
 
+type CreateForm = EditForm & {
+  product_id: string | null
+}
+
+const emptyCreateForm = (): CreateForm => ({
+  product_id: null,
+  sku: '',
+  barcode: '',
+  name: '',
+  purchase_price: '0',
+  selling_price: '0',
+  wholesale_price: '',
+  is_active: true,
+})
+
 export function VariantsPage() {
+  const { profile } = useAuth()
   const { toast } = useToast()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
@@ -37,6 +56,8 @@ export function VariantsPage() {
   const [page, setPage] = useState(1)
   const [editing, setEditing] = useState<VariantListItem | null>(null)
   const [form, setForm] = useState<EditForm | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createForm, setCreateForm] = useState<CreateForm>(emptyCreateForm)
 
   const onSearchProducts = useCallback((q: string) => searchProducts(q), [])
 
@@ -70,13 +91,60 @@ export function VariantsPage() {
     onError: (e: Error) => toastRpcError(toast, e),
   })
 
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!profile?.organization_id) throw new Error('No organization')
+      if (!createForm.product_id) throw new Error('Select a product')
+      const sku = createForm.sku.trim()
+      if (!sku) throw new Error('SKU is required')
+
+      const row = await createVariant(profile.organization_id, {
+        product_id: createForm.product_id,
+        sku,
+        barcode: createForm.barcode.trim() || null,
+        name: createForm.name.trim() || null,
+        purchase_price: Number(createForm.purchase_price) || 0,
+        selling_price: Number(createForm.selling_price) || 0,
+        wholesale_price: createForm.wholesale_price ? Number(createForm.wholesale_price) : null,
+        is_active: createForm.is_active,
+      })
+      await ensureProductHasVariants(createForm.product_id)
+      return row
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['variants'] })
+      void qc.invalidateQueries({ queryKey: ['pos-products'] })
+      void qc.invalidateQueries({ queryKey: ['products'] })
+      toast('Variant created')
+      setCreateOpen(false)
+      setCreateForm(emptyCreateForm())
+    },
+    onError: (e: Error) => toastRpcError(toast, e, 'Could not create variant.'),
+  })
+
+  const openCreate = () => {
+    setCreateForm({
+      ...emptyCreateForm(),
+      product_id: productId,
+    })
+    setCreateOpen(true)
+  }
+
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / 50))
 
   return (
     <div className="mx-auto w-full max-w-6xl min-w-0 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-[#111827]">Variants</h1>
-        <p className="text-sm text-[#6B7280]">SKU, barcode, prices, and display stock.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-[#111827]">Variants</h1>
+          <p className="text-sm text-[#6B7280]">SKU, barcode, prices, and display stock.</p>
+        </div>
+        <PermissionGate permission="products.create">
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            New Variants
+          </Button>
+        </PermissionGate>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -180,6 +248,97 @@ export function VariantsPage() {
           Next
         </Button>
       </div>
+
+      <Dialog
+        open={createOpen}
+        onOpenChange={(o) => {
+          setCreateOpen(o)
+          if (!o) setCreateForm(emptyCreateForm())
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>New variant</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              createMutation.mutate()
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label>Product</Label>
+              <EntityCombobox
+                value={createForm.product_id}
+                onChange={(id) => setCreateForm({ ...createForm, product_id: id })}
+                onSearch={onSearchProducts}
+                placeholder="Select product"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>SKU</Label>
+              <Input
+                required
+                value={createForm.sku}
+                onChange={(e) => setCreateForm({ ...createForm, sku: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Barcode</Label>
+              <Input
+                value={createForm.barcode}
+                placeholder="Auto if empty"
+                onChange={(e) => setCreateForm({ ...createForm, barcode: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Display name</Label>
+              <Input
+                value={createForm.name}
+                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>Cost</Label>
+                <Input
+                  type="number"
+                  value={createForm.purchase_price}
+                  onChange={(e) => setCreateForm({ ...createForm, purchase_price: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Price</Label>
+                <Input
+                  type="number"
+                  value={createForm.selling_price}
+                  onChange={(e) => setCreateForm({ ...createForm, selling_price: e.target.value })}
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={createForm.is_active}
+                onChange={(e) => setCreateForm({ ...createForm, is_active: e.target.checked })}
+              />
+              Active
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || !createForm.product_id}
+              >
+                {createMutation.isPending ? 'Creating…' : 'Create'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={Boolean(editing && form)}

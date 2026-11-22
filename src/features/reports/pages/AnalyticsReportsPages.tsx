@@ -1,75 +1,47 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { reportsRepository } from '../repositories/reports.repository'
 import { ReportShell, useReportRange } from '../components/ReportShell'
 import { formatBDT } from '@/lib/format'
+import { SimpleProfitLossPage } from '@/features/accounting'
 
+/**
+ * Canonical P&L — same authority as `/accounts/profit-loss` (`get_profit_loss_report`).
+ * Route is additionally gated by accounts.read | profit_loss.read.
+ */
 export function ProfitReportPage() {
-  const { range, setRange } = useReportRange()
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['report-profit', range],
-    queryFn: () => reportsRepository.profitReport(range),
-  })
-
   return (
-    <ReportShell
-      title="Profit report"
-      range={range}
-      onRangeChange={setRange}
-      onExport={() =>
-        reportsRepository.exportReportCsv(
-          `profit-${range.from}-${range.to}.csv`,
-          ['Metric', 'Value'],
-          data
-            ? [
-                ['Revenue', data.revenue],
-                ['COGS', data.cogs],
-                ['Gross profit', data.grossProfit],
-                ['Sales count', data.saleCount],
-              ]
-            : [],
-        )
-      }
-    >
-      {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
-      {error ? <p className="text-sm text-[#E11D48]">Failed to load.</p> : null}
-      {data ? (
-        <div className="grid gap-3 sm:grid-cols-4">
-          {[
-            ['Revenue', data.revenue],
-            ['COGS', data.cogs],
-            ['Gross profit', data.grossProfit],
-            ['Sales', data.saleCount],
-          ].map(([label, value]) => (
-            <div key={String(label)} className="rounded-xl border bg-white px-4 py-3">
-              <p className="text-xs uppercase text-[#9CA3AF]">{label}</p>
-              <p className="text-lg font-bold">
-                {typeof value === 'number' && label !== 'Sales' ? formatBDT(value) : value}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </ReportShell>
+    <div className="space-y-2">
+      <p className="mx-auto w-full max-w-6xl text-xs text-[#6B7280]">
+        Reports P&amp;L uses the same canonical calculation as{' '}
+        <Link className="underline" to="/accounts/profit-loss">
+          Accounts → Profit &amp; Loss
+        </Link>
+        . Sales revenue is not cash received.
+      </p>
+      <SimpleProfitLossPage />
+    </div>
   )
 }
 
 export function BranchReportPage() {
   const { range, setRange } = useReportRange()
   const { data = [], isLoading, error } = useQuery({
-    queryKey: ['report-branch', range],
+    queryKey: ['reports', 'branch', range],
     queryFn: () => reportsRepository.branchReport(range),
   })
 
   return (
     <ReportShell
       title="Branch report"
+      subtitle="Sales volume by original branch — not branch profit (costs/expenses not allocated here)."
       range={range}
       onRangeChange={setRange}
       onExport={() =>
         reportsRepository.exportReportCsv(
           `branch-${range.from}-${range.to}.csv`,
-          ['Branch', 'Sales', 'Total'],
-          data.map((r) => [r.branchId, r.sales, r.total]),
+          ['Branch', 'Sales count', 'Gross sales'],
+          data.map((r) => [r.branchName, r.sales, r.total]),
         )
       }
     >
@@ -87,7 +59,7 @@ export function BranchReportPage() {
           <tbody>
             {data.map((r) => (
               <tr key={r.branchId} className="border-b last:border-0">
-                <td className="px-3 py-2 font-mono text-xs">{r.branchId}</td>
+                <td className="px-3 py-2">{r.branchName}</td>
                 <td className="px-3 py-2">{r.sales}</td>
                 <td className="px-3 py-2">{formatBDT(r.total)}</td>
               </tr>
@@ -102,20 +74,21 @@ export function BranchReportPage() {
 export function SalespersonReportPage() {
   const { range, setRange } = useReportRange()
   const { data = [], isLoading, error } = useQuery({
-    queryKey: ['report-salesperson', range],
+    queryKey: ['reports', 'salesperson', range],
     queryFn: () => reportsRepository.salespersonReport(range),
   })
 
   return (
     <ReportShell
       title="Salesperson report"
+      subtitle="Attributed sales only — commissions remain under HR/commission policy."
       range={range}
       onRangeChange={setRange}
       onExport={() =>
         reportsRepository.exportReportCsv(
           `salesperson-${range.from}-${range.to}.csv`,
-          ['Salesperson', 'Sales', 'Total'],
-          data.map((r) => [r.salespersonId, r.sales, r.total]),
+          ['Salesperson', 'Sales count', 'Gross sales'],
+          data.map((r) => [r.salespersonName, r.sales, r.total]),
         )
       }
     >
@@ -133,7 +106,7 @@ export function SalespersonReportPage() {
           <tbody>
             {data.map((r) => (
               <tr key={r.salespersonId} className="border-b last:border-0">
-                <td className="px-3 py-2 font-mono text-xs">{r.salespersonId}</td>
+                <td className="px-3 py-2">{r.salespersonName}</td>
                 <td className="px-3 py-2">{r.sales}</td>
                 <td className="px-3 py-2">{formatBDT(r.total)}</td>
               </tr>
@@ -148,32 +121,35 @@ export function SalespersonReportPage() {
 export function ProductPerformanceReportPage() {
   const { range, setRange } = useReportRange()
   const { data = [], isLoading, error } = useQuery({
-    queryKey: ['report-products', range],
+    queryKey: ['reports', 'products', range],
     queryFn: () => reportsRepository.productPerformanceReport(range),
   })
 
   return (
     <ReportShell
       title="Product performance"
+      subtitle="Historical sale_items prices and cost_price snapshots — not today's catalog price."
       range={range}
       onRangeChange={setRange}
       onExport={() =>
         reportsRepository.exportReportCsv(
           `products-${range.from}-${range.to}.csv`,
-          ['Product', 'Qty', 'Revenue'],
-          data.map((r) => [r.label, r.qty, r.revenue]),
+          ['Product', 'Qty', 'Revenue', 'COGS', 'Gross profit'],
+          data.map((r) => [r.label, r.qty, r.revenue, r.cogs, r.grossProfit]),
         )
       }
     >
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
       {error ? <p className="text-sm text-[#E11D48]">Failed to load.</p> : null}
       <div className="overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full min-w-[480px] text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
             <tr>
               <th className="px-3 py-2 text-left">Product</th>
               <th className="px-3 py-2 text-left">Qty</th>
               <th className="px-3 py-2 text-left">Revenue</th>
+              <th className="px-3 py-2 text-left">COGS</th>
+              <th className="px-3 py-2 text-left">Gross</th>
             </tr>
           </thead>
           <tbody>
@@ -182,6 +158,8 @@ export function ProductPerformanceReportPage() {
                 <td className="px-3 py-2">{r.label}</td>
                 <td className="px-3 py-2">{r.qty}</td>
                 <td className="px-3 py-2">{formatBDT(r.revenue)}</td>
+                <td className="px-3 py-2">{formatBDT(r.cogs)}</td>
+                <td className="px-3 py-2">{formatBDT(r.grossProfit)}</td>
               </tr>
             ))}
           </tbody>
@@ -223,6 +201,10 @@ export function CourierReturnsReportPage() {
     >
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
       {error ? <p className="text-sm text-[#E11D48]">Failed to load.</p> : null}
+      <p className="text-xs text-[#6B7280]">
+        Courier return requests are operational. They do not automatically change AR, stock, or
+        P&amp;L until an authorized sales return is posted.
+      </p>
       <div className="overflow-x-auto rounded-xl border bg-white">
         <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">

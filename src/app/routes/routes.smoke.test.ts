@@ -113,6 +113,17 @@ describe('products route registration', () => {
   })
 })
 
+describe('reports route registration', () => {
+  it('includes V3 cash-book and dues redirects plus live profit', () => {
+    const paths = flattenPaths(reportsRoutes)
+    expect(paths).toContain('/reports')
+    expect(paths).toContain('/reports/profit')
+    expect(paths).toContain('/reports/cash-book')
+    expect(paths).toContain('/reports/dues')
+    expect(paths).toContain('/reports/sales')
+  })
+})
+
 describe('full route registry inventory', () => {
   it('flattens all domain modules and recounts live primary paths', () => {
     const allPaths = new Set<string>()
@@ -124,6 +135,8 @@ describe('full route registry inventory', () => {
     expect(allPaths.has('/inventory/stock')).toBe(true)
     expect(allPaths.has('/sales/pos')).toBe(true)
     expect(allPaths.has('/dashboard')).toBe(true)
+    expect(allPaths.has('/reports/cash-book')).toBe(true)
+    expect(allPaths.has('/reports/dues')).toBe(true)
   })
 
   it('does not register inventory stock view=suppliers as a separate path', () => {

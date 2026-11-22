@@ -1,20 +1,17 @@
 import { useEffect } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Download, Printer } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { printService } from './print.service'
 import { PrintInvoiceA4 } from './PrintInvoiceA4'
 import { PrintShippingLabel } from './PrintShippingLabel'
 import { PrintGiftLabel } from './PrintGiftLabel'
-import { PrintReportA4 } from './PrintReportA4'
 import { PrintSaleInvoiceA4 } from './PrintSaleInvoiceA4'
 import { PrintPurchaseInvoiceA4 } from './PrintPurchaseInvoiceA4'
 import { PrintSalePosReceipt } from './PrintSalePosReceipt'
 import { PrintSaleGiftLabel } from './PrintSaleGiftLabel'
-import { reportPrintService } from '@/features/reports/report-print.service'
 import type { ShippingLabelSize } from './print.utils'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
-import { brandConfig } from '@/config/brand'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 
@@ -245,53 +242,36 @@ const REPORT_SLUG_LABELS: Record<string, string> = {
   invoice: 'Invoice Report',
 }
 
+/**
+ * Legacy OMS/mock print path — retired for ERP Reports V3.
+ * Use on-screen Export/Print on `/reports/*` or `/print/sales/report`.
+ */
 export function PrintReportPage() {
   const { reportType = '' } = useParams<{ reportType: string }>()
-  const [searchParams] = useSearchParams()
-  const filters = reportPrintService.parseFiltersFromSearchParams(searchParams)
-
-  const { data: document, isLoading, isError } = useQuery({
-    queryKey: ['print', 'report', reportType, filters],
-    queryFn: () => reportPrintService.loadReportDocument(reportType, filters),
-    enabled: !!reportType,
-  })
-
-  useEffect(() => {
-    if (document) document.title = `${document.title} — ${brandConfig.name}`
-  }, [document])
-
-  const reportLabel = REPORT_SLUG_LABELS[reportType] ?? 'Report'
-
-  if (isLoading) return <LoadingSkeleton rows={12} height="h-12" />
-  if (isError || !document) {
-    return (
-      <EmptyState
-        title="Report not found"
-        description="Invalid report type or unable to load report data."
-      />
-    )
-  }
+  const erpRedirect =
+    reportType === 'order' || reportType === 'invoice'
+      ? '/print/sales/report'
+      : reportType === 'product-stock'
+        ? '/reports/inventory'
+        : '/reports'
 
   return (
-    <>
-      <div className="no-print print-toolbar report-print-toolbar">
+    <div className="mx-auto max-w-lg space-y-4 p-6">
+      <EmptyState
+        title="Legacy report print retired"
+        description={`“${REPORT_SLUG_LABELS[reportType] ?? (reportType || 'Report')}” used a mock data path that did not match live ledger authorities. Open the live Reports center or sales print instead.`}
+      />
+      <div className="flex flex-wrap gap-2">
         <Link to="/reports">
           <Button variant="outline" size="sm">
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Reports
+            Reports center
           </Button>
         </Link>
-        <Button size="sm" onClick={() => printService.triggerPrint()}>
-          <Printer className="h-3.5 w-3.5" />
-          Print
-        </Button>
-        <Button variant="purple" size="sm" onClick={() => printService.triggerPrint()}>
-          <Download className="h-3.5 w-3.5" />
-          Save as PDF
-        </Button>
-        <span className="report-print-toolbar-title">{reportLabel}</span>
+        <Link to={erpRedirect}>
+          <Button size="sm">Continue</Button>
+        </Link>
       </div>
-      <PrintReportA4 document={document} />
-    </>
+    </div>
   )
 }
