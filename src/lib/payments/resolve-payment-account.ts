@@ -121,12 +121,15 @@ export function resolvePaymentAccount(
   }
 
   if (settings) {
+    // Never use bank defaults as a silent stand-in for mobile_money / cash.
     const settingsId =
       kind === 'cash'
         ? settings.defaultCashAccountId
-        : kind === 'bank' || kind === 'mobile_money'
+        : kind === 'bank'
           ? settings.defaultBankAccountId ?? settings.defaultPurchasePaymentAccountId
-          : settings.defaultPurchasePaymentAccountId
+          : kind === 'mobile_money'
+            ? null
+            : settings.defaultPurchasePaymentAccountId
     const fromSettings = findById(visible, settingsId)
     if (fromSettings && fromSettings.account_kind === kind) {
       return { account: fromSettings, source: 'settings' }
@@ -134,6 +137,28 @@ export function resolvePaymentAccount(
   }
 
   return null
+}
+
+/** Map FA kind → payment method code for account-first tenders (POS). */
+export function methodFromAccountKind(kind: AccountKind): string {
+  if (kind === 'cash') return 'cash'
+  if (kind === 'bank') return 'bank'
+  if (kind === 'mobile_money') return 'bkash'
+  return 'other'
+}
+
+/** True when a previously picked FA remains eligible for method + branch. */
+export function isAccountEligibleForMethod(input: {
+  accountId: string | null | undefined
+  methodCode: string
+  branchId?: string | null
+  accounts: FinancialAccountRow[]
+}): boolean {
+  if (!input.accountId) return false
+  const kind = methodCodeToAccountKind(input.methodCode)
+  const visible = activeBranchAccounts(input.accounts, input.branchId)
+  const row = findById(visible, input.accountId)
+  return Boolean(row && row.account_kind === kind)
 }
 
 export const NO_PAYMENT_ACCOUNT_MESSAGE =

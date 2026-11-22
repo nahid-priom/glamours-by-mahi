@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { FinancialAccountRow } from '@/features/accounting/repositories/simple-accounting.repository'
 import {
+  isAccountEligibleForMethod,
   methodCodeToAccountKind,
+  methodFromAccountKind,
   missingPaymentAccountMessage,
   resolvePaymentAccount,
 } from '../resolve-payment-account'
@@ -121,5 +123,135 @@ describe('resolvePaymentAccount', () => {
     })
     expect(resolved?.account.id).toBe('fa-hq-bkash')
     expect(resolved?.source).toBe('kind_first')
+  })
+
+  it('does not use bank settings default for mobile method', () => {
+    const accounts = [
+      fa({ id: 'fa-bank', name: 'Bank', account_kind: 'bank', branch_id: 'br-1', is_default: true }),
+    ]
+    const resolved = resolvePaymentAccount({
+      methodCode: 'bkash',
+      branchId: 'br-1',
+      methods: [{ code: 'bkash', financial_account_id: null }],
+      accounts,
+      settings: {
+        defaultCashAccountId: null,
+        defaultBankAccountId: 'fa-bank',
+        defaultPurchasePaymentAccountId: 'fa-bank',
+      },
+    })
+    expect(resolved).toBeNull()
+  })
+
+  it('rejects inactive accounts', () => {
+    const accounts = [
+      fa({
+        id: 'fa-cash',
+        name: 'Cash',
+        account_kind: 'cash',
+        branch_id: 'br-1',
+        is_active: false,
+      }),
+    ]
+    expect(
+      resolvePaymentAccount({
+        methodCode: 'cash',
+        branchId: 'br-1',
+        methods,
+        accounts,
+      }),
+    ).toBeNull()
+  })
+
+  it('rejects other-branch accounts when branch-scoped', () => {
+    const accounts = [
+      fa({
+        id: 'fa-other',
+        name: 'Other branch cash',
+        account_kind: 'cash',
+        branch_id: 'br-2',
+      }),
+    ]
+    expect(
+      resolvePaymentAccount({
+        methodCode: 'cash',
+        branchId: 'br-1',
+        methods,
+        accounts,
+      }),
+    ).toBeNull()
+  })
+
+  it('never picks bank settings when cash accounts exist via kind path', () => {
+    const accounts = [
+      fa({ id: 'fa-cash', name: 'Cash', account_kind: 'cash', branch_id: null }),
+      fa({ id: 'fa-bank', name: 'Bank', account_kind: 'bank', branch_id: null, is_default: true }),
+    ]
+    const resolved = resolvePaymentAccount({
+      methodCode: 'cash',
+      branchId: 'br-1',
+      methods: [{ code: 'cash' }],
+      accounts,
+      settings: {
+        defaultCashAccountId: null,
+        defaultBankAccountId: 'fa-bank',
+        defaultPurchasePaymentAccountId: 'fa-bank',
+      },
+    })
+    expect(resolved?.account.id).toBe('fa-cash')
+    expect(resolved?.account.account_kind).toBe('cash')
+  })
+})
+
+describe('isAccountEligibleForMethod', () => {
+  it('returns false for wrong kind or inactive', () => {
+    const accounts = [
+      fa({ id: 'fa-bank', name: 'Bank', account_kind: 'bank', branch_id: 'br-1' }),
+      fa({
+        id: 'fa-cash-off',
+        name: 'Cash',
+        account_kind: 'cash',
+        branch_id: 'br-1',
+        is_active: false,
+      }),
+    ]
+    expect(
+      isAccountEligibleForMethod({
+        accountId: 'fa-bank',
+        methodCode: 'cash',
+        branchId: 'br-1',
+        accounts,
+      }),
+    ).toBe(false)
+    expect(
+      isAccountEligibleForMethod({
+        accountId: 'fa-cash-off',
+        methodCode: 'cash',
+        branchId: 'br-1',
+        accounts,
+      }),
+    ).toBe(false)
+  })
+
+  it('returns true for matching active branch account', () => {
+    const accounts = [
+      fa({ id: 'fa-cash', name: 'Cash', account_kind: 'cash', branch_id: 'br-1' }),
+    ]
+    expect(
+      isAccountEligibleForMethod({
+        accountId: 'fa-cash',
+        methodCode: 'cash',
+        branchId: 'br-1',
+        accounts,
+      }),
+    ).toBe(true)
+  })
+})
+
+describe('methodFromAccountKind', () => {
+  it('maps POS account-first kinds', () => {
+    expect(methodFromAccountKind('cash')).toBe('cash')
+    expect(methodFromAccountKind('bank')).toBe('bank')
+    expect(methodFromAccountKind('mobile_money')).toBe('bkash')
   })
 })

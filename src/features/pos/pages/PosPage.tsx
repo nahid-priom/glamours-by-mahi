@@ -44,20 +44,7 @@ import {
 import type { PosVariant } from '../types'
 import { usePosCart } from '../use-pos-cart'
 import { toastRpcError } from '@/lib/errors/rpc-error'
-
-/** Map financial account kind → sale payment method code for RPC. */
-function methodFromAccountKind(kind: AccountKind): string {
-  switch (kind) {
-    case 'cash':
-      return 'cash'
-    case 'bank':
-      return 'bank'
-    case 'mobile_money':
-      return 'bkash'
-    default:
-      return 'other'
-  }
-}
+import { methodFromAccountKind } from '@/lib/payments/resolve-payment-account'
 
 function playScanSuccess() {
   try {
@@ -385,18 +372,21 @@ export function PosPage() {
       const { state, totals } = cart
       let payments = state.payments
       if (payments.length === 0 && totals.grandTotal > 0) {
+        // Due/credit checkout: explicit null account chip.
         if (payAccountId === null) {
           payments = [{ method: 'due', amount: totals.grandTotal }]
         } else {
-          const account =
-            posAccounts.find((a) => a.id === payAccountId) ??
-            posAccounts.find((a) => a.is_default) ??
-            posAccounts[0]
+          // Never invent accounts[0] / is_default — require the selected FA.
+          const account = posAccounts.find((a) => a.id === payAccountId)
+          if (!account) {
+            toast('Select a payment account before completing', 'error')
+            return
+          }
           payments = [
             {
-              method: methodFromAccountKind(account?.account_kind ?? 'cash'),
+              method: methodFromAccountKind(account.account_kind),
               amount: totals.grandTotal,
-              financialAccountId: account?.id,
+              financialAccountId: account.id,
             },
           ]
         }

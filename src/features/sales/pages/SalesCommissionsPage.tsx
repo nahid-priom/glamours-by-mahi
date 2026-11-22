@@ -223,7 +223,8 @@ export function SalesCommissionsPage() {
     onError: (e) => toastRpcError(toast, e, 'Could not pay'),
   })
 
-  const defaultAccount = payAccountId || accounts[0]?.id || ''
+  /** Explicit selection only — never fall back to accounts[0]. */
+  const defaultAccount = payAccountId || ''
 
   function onEmployeeChange(value: string) {
     setEmployeeId(value)
@@ -391,6 +392,7 @@ export function SalesCommissionsPage() {
               value={defaultAccount}
               onChange={(e) => setPayAccountId(e.target.value)}
             >
+              <option value="">Select account…</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}

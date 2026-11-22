@@ -60,7 +60,7 @@ export function CourierSettlementsPage() {
             {data.map((row) => {
               const company = row.courier_companies as unknown as { name: string } | null
               const parcel = row.courier_parcels as unknown as { tracking_no: string | null } | null
-              const accountId = accountBySettlement[row.id] ?? accounts[0]?.id ?? ''
+              const accountId = accountBySettlement[row.id] ?? ''
               return (
                 <tr key={row.id} className="border-b last:border-0">
                   <td className="px-3 py-2">{company?.name || '—'}</td>
@@ -84,6 +84,7 @@ export function CourierSettlementsPage() {
                               setAccountBySettlement((m) => ({ ...m, [row.id]: e.target.value }))
                             }
                           >
+                            <option value="">Select account…</option>
                             {accounts.map((a) => (
                               <option key={a.id} value={a.id}>
                                 {a.name}

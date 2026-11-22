@@ -30,8 +30,10 @@ export function DailyClosingPage() {
 
   const cashAccounts = accounts.filter((a) => a.is_active && a.account_kind === 'cash')
 
+  // Clear selection if the chosen FA is no longer an eligible cash account.
   useEffect(() => {
-    if (!accountId && cashAccounts[0]) setAccountId(cashAccounts[0].id)
+    if (!accountId) return
+    if (!cashAccounts.some((a) => a.id === accountId)) setAccountId(null)
   }, [accountId, cashAccounts])
 
   const { data: expected = 0, isLoading, error } = useQuery({
@@ -45,6 +47,7 @@ export function DailyClosingPage() {
 
   const closeDay = useMutation({
     mutationFn: () => {
+      if (!accountId) throw new Error('Select a cash account')
       if (!countedEntered || !Number.isFinite(countedNum) || countedNum < 0) {
         throw new Error('Enter counted cash before closing')
       }
@@ -102,13 +105,18 @@ export function DailyClosingPage() {
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
             value={accountId ?? ''}
             onChange={(e) => setAccountId(e.target.value || null)}
+            required
           >
+            <option value="">Select cash account…</option>
             {cashAccounts.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name}
+                {a.name} ({formatBDT(Number(a.current_balance))})
               </option>
             ))}
           </select>
+          {cashAccounts.length === 0 && !loadingAccounts ? (
+            <p className="text-xs text-[#E11D48]">No active Cash account for this branch.</p>
+          ) : null}
         </div>
         <div className="space-y-1">
           <Label>Counted cash</Label>
@@ -128,7 +136,12 @@ export function DailyClosingPage() {
         <PermissionGate permission={['daily_closing.create', 'accounts.manage', 'accounts.post']}>
           <Button
             className="w-full"
-            disabled={closeDay.isPending || !countedEntered || !Number.isFinite(countedNum)}
+            disabled={
+              closeDay.isPending ||
+              !accountId ||
+              !countedEntered ||
+              !Number.isFinite(countedNum)
+            }
             onClick={() => closeDay.mutate()}
           >
             Close day

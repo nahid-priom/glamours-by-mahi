@@ -62,8 +62,11 @@ export function SimpleIncomePage() {
       if (!activeBranchId) throw new Error('Select an active branch first')
       const amt = Number(amount)
       if (!amt || amt <= 0) throw new Error('Enter a valid amount')
-      const fa = accountId || accounts.find((a) => a.is_active)?.id
-      if (!fa) throw new Error('Select a cash/bank account')
+      if (!accountId) throw new Error('Select a financial account')
+      const fa = accountId
+      if (!accounts.some((a) => a.id === fa && a.is_active)) {
+        throw new Error('Selected account is inactive or unavailable')
+      }
       const cat = categoryId || categories[0]?.id
       if (!cat) throw new Error('Select an income category')
       if (!submitTxnKey.current) {
@@ -124,13 +127,14 @@ export function SimpleIncomePage() {
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
               value={accountId ?? ''}
               onChange={(e) => setAccountId(e.target.value || null)}
+              required
             >
-              <option value="">Default</option>
+              <option value="">Select account…</option>
               {accounts
                 .filter((a) => a.is_active)
                 .map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name}
+                    {a.name} ({formatBDT(Number(a.current_balance))})
                   </option>
                 ))}
             </select>
@@ -142,7 +146,7 @@ export function SimpleIncomePage() {
           <div className="flex items-end">
             <Button
               className="w-full"
-              disabled={create.isPending || !activeBranchId}
+              disabled={create.isPending || !activeBranchId || !accountId}
               onClick={() => create.mutate()}
             >
               Record income

@@ -12,8 +12,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth/auth-session'
+import { simpleAccountingRepository } from '@/features/accounting/repositories/simple-accounting.repository'
 import { findVariantByBarcodeExact } from '@/features/pos/repositories/pos.repository'
 import { formatBDT } from '@/lib/format'
+import {
+  accountKindLabel,
+  isAccountEligibleForMethod,
+  methodCodeToAccountKind,
+} from '@/lib/payments/resolve-payment-account'
 import { queryKeys } from '@/lib/query/keys'
 import { useInvalidateSalesQueries } from '../hooks/use-sales-list'
 import { toastRpcError } from '@/lib/errors/rpc-error'
@@ -79,6 +85,14 @@ export function SaleEditPage() {
   const methodsQuery = useQuery({
     queryKey: queryKeys.paymentMethods,
     queryFn: listPaymentMethods,
+  })
+
+  const saleBranchId = saleQuery.data?.branch_id ?? activeBranchId
+
+  const accountsQuery = useQuery({
+    queryKey: [...queryKeys.accounts, 'fa', saleBranchId],
+    queryFn: () => simpleAccountingRepository.listFinancialAccounts(saleBranchId),
+    enabled: Boolean(saleBranchId),
   })
 
   const form = useForm<EditForm>({
@@ -164,6 +178,13 @@ export function SaleEditPage() {
   const effectiveCustomerId = watched.customer_id ?? saleQuery.data?.customer_id ?? null
   const dueRequiresCustomer = afterTotals.due > 0.009 && !effectiveCustomerId
 
+  function isDueMethod(code: string): boolean {
+    const m = (methodsQuery.data ?? []).find((x) => x.code === code)
+    if (m?.is_due) return true
+    const lower = code.trim().toLowerCase()
+    return lower === 'due' || lower === 'credit' || lower === 'receivable'
+  }
+
   function validateCorrectionPayments(values: EditForm): string | null {
     const paid = values.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
     const subtotal = values.items.reduce(
@@ -178,6 +199,24 @@ export function SaleEditPage() {
     const customerId = values.customer_id ?? saleQuery.data?.customer_id ?? null
     if (due > 0.009 && !customerId) {
       return 'Due amount requires a customer. Select a customer, or increase payments to cover the total.'
+    }
+    const accounts = accountsQuery.data ?? []
+    for (const p of values.payments) {
+      if (Number(p.amount || 0) <= 0) continue
+      if (isDueMethod(p.method)) continue
+      if (!p.financial_account_id) {
+        return `Select a financial account for ${p.method} payment.`
+      }
+      if (
+        !isAccountEligibleForMethod({
+          accountId: p.financial_account_id,
+          methodCode: p.method,
+          branchId: saleBranchId,
+          accounts,
+        })
+      ) {
+        return `Account for ${p.method} must be an active ${accountKindLabel(methodCodeToAccountKind(p.method))} account.`
+      }
     }
     return null
   }
@@ -478,41 +517,94 @@ export function SaleEditPage() {
                 paymentsArray.append({
                   method: methodsQuery.data?.[0]?.code ?? 'cash',
                   amount: 0,
+                  financial_account_id: null,
+                  reference: null,
                 })
               }
             >
               Add payment
             </Button>
           </div>
-          {paymentsArray.fields.map((field, index) => (
-            <div key={field.id} className="flex flex-wrap gap-2">
-              <select
-                className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-                {...form.register(`payments.${index}.method`)}
-              >
-                {(methodsQuery.data ?? [{ code: 'cash', name: 'Cash' }]).map((m) => (
-                  <option key={m.code} value={m.code}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                className="w-32"
-                {...form.register(`payments.${index}.amount`, { valueAsNumber: true })}
-              />
-              <Input
-                className="min-w-[8rem] flex-1"
-                placeholder="Reference"
-                {...form.register(`payments.${index}.reference`)}
-              />
-              <Button type="button" variant="ghost" size="sm" onClick={() => paymentsArray.remove(index)}>
-                Remove
-              </Button>
-            </div>
-          ))}
+          <p className="text-xs text-[#6B7280]">
+            Correction reverses the original sale and posts a replacement. Historical posted accounts
+            stay on the reversed invoice; choose the account for each new money movement below.
+          </p>
+          {paymentsArray.fields.map((field, index) => {
+            const methodCode = watched.payments?.[index]?.method ?? 'cash'
+            const dueLine = isDueMethod(methodCode)
+            const kind = methodCodeToAccountKind(methodCode)
+            const eligible = (accountsQuery.data ?? []).filter(
+              (a) =>
+                a.is_active &&
+                (dueLine || a.account_kind === kind) &&
+                (!saleBranchId || a.branch_id === saleBranchId || a.branch_id == null),
+            )
+            return (
+              <div key={field.id} className="space-y-2 rounded-lg border border-border/70 p-2">
+                <div className="flex flex-wrap gap-2">
+                  <select
+                    className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                    {...form.register(`payments.${index}.method`, {
+                      onChange: () => {
+                        form.setValue(`payments.${index}.financial_account_id`, null)
+                      },
+                    })}
+                  >
+                    {(methodsQuery.data ?? [{ code: 'cash', name: 'Cash' }]).map((m) => (
+                      <option key={m.code} value={m.code}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className="w-32"
+                    {...form.register(`payments.${index}.amount`, { valueAsNumber: true })}
+                  />
+                  <Input
+                    className="min-w-[8rem] flex-1"
+                    placeholder="Reference"
+                    {...form.register(`payments.${index}.reference`)}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => paymentsArray.remove(index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+                {dueLine ? (
+                  <p className="text-xs text-[#6B7280]">Due / credit — no cash account required.</p>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Financial account ({accountKindLabel(kind)})</Label>
+                    <select
+                      className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                      value={watched.payments?.[index]?.financial_account_id ?? ''}
+                      onChange={(e) =>
+                        form.setValue(
+                          `payments.${index}.financial_account_id`,
+                          e.target.value || null,
+                        )
+                      }
+                    >
+                      <option value="">Select account…</option>
+                      {eligible.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({accountKindLabel(a.account_kind)}) ·{' '}
+                          {formatBDT(Number(a.current_balance))}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         <div className="rounded-xl border border-border bg-white p-4 text-sm">
@@ -567,6 +659,25 @@ export function SaleEditPage() {
                 Select a customer for the due amount, or increase payments to cover the total.
               </p>
             ) : null}
+            <ul className="space-y-1 rounded-lg border border-border bg-[#F9FAFB] p-3 text-xs">
+              {(watched.payments ?? []).map((p, i) => {
+                if (Number(p.amount || 0) <= 0) return null
+                if (isDueMethod(p.method)) {
+                  return (
+                    <li key={i}>
+                      {p.method}: {formatBDT(p.amount)} (due — no account)
+                    </li>
+                  )
+                }
+                const fa = (accountsQuery.data ?? []).find((a) => a.id === p.financial_account_id)
+                return (
+                  <li key={i}>
+                    {p.method}: {formatBDT(p.amount)} → {fa?.name ?? 'No account selected'}
+                    {fa ? ` (${accountKindLabel(fa.account_kind)})` : ''}
+                  </li>
+                )
+              })}
+            </ul>
             <Button
               className="w-full"
               disabled={mutation.isPending || dueRequiresCustomer}
