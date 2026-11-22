@@ -14,6 +14,7 @@ import {
 import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
