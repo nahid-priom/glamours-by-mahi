@@ -62,15 +62,20 @@ function loadEnvFile(rel) {
   return out
 }
 
-/** Extract balanced `{...}` JSON values from mixed CLI stdout/stderr. */
-function extractJsonValues(text) {
+/**
+ * Extract balanced JSON values (`{...}` or `[...]`) from mixed CLI stdout/stderr.
+ * Supabase `--output-format json` often emits a bare row array; noisy CLI output
+ * may wrap rows or interleave log lines.
+ */
+function extractJsonValuesStacked(text) {
   const values = []
   for (let i = 0; i < text.length; i++) {
-    if (text[i] !== '{') continue
-    let depth = 0
+    const start = text[i]
+    if (start !== '{' && start !== '[') continue
+    const stack = [start]
     let inString = false
     let escape = false
-    for (let j = i; j < text.length; j++) {
+    for (let j = i + 1; j < text.length; j++) {
       const ch = text[j]
       if (inString) {
         if (escape) escape = false
@@ -82,18 +87,24 @@ function extractJsonValues(text) {
         inString = true
         continue
       }
-      if (ch === '{') depth++
-      else if (ch === '}') {
-        depth--
-        if (depth === 0) {
-          const slice = text.slice(i, j + 1)
-          try {
-            values.push(JSON.parse(slice))
-          } catch {
-            // ignore incomplete / non-JSON braces
+      if (ch === '{' || ch === '[') {
+        stack.push(ch)
+        continue
+      }
+      if (ch === '}' || ch === ']') {
+        const top = stack[stack.length - 1]
+        if ((ch === '}' && top === '{') || (ch === ']' && top === '[')) {
+          stack.pop()
+          if (stack.length === 0) {
+            const slice = text.slice(i, j + 1)
+            try {
+              values.push(JSON.parse(slice))
+            } catch {
+              // ignore
+            }
+            i = j
+            break
           }
-          i = j
-          break
         }
       }
     }
@@ -101,10 +112,19 @@ function extractJsonValues(text) {
   return values
 }
 
+function looksLikeRpcCatalogRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return false
+  const sample = rows.find((r) => r && typeof r === 'object')
+  if (!sample) return false
+  return 'name' in sample && ('auth_exec' in sample || 'args' in sample)
+}
+
 function rowsFromParsed(parsed) {
   if (!parsed || typeof parsed !== 'object') return null
+  if (Array.isArray(parsed)) {
+    return looksLikeRpcCatalogRows(parsed) || parsed.length === 0 ? parsed : null
+  }
   if (Array.isArray(parsed.rows)) return parsed.rows
-  if (Array.isArray(parsed)) return parsed
   if (parsed.data && Array.isArray(parsed.data.rows)) return parsed.data.rows
   if (parsed.result?.data && Array.isArray(parsed.result.data.rows)) return parsed.result.data.rows
   if (parsed.result && Array.isArray(parsed.result.rows)) return parsed.result.rows
@@ -131,9 +151,23 @@ function queryRemote(sql) {
     if (!stdout && !stderr) throw err
   }
 
+  // Fast path: CLI prints a bare JSON array/object as stdout
+  const trimmed = stdout.trim()
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    try {
+      const rows = rowsFromParsed(JSON.parse(trimmed))
+      if (rows) return rows
+    } catch {
+      // fall through to mixed-output extraction
+    }
+  }
+
   const combined = `${stdout}\n${stderr}`
-  const values = extractJsonValues(combined)
-  for (const parsed of values) {
+  const values = extractJsonValuesStacked(combined)
+  // Prefer largest array that looks like catalog rows (outer [ ... ] over nested objects)
+  const arrays = values.filter((v) => Array.isArray(v))
+  arrays.sort((a, b) => b.length - a.length)
+  for (const parsed of [...arrays, ...values]) {
     const rows = rowsFromParsed(parsed)
     if (rows) return rows
   }
