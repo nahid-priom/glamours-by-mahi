@@ -41,7 +41,6 @@
     "db:test:p0": "node scripts/run-db-smoke.mjs supabase/tests/rpc/p0_delivery_smoke.sql supabase/tests/rpc/exchange_and_reset_contract_smoke.sql supabase/tests/rpc/data_reset_rpc_outcome_smoke.sql supabase/tests/rpc/bulk_import_smoke.sql supabase/tests/rpc/public_security_and_atomicity_smoke.sql supabase/tests/sql/inventory_wac_outcome_smoke.sql supabase/tests/sql/inventory_ssot_recon_contract_smoke.sql supabase/tests/sql/mod_reference_uniqueness_smoke.sql supabase/tests/sql/commission_structure_smoke.sql supabase/tests/sql/role_permissions_rpc_smoke.sql",
     "db:test:p0:linked": "node scripts/run-db-smoke.mjs --linked supabase/tests/rpc/p0_delivery_smoke.sql supabase/tests/rpc/exchange_and_reset_contract_smoke.sql supabase/tests/rpc/data_reset_rpc_outcome_smoke.sql supabase/tests/rpc/bulk_import_smoke.sql supabase/tests/sql/inventory_wac_outcome_smoke.sql supabase/tests/sql/mod_reference_uniqueness_smoke.sql supabase/tests/sql/commission_structure_smoke.sql supabase/tests/sql/role_permissions_rpc_smoke.sql",
     "db:test:reset": "node scripts/run-db-smoke.mjs supabase/tests/rpc/data_reset_rpc_outcome_smoke.sql",
-    "db:types:linked": "powershell -ExecutionPolicy Bypass -File scripts/gen-types-linked.ps1",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:edge": "node scripts/test-edge-smoke.mjs",
@@ -59,7 +58,10 @@
     "db:reset": "npx supabase db reset --yes",
     "db:push": "node scripts/db-push-remote.mjs",
     "db:push:dry": "node scripts/db-push-remote.mjs --dry-run",
-    "db:types": "npx supabase gen types typescript --local -o src/types/database.ts"
+    "db:types": "npx supabase gen types --lang=typescript > src/types/database.ts",
+    "db:types:linked": "npx supabase gen types --lang=typescript --remote > src/types/database.ts",
+    "rpc:check": "node scripts/check-rpc-alignment.mjs",
+    "rpc:smoke": "node scripts/check-rpc-alignment.mjs --smoke"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

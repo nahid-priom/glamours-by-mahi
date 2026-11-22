@@ -5,7 +5,8 @@ $tmp = Join-Path $env:TEMP "supabase-types-$(Get-Random).ts"
 
 Push-Location $root
 try {
-  cmd /c "npx supabase gen types typescript --project-id vahqinuminrcjpussimn 1> `"$tmp`" 2>nul"
+  # CLI 3.x: --remote (linked project), stdout redirect (no -o path)
+  cmd /c "npx supabase gen types --lang=typescript --remote 1> `"$tmp`""
   if (-not (Test-Path $tmp) -or (Get-Item $tmp).Length -lt 1000) {
     throw 'supabase gen types produced no output'
   }
