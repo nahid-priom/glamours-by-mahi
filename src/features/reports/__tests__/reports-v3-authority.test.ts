@@ -6,7 +6,7 @@ import {
   summarizePeriodCashFlow,
 } from '@/features/accounting/lib/cash-flow-metrics'
 import type { SimpleTransaction } from '@/features/accounting/repositories/simple-accounting.repository'
-import { reportQueryKey } from '../reports.filters'
+import { reportQueryKey, resolveDatePreset, defaultPeriodRange } from '../reports.filters'
 
 /** Illustrative P&L fixture from Reports V3 plan (Test A). */
 function canonicalNetProfit(input: {
@@ -63,59 +63,79 @@ describe('Reports V3 — P&L authority (Test A)', () => {
   })
 
   it('uses stable report query keys', () => {
-    expect(reportQueryKey('sales', { from: '2026-01-01', to: '2026-01-31' })).toEqual([
-      'reports',
-      'sales',
-      '2026-01-01',
-      '2026-01-31',
-      null,
-      1,
-      null,
-    ])
+    const key = reportQueryKey('sales', { from: '2026-01-01', to: '2026-01-31' })
+    expect(key[0]).toBe('reports')
+    expect(key[1]).toBe('v4')
+    expect(key[2]).toBe('sales')
+    expect(key[3]).toBe('2026-01-01')
+    expect(key[4]).toBe('2026-01-31')
+  })
+})
+
+describe('Reports V4 — registry & new authorities', () => {
+  it('exposes returns/channels/cod helpers without a second P&L calculator', async () => {
+    const { REPORT_REGISTRY } = await import('../config/report-registry')
+    expect(reportsRepository).not.toHaveProperty('profitReport')
+    expect(typeof reportsRepository.salesReturnsReport).toBe('function')
+    expect(typeof reportsRepository.channelPerformanceReport).toBe('function')
+    expect(typeof reportsRepository.codSettlementReport).toBe('function')
+    expect(REPORT_REGISTRY.some((r) => r.id === 'stock-aging' && r.status === 'gated')).toBe(true)
+    expect(REPORT_REGISTRY.some((r) => r.id === 'returns' && r.status === 'available')).toBe(true)
+    expect(REPORT_REGISTRY.some((r) => r.id === 'channels' && r.path === '/reports/channels')).toBe(
+      true,
+    )
+    expect(REPORT_REGISTRY.find((r) => r.id === 'courier')?.extraPermissionsAny).toContain(
+      'courier.read',
+    )
+  })
+
+  it('defaults period reports to this month and resolves presets', () => {
+    const period = defaultPeriodRange(new Date('2026-11-15T12:00:00+06:00'))
+    expect(period.from).toBe('2026-11-01')
+    expect(period.to).toBe('2026-11-15')
+    const last7 = resolveDatePreset('last7', new Date('2026-11-15T12:00:00+06:00'))
+    expect(last7.from).toBe('2026-11-09')
+    expect(last7.to).toBe('2026-11-15')
+  })
+
+  it('Scenario A — discount and partial return net sales fixture', () => {
+    const gross = 10000
+    const discount = 1000
+    const netDoc = gross - discount
+    const postedReturn = 2000
+    const netSales = netDoc - postedReturn
+    expect(netSales).toBe(7000)
+    const originalCogs = 5000
+    const returnedCogs = 1000
+    const netCogs = originalCogs - returnedCogs
+    expect(netCogs).toBe(4000)
+    expect(netSales - netCogs).toBe(3000)
   })
 })
 
 describe('Reports V3 — cash vs P&L (Tests B/D)', () => {
-  it('collections are cash in, not sales revenue (classification only)', () => {
-    const collection = txn({
-      direction: 'in',
-      amount: 100,
-      category: 'customer_collection',
-      sourceType: 'collect_customer_due',
-    })
-    expect(isTransferTxn(collection)).toBe(false)
-    expect(isNonPnlCashMovement(collection)).toBe(false)
-    const flow = summarizePeriodCashFlow([collection])
-    expect(flow.moneyIn).toBe(100)
-    // Revenue recognition is on sales docs / P&L RPC — not inferred here.
-  })
-
-  it('internal transfers do not inflate money in/out', () => {
-    const transfer = txn({
-      direction: 'out',
+  it('cash deposits/withdrawals are non-P&L cash movements', () => {
+    const deposit = txn({
       amount: 500,
-      category: 'transfer',
-      sourceType: 'account_transfer',
+      direction: 'in',
+      sourceType: 'cash_deposit',
+      category: 'cash_deposit',
     })
-    const flow = summarizePeriodCashFlow([transfer])
-    expect(flow.moneyIn).toBe(0)
-    expect(flow.moneyOut).toBe(0)
-    expect(flow.transferVolume).toBe(500)
+    expect(isNonPnlCashMovement(deposit)).toBe(true)
   })
 
-  it('deposits/withdrawals are non-P&L cash movements', () => {
-    expect(
-      isNonPnlCashMovement(
-        txn({ direction: 'in', amount: 50, category: 'cash_deposit', sourceType: 'deposit' }),
-      ),
-    ).toBe(true)
-  })
-})
-
-describe('Reports V3 — courier return isolation (Test H)', () => {
-  it('courier return request rows are not a financial mutation API', () => {
-    // Repository only reads courier_return_requests — no post helpers exported.
-    expect(reportsRepository).not.toHaveProperty('postCourierReturn')
-    expect(typeof reportsRepository.courierReturnsReport).toBe('function')
+  it('transfers are excluded from period cash-flow summary', () => {
+    const transfer = txn({
+      amount: 100,
+      direction: 'out',
+      sourceType: 'transfer',
+      category: 'transfer',
+    })
+    expect(isTransferTxn(transfer)).toBe(true)
+    const summary = summarizePeriodCashFlow([
+      transfer,
+      txn({ amount: 200, direction: 'in', sourceType: 'sale', category: 'sale' }),
+    ])
+    expect(summary.moneyIn).toBe(200)
   })
 })

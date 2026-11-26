@@ -1,13 +1,16 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { reportsRepository } from '../repositories/reports.repository'
-import { ReportShell, useReportRange } from '../components/ReportShell'
-import { formatBDT } from '@/lib/format'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useAuth } from '@/features/auth/auth-session'
 import { SimpleProfitLossPage } from '@/features/accounting'
+import { formatBDT } from '@/lib/format'
+import { reportsRepository } from '../repositories/reports.repository'
+import { reportQueryKey } from '../reports.filters'
+import { ReportShell, useReportRange } from '../components/ReportShell'
+import { ReportKPIGrid } from '../components/ReportKPIGrid'
 
 /**
  * Canonical P&L — same authority as `/accounts/profit-loss` (`get_profit_loss_report`).
- * Route is additionally gated by accounts.read | profit_loss.read.
  */
 export function ProfitReportPage() {
   return (
@@ -25,43 +28,64 @@ export function ProfitReportPage() {
 }
 
 export function BranchReportPage() {
-  const { range, setRange } = useReportRange()
+  const { range, setRange, filters, applyPreset, clearFilters, activeCount } = useReportRange()
+  const queryFilters = { ...range, branchId: filters.branchId }
   const { data = [], isLoading, error } = useQuery({
-    queryKey: ['reports', 'branch', range],
-    queryFn: () => reportsRepository.branchReport(range),
+    queryKey: reportQueryKey('branch', queryFilters),
+    queryFn: () => reportsRepository.branchReport(queryFilters),
   })
 
   return (
     <ReportShell
-      title="Branch report"
-      subtitle="Sales volume by original branch — not branch profit (costs/expenses not allocated here)."
+      title="Branch Performance"
+      subtitle="Sales volume by original branch attribution — not branch P&amp;L. Unassigned sales are included."
       range={range}
       onRangeChange={setRange}
+      onApplyPreset={applyPreset}
+      onClearFilters={clearFilters}
+      activeFilterCount={activeCount}
+      filtersForMobile={filters}
       onExport={() =>
         reportsRepository.exportReportCsv(
           `branch-${range.from}-${range.to}.csv`,
-          ['Branch', 'Sales count', 'Gross sales'],
-          data.map((r) => [r.branchName, r.sales, r.total]),
+          ['Branch', 'Sales count', 'Gross sales', 'Discount', 'Due', 'Contribution %', 'ATV'],
+          data.map((r) => [
+            r.branchName,
+            r.sales,
+            r.total,
+            r.discount,
+            r.due,
+            r.contributionPct.toFixed(1),
+            r.avgTransaction,
+          ]),
         )
       }
     >
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
       {error ? <p className="text-sm text-[#E11D48]">Failed to load.</p> : null}
       <div className="overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
             <tr>
               <th className="px-3 py-2 text-left">Branch</th>
-              <th className="px-3 py-2 text-left">Sales</th>
-              <th className="px-3 py-2 text-left">Total</th>
+              <th className="px-3 py-2 text-right">Sales</th>
+              <th className="px-3 py-2 text-right">Total</th>
+              <th className="px-3 py-2 text-right">Share</th>
+              <th className="px-3 py-2 text-right">ATV</th>
             </tr>
           </thead>
           <tbody>
             {data.map((r) => (
               <tr key={r.branchId} className="border-b last:border-0">
                 <td className="px-3 py-2">{r.branchName}</td>
-                <td className="px-3 py-2">{r.sales}</td>
-                <td className="px-3 py-2">{formatBDT(r.total)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{r.sales}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatBDT(r.total)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {r.contributionPct.toFixed(1)}%
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {formatBDT(r.avgTransaction)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -72,43 +96,52 @@ export function BranchReportPage() {
 }
 
 export function SalespersonReportPage() {
-  const { range, setRange } = useReportRange()
+  const { range, setRange, filters, applyPreset, clearFilters, activeCount } = useReportRange()
+  const queryFilters = { ...range, branchId: filters.branchId }
   const { data = [], isLoading, error } = useQuery({
-    queryKey: ['reports', 'salesperson', range],
-    queryFn: () => reportsRepository.salespersonReport(range),
+    queryKey: reportQueryKey('salesperson', queryFilters),
+    queryFn: () => reportsRepository.salespersonReport(queryFilters),
   })
 
   return (
     <ReportShell
-      title="Salesperson report"
-      subtitle="Attributed sales only — commissions remain under HR/commission policy."
+      title="Salesperson Performance"
+      subtitle="Attributed sales only — unassigned bucket included. Commissions remain under HR policy."
       range={range}
       onRangeChange={setRange}
+      onApplyPreset={applyPreset}
+      onClearFilters={clearFilters}
+      activeFilterCount={activeCount}
+      filtersForMobile={filters}
       onExport={() =>
         reportsRepository.exportReportCsv(
           `salesperson-${range.from}-${range.to}.csv`,
-          ['Salesperson', 'Sales count', 'Gross sales'],
-          data.map((r) => [r.salespersonName, r.sales, r.total]),
+          ['Salesperson', 'Sales count', 'Gross sales', 'Due', 'ATV'],
+          data.map((r) => [r.salespersonName, r.sales, r.total, r.due, r.avgTransaction]),
         )
       }
     >
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
       {error ? <p className="text-sm text-[#E11D48]">Failed to load.</p> : null}
       <div className="overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[560px] text-sm">
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
             <tr>
               <th className="px-3 py-2 text-left">Salesperson</th>
-              <th className="px-3 py-2 text-left">Sales</th>
-              <th className="px-3 py-2 text-left">Total</th>
+              <th className="px-3 py-2 text-right">Sales</th>
+              <th className="px-3 py-2 text-right">Total</th>
+              <th className="px-3 py-2 text-right">ATV</th>
             </tr>
           </thead>
           <tbody>
             {data.map((r) => (
               <tr key={r.salespersonId} className="border-b last:border-0">
                 <td className="px-3 py-2">{r.salespersonName}</td>
-                <td className="px-3 py-2">{r.sales}</td>
-                <td className="px-3 py-2">{formatBDT(r.total)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{r.sales}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatBDT(r.total)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {formatBDT(r.avgTransaction)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -119,47 +152,179 @@ export function SalespersonReportPage() {
 }
 
 export function ProductPerformanceReportPage() {
-  const { range, setRange } = useReportRange()
+  const { range, setRange, filters, setFilters, applyPreset, clearFilters, activeCount } =
+    useReportRange()
+  const [params, setParams] = useSearchParams()
+  const level = params.get('level') === 'product' ? 'product' : 'variant'
+  const { can, activeBranchId } = useAuth()
+  const showCost = can([
+    'inventory.valuation',
+    'products.manage_prices',
+    'accounts.read',
+    'profit_loss.read',
+  ])
+
+  const queryFilters = {
+    ...range,
+    branchId: filters.branchId || activeBranchId || null,
+  }
+
   const { data = [], isLoading, error } = useQuery({
-    queryKey: ['reports', 'products', range],
-    queryFn: () => reportsRepository.productPerformanceReport(range),
+    queryKey: reportQueryKey('products', { ...queryFilters, level }),
+    queryFn: () => reportsRepository.productPerformanceReport(queryFilters, level),
   })
+
+  const totals = useMemo(() => {
+    const revenue = data.reduce((s, r) => s + r.netRevenue, 0)
+    const cogs = data.reduce((s, r) => s + r.netCogs, 0)
+    const qty = data.reduce((s, r) => s + r.netQty, 0)
+    const returnedQty = data.reduce((s, r) => s + r.returnedQty, 0)
+    const grossProfit = revenue - cogs
+    return {
+      qty,
+      returnedQty,
+      revenue,
+      cogs,
+      grossProfit,
+      marginPct: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
+    }
+  }, [data])
 
   return (
     <ReportShell
-      title="Product performance"
-      subtitle="Historical sale_items prices and cost_price snapshots — not today's catalog price."
+      title="Product Performance"
+      subtitle="Historical sale_items cost_price snapshots with posted-return netting. Margin is weighted (not average of row %). Variant name carries size/color when configured on the SKU."
       range={range}
       onRangeChange={setRange}
+      branchId={filters.branchId}
+      onBranchChange={(v) => setFilters({ branchId: v })}
+      onApplyPreset={applyPreset}
+      onClearFilters={clearFilters}
+      activeFilterCount={activeCount}
+      filtersForMobile={filters}
       onExport={() =>
         reportsRepository.exportReportCsv(
-          `products-${range.from}-${range.to}.csv`,
-          ['Product', 'Qty', 'Revenue', 'COGS', 'Gross profit'],
-          data.map((r) => [r.label, r.qty, r.revenue, r.cogs, r.grossProfit]),
+          `products-${level}-${range.from}-${range.to}.csv`,
+          showCost
+            ? [
+                'Label',
+                'SKU',
+                'Variant',
+                'Sold',
+                'Returned',
+                'Net qty',
+                'Net revenue',
+                'Net COGS',
+                'Gross profit',
+                'Margin %',
+              ]
+            : ['Label', 'SKU', 'Variant', 'Sold', 'Returned', 'Net qty', 'Net revenue'],
+          data.map((r) =>
+            showCost
+              ? [
+                  r.label,
+                  r.sku,
+                  r.variantName,
+                  r.qty,
+                  r.returnedQty,
+                  r.netQty,
+                  r.netRevenue,
+                  r.netCogs,
+                  r.grossProfit,
+                  r.marginPct.toFixed(1),
+                ]
+              : [r.label, r.sku, r.variantName, r.qty, r.returnedQty, r.netQty, r.netRevenue],
+          ),
         )
       }
     >
-      {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
+            level === 'variant' ? 'border-primary bg-primary text-white' : 'border-border bg-white'
+          }`}
+          onClick={() => {
+            const next = new URLSearchParams(params)
+            next.set('level', 'variant')
+            setParams(next, { replace: true })
+          }}
+        >
+          By variant / SKU
+        </button>
+        <button
+          type="button"
+          className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
+            level === 'product' ? 'border-primary bg-primary text-white' : 'border-border bg-white'
+          }`}
+          onClick={() => {
+            const next = new URLSearchParams(params)
+            next.set('level', 'product')
+            setParams(next, { replace: true })
+          }}
+        >
+          By product
+        </button>
+      </div>
+      <ReportKPIGrid
+        loading={isLoading}
+        items={[
+          { id: 'sold', label: 'Units sold', value: String(totals.qty) },
+          { id: 'ret', label: 'Returned units', value: String(totals.returnedQty) },
+          { id: 'netqty', label: 'Net sold qty', value: String(totals.qty - totals.returnedQty) },
+          { id: 'rev', label: 'Net revenue', value: formatBDT(totals.revenue) },
+          ...(showCost
+            ? [
+                { id: 'cogs', label: 'Net COGS', value: formatBDT(totals.cogs) },
+                {
+                  id: 'gp',
+                  label: 'Gross profit / margin',
+                  value: `${formatBDT(totals.grossProfit)} · ${totals.marginPct.toFixed(1)}%`,
+                },
+              ]
+            : []),
+        ]}
+      />
       {error ? <p className="text-sm text-[#E11D48]">Failed to load.</p> : null}
       <div className="overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
             <tr>
-              <th className="px-3 py-2 text-left">Product</th>
-              <th className="px-3 py-2 text-left">Qty</th>
-              <th className="px-3 py-2 text-left">Revenue</th>
-              <th className="px-3 py-2 text-left">COGS</th>
-              <th className="px-3 py-2 text-left">Gross</th>
+              <th className="px-3 py-2 text-left">{level === 'product' ? 'Product' : 'Variant'}</th>
+              <th className="px-3 py-2 text-left">SKU</th>
+              <th className="px-3 py-2 text-right">Sold</th>
+              <th className="px-3 py-2 text-right">Returned</th>
+              <th className="px-3 py-2 text-right">Net qty</th>
+              <th className="px-3 py-2 text-right">Revenue</th>
+              {showCost ? (
+                <>
+                  <th className="px-3 py-2 text-right">COGS</th>
+                  <th className="px-3 py-2 text-right">Gross</th>
+                  <th className="px-3 py-2 text-right">Margin</th>
+                </>
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {data.map((r) => (
               <tr key={r.variantId} className="border-b last:border-0">
                 <td className="px-3 py-2">{r.label}</td>
-                <td className="px-3 py-2">{r.qty}</td>
-                <td className="px-3 py-2">{formatBDT(r.revenue)}</td>
-                <td className="px-3 py-2">{formatBDT(r.cogs)}</td>
-                <td className="px-3 py-2">{formatBDT(r.grossProfit)}</td>
+                <td className="px-3 py-2 font-mono text-xs">{r.sku || '—'}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{r.qty}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{r.returnedQty}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{r.netQty}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{formatBDT(r.netRevenue)}</td>
+                {showCost ? (
+                  <>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatBDT(r.netCogs)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {formatBDT(r.grossProfit)}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {r.marginPct.toFixed(1)}%
+                    </td>
+                  </>
+                ) : null}
               </tr>
             ))}
           </tbody>
@@ -170,17 +335,32 @@ export function ProductPerformanceReportPage() {
 }
 
 export function CourierReturnsReportPage() {
-  const { range, setRange } = useReportRange()
+  const { range, setRange, filters, setFilters, applyPreset, clearFilters, activeCount } =
+    useReportRange()
+  const queryFilters = { ...range, status: filters.status }
   const { data = [], isLoading, error } = useQuery({
-    queryKey: ['report-courier-returns', range],
-    queryFn: () => reportsRepository.courierReturnsReport(range),
+    queryKey: reportQueryKey('courier-returns', queryFilters),
+    queryFn: () => reportsRepository.courierReturnsReport(queryFilters),
   })
 
   return (
     <ReportShell
-      title="Courier returns"
+      title="Courier Returns"
+      subtitle="Operational courier return requests — not posted sale returns. They do not change AR, stock, or P&amp;L until an authorized sales return is posted."
       range={range}
       onRangeChange={setRange}
+      status={filters.status}
+      onStatusChange={(v) => setFilters({ status: v })}
+      statusOptions={[
+        { value: 'pending', label: 'Pending' },
+        { value: 'approved', label: 'Approved' },
+        { value: 'rejected', label: 'Rejected' },
+        { value: 'completed', label: 'Completed' },
+      ]}
+      onApplyPreset={applyPreset}
+      onClearFilters={clearFilters}
+      activeFilterCount={activeCount}
+      filtersForMobile={filters}
       onExport={() =>
         reportsRepository.exportReportCsv(
           `courier-returns-${range.from}-${range.to}.csv`,
@@ -201,10 +381,6 @@ export function CourierReturnsReportPage() {
     >
       {isLoading ? <p className="text-sm text-[#6B7280]">Loading…</p> : null}
       {error ? <p className="text-sm text-[#E11D48]">Failed to load.</p> : null}
-      <p className="text-xs text-[#6B7280]">
-        Courier return requests are operational. They do not automatically change AR, stock, or
-        P&amp;L until an authorized sales return is posted.
-      </p>
       <div className="overflow-x-auto rounded-xl border bg-white">
         <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b bg-[#F9FAFB] text-xs uppercase text-[#6B7280]">
@@ -221,7 +397,7 @@ export function CourierReturnsReportPage() {
               const p = r.courier_parcels as unknown as { tracking_no: string | null } | null
               return (
                 <tr key={r.id} className="border-b last:border-0">
-                  <td className="px-3 py-2">{r.status}</td>
+                  <td className="px-3 py-2 capitalize">{r.status}</td>
                   <td className="px-3 py-2">{c?.name || '—'}</td>
                   <td className="px-3 py-2">{p?.tracking_no || '—'}</td>
                   <td className="px-3 py-2">{new Date(r.created_at).toLocaleDateString()}</td>

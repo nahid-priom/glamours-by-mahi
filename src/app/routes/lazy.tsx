@@ -367,6 +367,31 @@ export const CourierReturnsReportPage = lazy(() =>
 export const CourierReportPage = lazy(() =>
   import('@/features/reports/pages/CourierReportPage').then((m) => ({ default: m.CourierReportPage })),
 )
+export const SalesReturnsReportPage = lazy(() =>
+  import('@/features/reports/pages/ReportsV4ExtraPages').then((m) => ({
+    default: m.SalesReturnsReportPage,
+  })),
+)
+export const ChannelsReportPage = lazy(() =>
+  import('@/features/reports/pages/ReportsV4ExtraPages').then((m) => ({
+    default: m.ChannelsReportPage,
+  })),
+)
+export const InventoryValuationReportPage = lazy(() =>
+  import('@/features/reports/pages/ReportsV4ExtraPages').then((m) => ({
+    default: m.InventoryValuationReportPage,
+  })),
+)
+export const CodSettlementReportPage = lazy(() =>
+  import('@/features/reports/pages/ReportsV4ExtraPages').then((m) => ({
+    default: m.CodSettlementReportPage,
+  })),
+)
+export const VariantPerformanceReportPage = lazy(() =>
+  import('@/features/reports/pages/ReportsV4ExtraPages').then((m) => ({
+    default: m.VariantPerformanceReportPage,
+  })),
+)
 
 export const AdministrationHubPage = lazy(() =>
   import('@/features/administration/pages/AdministrationHubPage').then((m) => ({

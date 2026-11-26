@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { CustomerRatingStars, listTopCustomers } from '@/features/customer-rating'
 import { formatBDT } from '@/lib/format'
 import { ReportShell, useReportRange } from '../components/ReportShell'
+import { reportsRepository } from '../repositories/reports.repository'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -39,44 +40,37 @@ export function TopCustomersReportPage() {
         setPage(0)
       }}
       showRange
-      onExport={() => {
-        const rows = data.map((r) => [
-          r.rank ?? '',
-          r.name,
-          r.phone,
-          r.rating_status,
-          r.rating ?? '',
-          r.completed_orders,
-          r.total_spent,
-          r.return_total,
-          r.current_due,
-          r.current_advance,
-          r.last_purchase_at || '',
-        ])
-        const header = [
-          'Rank',
-          'Name',
-          'Phone',
-          'Rating status',
-          'Rating',
-          'Orders',
-          'Net sales',
-          'Returns',
-          'Due',
-          'Advance',
-          'Last purchase',
-        ]
-        const csv = [header, ...rows]
-          .map((line) => line.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
-          .join('\n')
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `top-customers-${range.from}_${range.to}-${sort}.csv`
-        a.click()
-        URL.revokeObjectURL(url)
-      }}
+      onExport={() =>
+        reportsRepository.exportReportCsv(
+          `top-customers-${range.from}_${range.to}-${sort}.csv`,
+          [
+            'Rank',
+            'Name',
+            'Phone',
+            'Rating status',
+            'Rating',
+            'Orders',
+            'Net sales',
+            'Returns',
+            'Due',
+            'Advance',
+            'Last purchase',
+          ],
+          data.map((r) => [
+            r.rank ?? '',
+            r.name,
+            r.phone,
+            r.rating_status,
+            r.rating ?? '',
+            r.completed_orders,
+            r.total_spent,
+            r.return_total,
+            r.current_due,
+            r.current_advance,
+            r.last_purchase_at || '',
+          ]),
+        )
+      }
     >
       <p className="mb-3 text-xs text-[#6B7280]">
         Ranking by <strong>{sort}</strong> for {range.from} → {range.to}. Cancelled/draft sales
