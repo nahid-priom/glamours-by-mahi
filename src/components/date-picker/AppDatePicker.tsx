@@ -59,12 +59,6 @@ export function AppDatePicker({
 
   useEffect(() => {
     if (!open) return
-    setViewMonth(value.from ?? todayYmd())
-    setRangeDraft('from')
-  }, [open, value.from])
-
-  useEffect(() => {
-    if (!open) return
     function onDoc(e: MouseEvent) {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
     }
@@ -128,7 +122,13 @@ export function AppDatePicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={panelId}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) {
+            setViewMonth(value.from ?? todayYmd())
+            setRangeDraft('from')
+          }
+          setOpen((v) => !v)
+        }}
         className="inline-flex h-9 min-w-[10.5rem] items-center gap-2 rounded-md border border-border bg-white px-2.5 text-left text-sm text-[#111827] hover:bg-slate-50 disabled:opacity-50"
       >
         <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-[#6B7280]" />

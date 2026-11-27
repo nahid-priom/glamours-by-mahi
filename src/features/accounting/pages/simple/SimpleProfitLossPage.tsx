@@ -9,12 +9,9 @@ import { useAuth } from '@/features/auth/auth-session'
 import { addDaysYmd, resolveShortcut, todayYmd } from '@/lib/datetime/bd'
 import { formatBDT } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { useReportFilters } from '@/features/reports/hooks/use-report-filters'
 
 type Tab = 'overview' | 'branch' | 'product' | 'sale' | 'statement'
-
-function monthRange() {
-  return resolveShortcut('this_month')
-}
 
 function presetRange(kind: 'today' | 'yesterday' | 'week' | 'month') {
   if (kind === 'today') return resolveShortcut('today')
@@ -26,7 +23,8 @@ function presetRange(kind: 'today' | 'yesterday' | 'week' | 'month') {
 
 export function SimpleProfitLossPage() {
   const { activeBranchId } = useAuth()
-  const [range, setRange] = useState(monthRange)
+  const { range, setFilters } = useReportFilters()
+  const setRange = (next: { from: string; to: string }) => setFilters(next)
   const [tab, setTab] = useState<Tab>('overview')
 
   const { data, isLoading, error } = useQuery({

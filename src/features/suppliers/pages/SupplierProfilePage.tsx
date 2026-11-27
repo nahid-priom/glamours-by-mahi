@@ -1,10 +1,12 @@
-import { useEffect, useId, useMemo } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { useToast } from '@/components/ui/toast'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { PageShell } from '@/components/layout/PageShell'
-import { useAuth } from '@/features/auth/auth-session'
 import { getSupplierRating, refreshSupplierRating } from '@/features/supplier-rating'
 import { queryKeys } from '@/lib/query/keys'
 import { SupplierProfileHeader } from '../components/SupplierProfileHeader'
@@ -13,7 +15,7 @@ import { SupplierDetailsTab } from '../details/SupplierDetailsTab'
 import { SupplierLedgerTab } from '../ledger/SupplierLedgerTab'
 import { SupplierStockTab } from '../stock/SupplierStockTab'
 import type { SupplierProfileTab } from '../types/supplier-360.types'
-import { getSupplier, softDeleteSupplier } from '../repositories/suppliers.repository'
+import { getSupplier, updateSupplier } from '../repositories/suppliers.repository'
 
 function parseTab(value: string | null): SupplierProfileTab {
   if (value === 'stock' || value === 'details' || value === 'ledger') return value
@@ -27,7 +29,8 @@ export function SupplierProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const panelBaseId = useId()
   const qc = useQueryClient()
-  const { profile } = useAuth()
+  const { toast } = useToast()
+  const [confirmStatusOpen, setConfirmStatusOpen] = useState(false)
 
   const tab = parseTab(searchParams.get('tab'))
   const editOpen = searchParams.get('edit') === '1'
@@ -62,12 +65,15 @@ export function SupplierProfilePage() {
     enabled: Boolean(id),
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: () => softDeleteSupplier(id),
-    onSuccess: () => {
+  const statusMutation = useMutation({
+    mutationFn: (status: 'active' | 'inactive') => updateSupplier(id, { status }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.supplier(id) })
       void qc.invalidateQueries({ queryKey: ['suppliers'] })
-      navigate('/suppliers')
+      setConfirmStatusOpen(false)
+      toast('Supplier status updated')
     },
+    onError: (error: Error) => toastRpcError(toast, error),
   })
 
   const setTab = (nextTab: SupplierProfileTab) => {
@@ -126,7 +132,7 @@ export function SupplierProfilePage() {
         supplier={supplier}
         rating={rating ?? null}
         onEdit={() => setEditOpen(true)}
-        onSoftDelete={profile ? () => deleteMutation.mutate() : undefined}
+        onStatusChange={() => setConfirmStatusOpen(true)}
       />
 
       <SupplierProfileTabs value={tab} onChange={setTab} panelIdPrefix={panelBaseId} />
@@ -143,6 +149,19 @@ export function SupplierProfilePage() {
           <SupplierDetailsTab supplier={supplier} editOpen={editOpen} onEditOpenChange={setEditOpen} />
         ) : null}
       </div>
+
+      <ConfirmDialog
+        open={confirmStatusOpen}
+        onOpenChange={setConfirmStatusOpen}
+        title={supplier.status === 'active' ? 'Deactivate supplier' : 'Reactivate supplier'}
+        description={supplier.status === 'active'
+          ? 'The supplier will be unavailable for new purchases. Existing dues and history remain available.'
+          : 'The supplier will become available for new purchases.'}
+        confirmLabel={supplier.status === 'active' ? 'Deactivate' : 'Reactivate'}
+        variant={supplier.status === 'active' ? 'danger' : 'default'}
+        loading={statusMutation.isPending}
+        onConfirm={() => statusMutation.mutate(supplier.status === 'active' ? 'inactive' : 'active')}
+      />
 
     </PageShell>
   )

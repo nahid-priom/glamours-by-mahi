@@ -4,12 +4,20 @@ import { courierRepository } from '../repositories/courier.repository'
 import { FinancialAccountSelectField } from '@/components/payments/FinancialAccountSelectField'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useToast } from '@/components/ui/toast'
+import { toastRpcError } from '@/lib/errors/rpc-error'
 import { formatBDT } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 
 export function CourierSettlementsPage() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   const [accountBySettlement, setAccountBySettlement] = useState<Record<string, string>>({})
+  const [reverseTarget, setReverseTarget] = useState<string | null>(null)
+  const [reverseReason, setReverseReason] = useState('')
 
   const { data = [], isLoading, error } = useQuery({
     queryKey: [...queryKeys.couriers, 'settlements'],
@@ -27,6 +35,20 @@ export function CourierSettlementsPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: [...queryKeys.couriers, 'settlements'] })
     },
+    onError: (error: Error) => toastRpcError(toast, error),
+  })
+
+  const reverse = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      courierRepository.reverseSettlement(id, reason),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.couriers })
+      await qc.invalidateQueries({ queryKey: queryKeys.accounts })
+      setReverseTarget(null)
+      setReverseReason('')
+      toast('Settlement reversal recorded')
+    },
+    onError: (error: Error) => toastRpcError(toast, error),
   })
 
   return (
@@ -102,6 +124,21 @@ export function CourierSettlementsPage() {
                         </div>
                       </PermissionGate>
                     ) : null}
+                    {row.status === 'settled' || row.status === 'partially_settled' ? (
+                      <PermissionGate permission={['courier.settle', 'transactions.void', 'accounts.manage']}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={reverse.isPending}
+                          onClick={() => {
+                            setReverseTarget(row.id)
+                            setReverseReason('')
+                          }}
+                        >
+                          Reverse
+                        </Button>
+                      </PermissionGate>
+                    ) : null}
                   </td>
                 </tr>
               )
@@ -109,6 +146,37 @@ export function CourierSettlementsPage() {
           </tbody>
         </table>
       </div>
+      <Dialog open={Boolean(reverseTarget)} onOpenChange={(open) => {
+        if (!open && !reverse.isPending) setReverseTarget(null)
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reverse courier settlement</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-[#6B7280]">The original posting remains in the audit history. Enter a reason for the accounting reversal.</p>
+          <div className="space-y-1">
+            <Label htmlFor="settlement-reverse-reason">Reason</Label>
+            <Input
+              id="settlement-reverse-reason"
+              value={reverseReason}
+              onChange={(event) => setReverseReason(event.target.value)}
+              disabled={reverse.isPending}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" disabled={reverse.isPending} onClick={() => setReverseTarget(null)}>Cancel</Button>
+            <Button
+              variant="danger"
+              disabled={!reverseTarget || !reverseReason.trim() || reverse.isPending}
+              onClick={() => {
+                if (reverseTarget && reverseReason.trim()) reverse.mutate({ id: reverseTarget, reason: reverseReason.trim() })
+              }}
+            >
+              {reverse.isPending ? 'Reversing…' : 'Reverse settlement'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -277,6 +277,10 @@ const STATIC_TRAILS: Array<{ pattern: RegExp; crumbs: BreadcrumbCrumb[] }> = [
     crumbs: [{ label: 'HR', to: '/hr' }, { label: 'Employees' }],
   },
   {
+    pattern: /^\/hr\/commission-settings\/?$/,
+    crumbs: [{ label: 'HR & Payroll', to: '/hr' }, { label: 'Commission Settings' }],
+  },
+  {
     pattern: /^\/hr\/attendance\/?$/,
     crumbs: [{ label: 'HR', to: '/hr' }, { label: 'Attendance' }],
   },
@@ -342,6 +346,14 @@ const STATIC_TRAILS: Array<{ pattern: RegExp; crumbs: BreadcrumbCrumb[] }> = [
     crumbs: [{ label: 'Reports', to: '/reports' }, { label: 'Product Performance' }],
   },
   {
+    pattern: /^\/reports\/inventory-valuation\/?$/,
+    crumbs: [{ label: 'Reports', to: '/reports' }, { label: 'Inventory Valuation' }],
+  },
+  {
+    pattern: /^\/reports\/cod-settlement\/?$/,
+    crumbs: [{ label: 'Reports', to: '/reports' }, { label: 'COD Settlement' }],
+  },
+  {
     pattern: /^\/reports\/courier-returns\/?$/,
     crumbs: [{ label: 'Reports', to: '/reports' }, { label: 'Courier Returns' }],
   },
@@ -391,6 +403,14 @@ const STATIC_TRAILS: Array<{ pattern: RegExp; crumbs: BreadcrumbCrumb[] }> = [
 ]
 
 const DYNAMIC_RESOLVERS: Array<{ pattern: RegExp; resolve: BreadcrumbResolver }> = [
+  {
+    pattern: /^\/hr\/employees\/([^/]+)\/?$/,
+    resolve: (p) => [
+      { label: 'HR & Payroll', to: '/hr' },
+      { label: 'Employees', to: '/hr/employees' },
+      { label: readableLabel(p.label, 'Employee') },
+    ],
+  },
   {
     pattern: /^\/sales\/([^/]+)\/return\/?$/,
     resolve: (p) => [

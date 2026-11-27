@@ -1,0 +1,13 @@
+# V6 accounting reconciliation
+
+No financial records were modified. A read-only aggregate audit was run against the linked project; no before/after mutation totals are available because no authorized isolated data environment was verified.
+
+Source inspection found `pay_supplier(jsonb)` in versioned migrations, a supplier payment repository call with a `client_txn_key`, and financial account selection through the shared resolver. The latest source definition computes a deterministic payment reference and checks for an existing financial transaction and supplier ledger entry. This does **not** establish that the deployed function matches source or that concurrent requests are safe.
+
+**Confirmed live anomaly:** the deployed `pay_supplier` function chooses the cash chart account for the journal credit whenever it exists, regardless of the selected bank or mobile financial account. In a read-only aggregate query, 7 of 7 posted bank supplier-payment movements and 3 of 3 posted mobile movements had no journal credit to their account's mapped chart account. All 4 cash movements had a matching chart credit. Zero supplier-payment journals were unbalanced. Thus debit/credit balance does not detect this classification error. All 6 active financial accounts (2 per cash/bank/mobile kind) have eligible asset chart mappings. No posted journal was rewritten.
+
+`20260315000162_supplier_payment_journal_account.sql` is a **prepared, unapplied** forward migration. It changes future journal credits to the selected account's mapped chart account, rejects missing/ineligible mappings, serializes retries by organization and transaction key, and rejects key reuse across suppliers. It needs staging SQL and concurrent payment tests before deployment. Historical correction needs an individually reviewed reconciliation plan.
+
+Read-only duplicate candidates: 3 repeated posted `courier_settlement` journal source groups and 3 repeated supplier ledger reference groups. These may be legitimate lifecycle/reversal records; no deletion or merge is authorized from counts alone. No repeated posted `supplier_payment` journal source group was found.
+
+Required reconciliation in staging: supplier ledger against supplier due, payment against financial account movement, journal debit/credit totals, courier COD settlement and reversal against receivables and cash/bank, duplicate source references, and failed-transaction atomicity. Run read-only anomaly queries against production only after connection identity is independently verified. Historical discrepancies require a reviewed correction plan; none were changed here.

@@ -22,10 +22,10 @@ type Props = {
   supplier: Supplier
   rating?: Rating | null
   onEdit: () => void
-  onSoftDelete?: () => void
+  onStatusChange?: () => void
 }
 
-export function SupplierProfileHeader({ supplier, rating, onEdit, onSoftDelete }: Props) {
+export function SupplierProfileHeader({ supplier, rating, onEdit, onStatusChange }: Props) {
   const contactLine = [supplier.phone, supplier.email].filter(Boolean).join(' · ')
 
   return (
@@ -87,24 +87,24 @@ export function SupplierProfileHeader({ supplier, rating, onEdit, onSoftDelete }
               Edit
             </Button>
           </PermissionGate>
-          {onSoftDelete ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="outline" aria-label="More actions">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="text-[#E11D48]"
-                  onClick={() => {
-                    if (confirm(`Deactivate ${supplier.name}?`)) onSoftDelete()
-                  }}
-                >
-                  Deactivate supplier
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {onStatusChange ? (
+            <PermissionGate permission="suppliers.manage">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="outline" aria-label="More actions">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className={supplier.status === 'active' ? 'text-[#E11D48]' : undefined}
+                    onClick={onStatusChange}
+                  >
+                    {supplier.status === 'active' ? 'Deactivate supplier' : 'Reactivate supplier'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </PermissionGate>
           ) : null}
         </div>
       </div>

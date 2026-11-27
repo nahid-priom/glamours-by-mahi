@@ -44,6 +44,10 @@ const FRIENDLY_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
     message: 'A brand with this name or code already exists.',
   },
   {
+    pattern: /categories_org_name|categories_org_code/i,
+    message: 'A category with this name or code already exists.',
+  },
+  {
     pattern: /duplicate key|unique constraint|categories_org_name|categories_org_code|brands_org_|subcategories_/i,
     message: 'This record already exists. Please use a different name or code.',
   },
@@ -114,6 +118,9 @@ export function friendlyRpcError(
   fallback = 'Something went wrong. Please try again.',
 ): string {
   if (isUniqueViolation(error)) {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') {
+      return 'This record already exists. Please use a different name or code.'
+    }
     const rawUnique = extractErrorText(error)
     for (const { pattern, message } of FRIENDLY_PATTERNS) {
       if (pattern.test(rawUnique)) return message

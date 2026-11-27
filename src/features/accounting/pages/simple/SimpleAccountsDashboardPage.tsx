@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -21,7 +21,7 @@ import { PageHeader, KpiCard, ErrorText, Money, DateRangeInputs } from '../../co
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/auth-session'
-import { resolveShortcut } from '@/lib/datetime/bd'
+import { useReportFilters } from '@/features/reports/hooks/use-report-filters'
 import { formatBDT } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -44,7 +44,8 @@ function kindLabel(kind: string) {
 
 export function SimpleAccountsDashboardPage() {
   const { activeBranchId } = useAuth()
-  const [range, setRange] = useState(() => resolveShortcut('this_month'))
+  const { range, setFilters } = useReportFilters()
+  const setRange = (next: { from: string; to: string }) => setFilters(next)
 
   const accountsQuery = useQuery({
     queryKey: financialQueryKeys.hubAccounts(activeBranchId),
@@ -87,7 +88,7 @@ export function SimpleAccountsDashboardPage() {
           <div className="flex flex-wrap gap-2">
             <DateRangeInputs from={range.from} to={range.to} onChange={setRange} />
             <Button asChild size="sm" variant="outline">
-              <Link to="/accounts/transactions">Transactions</Link>
+              <Link to={`/accounts/transactions?${new URLSearchParams(range)}`}>Transactions</Link>
             </Button>
           </div>
         }

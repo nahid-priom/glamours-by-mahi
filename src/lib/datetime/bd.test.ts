@@ -8,6 +8,7 @@ import {
   todayYmd,
   dhakaWallToUtc,
   formatDisplayRange,
+  isYmd,
 } from './bd'
 
 describe('bd datetime SSOT', () => {
@@ -37,12 +38,12 @@ describe('bd datetime SSOT', () => {
     })
   })
 
-  it('single day bounds are 00:01 → 23:59:59.999 Dhaka', () => {
+  it('single day bounds include midnight through 23:59:59.999 Dhaka', () => {
     const { fromIso, toIso } = toQueryBounds('2026-08-01', '2026-08-01')
-    expect(fromIso).toBe(dhakaWallToUtc('2026-08-01', 0, 1, 0, 0).toISOString())
+    expect(fromIso).toBe(dhakaWallToUtc('2026-08-01', 0, 0, 0, 0).toISOString())
     expect(toIso).toBe(dhakaWallToUtc('2026-08-01', 23, 59, 59, 999).toISOString())
-    // 00:01 Dhaka = 18:01 previous day UTC
-    expect(fromIso).toBe('2026-07-31T18:01:00.000Z')
+    // 00:00 Dhaka = 18:00 previous day UTC
+    expect(fromIso).toBe('2026-07-31T18:00:00.000Z')
     expect(toIso).toBe('2026-08-01T17:59:59.999Z')
   })
 
@@ -56,5 +57,11 @@ describe('bd datetime SSOT', () => {
     expect(addDaysYmd('2026-08-01', 1)).toBe('2026-08-02')
     expect(compareYmd('2026-08-01', '2026-08-02')).toBe(-1)
     expect(formatDisplayRange('2026-08-01', '2026-08-01')).toBe('01 Aug 2026')
+  })
+
+  it('validates calendar dates including leap years', () => {
+    expect(isYmd('2024-02-29')).toBe(true)
+    expect(isYmd('2025-02-29')).toBe(false)
+    expect(isYmd('2026-13-01')).toBe(false)
   })
 })

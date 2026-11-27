@@ -77,7 +77,7 @@ export function EmployeesPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<string>('all')
+  const [status, setStatus] = useState<string>('active')
   const [page, setPage] = useState(1)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<EmployeeListItem | null>(null)

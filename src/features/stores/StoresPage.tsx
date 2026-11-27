@@ -25,6 +25,7 @@ import { StoreDetailsDrawer } from './StoreDetailsDrawer'
 import type { Store, StoreFormInput, StoreStatus, StoreType } from './stores.types'
 import { cn } from '@/lib/utils'
 import { toastRpcError } from '@/lib/errors/rpc-error'
+import { useAuth } from '@/features/auth/auth-session'
 
 const selectTriggerClass = 'h-11 w-full sm:w-[160px]'
 
@@ -49,6 +50,8 @@ const apiStatusVariant = {
 }
 
 export function StoresPage() {
+  const { can } = useAuth()
+  const canManageBranches = can('settings.manage')
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [search, setSearch] = useState('')
@@ -129,13 +132,14 @@ export function StoresPage() {
 
   const getActions = (store: Store) => {
     if (store.deleted_at) {
-      return [
+      return canManageBranches ? [
         {
           label: 'Restore',
           onClick: () => restoreMutation.mutate(store.id),
         },
-      ]
+      ] : [{ label: 'View Details', onClick: () => setDrawerStore(store) }]
     }
+    if (!canManageBranches) return [{ label: 'View Details', onClick: () => setDrawerStore(store) }]
     return [
       { label: 'View Details', onClick: () => setDrawerStore(store) },
       {
@@ -160,7 +164,7 @@ export function StoresPage() {
     <PageShell
       title="Stores"
       description="Multi-store order management"
-      actions={
+      actions={canManageBranches ?
         <Button
           onClick={() => {
             setEditing(null)
@@ -169,7 +173,7 @@ export function StoresPage() {
         >
           <Plus className="h-4 w-4" />
           Add Store
-        </Button>
+        </Button> : null
       }
     >
       <KpiGrid items={kpis} />
@@ -210,13 +214,13 @@ export function StoresPage() {
               </SelectContent>
             </Select>
 
-            <label className="flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-1 text-sm text-slate-600">
+            {canManageBranches ? <label className="flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-1 text-sm text-slate-600">
               <Checkbox
                 checked={showDeleted}
                 onCheckedChange={(checked) => setShowDeleted(checked === true)}
               />
               Show archived
-            </label>
+            </label> : null}
           </>
         }
       />

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const publicRoutes = ['/', '/login']
+const publicRoutes = ['/', '/admin/login']
 
 const protectedRouteSamples = [
   '/dashboard',
@@ -25,7 +25,7 @@ test.describe('Scenario 15: viewport and route smoke', () => {
       await page.goto(path)
       await expect(page.locator('body')).toBeVisible()
       const url = page.url()
-      const onLogin = url.includes('/login')
+      const onLogin = url.includes('/admin/login')
       const onApp = protectedRouteSamples.some((p) => url.includes(p.replace(/^\//, '')))
       expect(onLogin || onApp).toBeTruthy()
     })
@@ -33,7 +33,7 @@ test.describe('Scenario 15: viewport and route smoke', () => {
 
   test('mobile viewport renders login shell', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.goto('/login')
+    await page.goto('/admin/login')
     await expect(page.locator('body')).toBeVisible()
   })
 })

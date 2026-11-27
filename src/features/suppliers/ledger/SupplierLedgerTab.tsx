@@ -4,7 +4,8 @@ import { ChevronDown, ChevronRight, Download, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { AppDateRangeField } from '@/components/date-picker'
+import { addDaysYmd, startOfMonthYmd, todayYmd, toQueryBounds } from '@/lib/datetime/bd'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { enterpriseReadable } from '@/components/enterprise-readable'
 import { cn } from '@/lib/utils'
@@ -24,16 +25,11 @@ type Props = {
 }
 
 function presetRange(preset: DatePreset): { from: string | null; to: string | null } {
-  const to = new Date()
-  const toIso = to.toISOString()
   if (preset === 'all') return { from: null, to: null }
-  if (preset === 'month') {
-    const from = new Date(to.getFullYear(), to.getMonth(), 1)
-    return { from: from.toISOString(), to: toIso }
-  }
-  const days = preset === '7d' ? 7 : 30
-  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000)
-  return { from: from.toISOString(), to: toIso }
+  const today = todayYmd()
+  const from = preset === 'month' ? startOfMonthYmd(today) : addDaysYmd(today, preset === '7d' ? -6 : -29)
+  const bounds = toQueryBounds(from, today)
+  return { from: bounds.fromIso, to: bounds.toIso }
 }
 
 function Kpi({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
@@ -65,10 +61,8 @@ export function SupplierLedgerTab({ supplierId }: Props) {
 
   const range = useMemo(() => {
     if (preset === 'custom') {
-      return {
-        from: customFrom ? new Date(customFrom).toISOString() : null,
-        to: customTo ? new Date(`${customTo}T23:59:59`).toISOString() : null,
-      }
+      const bounds = toQueryBounds(customFrom || null, customTo || null)
+      return { from: bounds.fromIso, to: bounds.toIso }
     }
     return presetRange(preset)
   }, [preset, customFrom, customTo])
@@ -156,32 +150,16 @@ export function SupplierLedgerTab({ supplierId }: Props) {
           </select>
         </div>
         {preset === 'custom' ? (
-          <>
-            <div>
-              <label className="mb-1 block text-xs text-muted-foreground">From</label>
-              <Input
-                type="date"
-                value={customFrom}
-                onChange={(e) => {
-                  setCustomFrom(e.target.value)
-                  setPage(1)
-                }}
-                className="h-9"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-muted-foreground">To</label>
-              <Input
-                type="date"
-                value={customTo}
-                onChange={(e) => {
-                  setCustomTo(e.target.value)
-                  setPage(1)
-                }}
-                className="h-9"
-              />
-            </div>
-          </>
+          <AppDateRangeField
+            label="From – To"
+            from={customFrom}
+            to={customTo}
+            onChange={({ from, to }) => {
+              setCustomFrom(from)
+              setCustomTo(to)
+              setPage(1)
+            }}
+          />
         ) : null}
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Entry type</label>

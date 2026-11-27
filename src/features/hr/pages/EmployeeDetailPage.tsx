@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { PermissionGate } from '@/components/permission-gate/PermissionGate'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { useBreadcrumbLabel } from '@/components/breadcrumbs'
 import { formatBDT, formatDateShort } from '@/lib/format'
 import { queryKeys } from '@/lib/query/keys'
 import { supabase } from '@/lib/supabase/client'
@@ -74,6 +75,7 @@ export function EmployeeDetailPage() {
     queryFn: () => getEmployee(id),
     enabled: Boolean(id),
   })
+  useBreadcrumbLabel(id, employee?.full_name)
 
   const { data: branches = [] } = useQuery({
     queryKey: queryKeys.branches,

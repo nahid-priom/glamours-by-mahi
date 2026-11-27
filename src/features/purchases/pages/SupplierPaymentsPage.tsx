@@ -185,8 +185,8 @@ export function SupplierPaymentsPage() {
       toast(validation.error.issues[0]?.message ?? 'Invalid payment', 'error')
       return
     }
-    if (supplier && amount > Number(supplier.current_due) + 0.01) {
-      toast('Amount exceeds current supplier due', 'error')
+    if (supplier && amount > Number(supplier.current_due) && !settings?.allowSupplierAdvance) {
+      toast('Amount exceeds current supplier due. Supplier advances are disabled in Accounts settings.', 'error')
       return
     }
     setConfirmOpen(true)

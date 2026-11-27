@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { compareYmd, isYmd } from '@/lib/datetime/bd'
 import {
   countActiveFilters,
   defaultPeriodRange,
@@ -12,10 +13,15 @@ function readFromParams(
   params: URLSearchParams,
   defaults: ReportFilterContract,
 ): ReportFilterContract {
+  const fromParam = params.get('from')
+  const toParam = params.get('to')
+  const from = isYmd(fromParam) ? fromParam : defaults.from
+  const to = isYmd(toParam) ? toParam : defaults.to
+  const validOrder = compareYmd(from, to) <= 0
   return {
     ...defaults,
-    from: params.get('from') || defaults.from,
-    to: params.get('to') || defaults.to,
+    from: validOrder ? from : defaults.from,
+    to: validOrder ? to : defaults.to,
     branchId: params.get('branchId') || null,
     search: params.get('search') || null,
     status: params.get('status') || null,

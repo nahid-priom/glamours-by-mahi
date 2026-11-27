@@ -16,8 +16,9 @@ import {
 } from '../config/report-registry'
 import { ReportKPIGrid } from '../components/ReportKPIGrid'
 import { useReportHubSummary } from '../hooks/use-report-hub-summary'
-import { reportsRepository } from '../repositories/reports.repository'
-import { DATE_PRESETS, resolveDatePreset } from '../reports.filters'
+import { DATE_PRESETS } from '../reports.filters'
+import { useReportRange } from '../components/ReportShell'
+import type { ReportRange } from '../repositories/reports.repository'
 
 const FAV_KEY = 'reports_v4_favorites'
 const RECENT_KEY = 'reports_v4_recent'
@@ -30,7 +31,7 @@ export function ReportsHubPage() {
   const { can, profile } = useAuth()
   const orgId = profile?.organization_id ?? null
   const [q, setQ] = useState('')
-  const [range, setRange] = useState(() => reportsRepository.defaultRange())
+  const { range, setRange, applyPreset } = useReportRange()
   const [favorites, setFavorites] = useState<string[]>(() =>
     getStorageItem(prefKey(orgId, FAV_KEY), [] as string[]),
   )
@@ -95,7 +96,7 @@ export function ReportsHubPage() {
                 size="sm"
                 variant="outline"
                 className="text-xs"
-                onClick={() => setRange(resolveDatePreset(p.id))}
+                onClick={() => applyPreset(p.id)}
               >
                 {p.label}
               </Button>
@@ -142,6 +143,7 @@ export function ReportsHubPage() {
               <ReportNavCard
                 key={r.id}
                 report={r}
+                range={range}
                 favorited
                 onToggleFavorite={() => toggleFavorite(r.id)}
                 onNavigate={() => markRecent(r.id)}
@@ -159,6 +161,7 @@ export function ReportsHubPage() {
               <ReportNavCard
                 key={`recent-${r.id}`}
                 report={r}
+                range={range}
                 favorited={favorites.includes(r.id)}
                 onToggleFavorite={() => toggleFavorite(r.id)}
                 onNavigate={() => markRecent(r.id)}
@@ -179,6 +182,7 @@ export function ReportsHubPage() {
                 <ReportNavCard
                   key={r.id}
                   report={r}
+                  range={range}
                   favorited={favorites.includes(r.id)}
                   onToggleFavorite={() => toggleFavorite(r.id)}
                   onNavigate={() => markRecent(r.id)}
@@ -198,11 +202,13 @@ export function ReportsHubPage() {
 
 function ReportNavCard({
   report,
+  range,
   favorited,
   onToggleFavorite,
   onNavigate,
 }: {
   report: ReportDefinition
+  range: ReportRange
   favorited: boolean
   onToggleFavorite: () => void
   onNavigate: () => void
@@ -243,7 +249,9 @@ function ReportNavCard({
 
   return (
     <Link
-      to={report.path}
+      to={report.supportedFilters.includes('dateRange')
+        ? `${report.path}?${new URLSearchParams({ from: range.from, to: range.to })}`
+        : report.path}
       onClick={onNavigate}
       className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >

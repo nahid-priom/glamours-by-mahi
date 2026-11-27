@@ -8,7 +8,11 @@ export type DateShortcut = 'today' | 'this_week' | 'this_month'
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
 export function isYmd(value: string | null | undefined): value is string {
-  return typeof value === 'string' && YMD_RE.test(value)
+  if (typeof value !== 'string' || !YMD_RE.test(value)) return false
+  const { y, m, d } = parseYmd(value)
+  if (y < 1 || m < 1 || m > 12 || d < 1 || d > 31) return false
+  const parsed = new Date(Date.UTC(y, m - 1, d))
+  return parsed.getUTCFullYear() === y && parsed.getUTCMonth() === m - 1 && parsed.getUTCDate() === d
 }
 
 /** Calendar date (YYYY-MM-DD) for an instant in Asia/Dhaka. */
@@ -106,7 +110,7 @@ export function dhakaWallToUtc(
 
 /**
  * Query bounds for inclusive Dhaka calendar days.
- * Single day / range start: 00:01:00.000 · end: 23:59:59.999 (Asia/Dhaka).
+ * Single day / range start: 00:00:00.000 · end: 23:59:59.999 (Asia/Dhaka).
  */
 export function toQueryBounds(
   fromYmd: string | null | undefined,
@@ -121,7 +125,7 @@ export function toQueryBounds(
     to = tmp
   }
   return {
-    fromIso: dhakaWallToUtc(from, 0, 1, 0, 0).toISOString(),
+    fromIso: dhakaWallToUtc(from, 0, 0, 0, 0).toISOString(),
     toIso: dhakaWallToUtc(to, 23, 59, 59, 999).toISOString(),
   }
 }
