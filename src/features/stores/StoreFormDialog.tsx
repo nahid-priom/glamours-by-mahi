@@ -73,6 +73,7 @@ export function StoreFormDialog({
   const { data: couriers = [] } = useQuery({
     queryKey: ['courier-companies', 'store-form'],
     queryFn: () => courierRepository.listCompanies(),
+    enabled: open,
   })
 
   useEffect(() => {

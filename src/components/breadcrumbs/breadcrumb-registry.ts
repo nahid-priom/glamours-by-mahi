@@ -374,7 +374,7 @@ const STATIC_TRAILS: Array<{ pattern: RegExp; crumbs: BreadcrumbCrumb[] }> = [
     pattern: /^\/activity-logs\/?$/,
     crumbs: [{ label: 'Settings', to: '/settings' }, { label: 'Activity Logs' }],
   },
-  { pattern: /^\/stores\/?$/, crumbs: [{ label: 'Settings', to: '/settings' }, { label: 'Stores' }] },
+  { pattern: /^\/stores\/?$/, crumbs: [{ label: 'Stores' }] },
   {
     pattern: /^\/administration\/users\/new\/?$/,
     crumbs: [

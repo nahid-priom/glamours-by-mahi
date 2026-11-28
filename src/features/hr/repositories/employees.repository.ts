@@ -212,10 +212,8 @@ export async function linkEmployeeProfile(employeeId: string, profileId: string 
   return data
 }
 
+/** Soft-archive via server RPC (preserves history; revokes linked access via trigger). */
 export async function softDeleteEmployee(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('employees')
-    .update({ deleted_at: new Date().toISOString(), status: 'inactive' })
-    .eq('id', id)
+  const { error } = await untypedRpc('archive_employee', { p_employee_id: id })
   if (error) throw error
 }

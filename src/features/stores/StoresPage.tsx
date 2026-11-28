@@ -284,38 +284,40 @@ export function StoresPage() {
                         </td>
                         <td className="px-4 py-3 sm:px-5" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1">
-                            {!store.deleted_at ? (
-                              <>
+                            {canManageBranches ? (
+                              !store.deleted_at ? (
+                                <>
+                                  <Button
+                                    variant="blue"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    onClick={() => {
+                                      setEditing(store)
+                                      setFormOpen(true)
+                                    }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="danger"
+                                    size="sm"
+                                    className="h-7 px-2"
+                                    onClick={() => setDeleteTarget(store)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              ) : (
                                 <Button
-                                  variant="blue"
+                                  variant="success"
                                   size="sm"
                                   className="h-7 px-2"
-                                  onClick={() => {
-                                    setEditing(store)
-                                    setFormOpen(true)
-                                  }}
+                                  onClick={() => restoreMutation.mutate(store.id)}
                                 >
-                                  <Pencil className="h-3 w-3" />
+                                  <RotateCcw className="h-3 w-3" />
                                 </Button>
-                                <Button
-                                  variant="danger"
-                                  size="sm"
-                                  className="h-7 px-2"
-                                  onClick={() => setDeleteTarget(store)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                variant="success"
-                                size="sm"
-                                className="h-7 px-2"
-                                onClick={() => restoreMutation.mutate(store.id)}
-                              >
-                                <RotateCcw className="h-3 w-3" />
-                              </Button>
-                            )}
+                              )
+                            ) : null}
                           </div>
                         </td>
                       </tr>

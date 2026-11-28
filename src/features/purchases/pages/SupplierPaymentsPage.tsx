@@ -202,7 +202,7 @@ export function SupplierPaymentsPage() {
         </p>
       </div>
 
-      <PermissionGate permission={['supplier_due.pay', 'accounts.post', 'purchases.create', 'accounts.manage']}>
+      <PermissionGate permission={['supplier_due.pay', 'accounts.post', 'purchases.pay', 'accounts.manage']}>
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
           <div className="grid gap-2 rounded-xl border border-border bg-white p-4 sm:grid-cols-2">
             <div className="sm:col-span-2">

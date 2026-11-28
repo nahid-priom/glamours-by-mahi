@@ -120,7 +120,7 @@ export function SupplierDuePage() {
             formatBDT(r.due),
             <PermissionGate
               key={r.id}
-              permission={['supplier_due.pay', 'accounts.manage', 'accounts.post', 'purchases.create']}
+              permission={['supplier_due.pay', 'accounts.manage', 'accounts.post', 'purchases.pay']}
             >
               <Button
                 size="sm"

@@ -14,12 +14,15 @@ describe('reported route breadcrumbs', () => {
 
   it.each([
     ['/hr/commission-settings', 'Commission Settings', 'HR & Payroll'],
-    ['/stores', 'Stores', 'Settings'],
     ['/reports/inventory-valuation', 'Inventory Valuation', 'Reports'],
     ['/reports/cod-settlement', 'COD Settlement', 'Reports'],
   ])('resolves %s', (path, page, parent) => {
     const crumbs = resolveBreadcrumbs(path)
     expect(crumbs[0]?.label).toBe(parent)
     expect(crumbs.at(-1)?.label).toBe(page)
+  })
+
+  it('resolves /stores as top-level (not under Settings)', () => {
+    expect(resolveBreadcrumbs('/stores')).toEqual([{ label: 'Stores' }])
   })
 })

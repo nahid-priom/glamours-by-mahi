@@ -57,7 +57,9 @@ export function DeliveryTrackingPage() {
           ))}
         </select>
         {selected && selected.status !== 'delivered' ? (
-          <PermissionGate permission={['courier.book', 'courier.settle']}>
+          <PermissionGate
+            permission={['courier.book', 'courier.settle', 'courier.cancel', 'orders.fulfil']}
+          >
             <Button
               size="sm"
               disabled={markDelivered.isPending}

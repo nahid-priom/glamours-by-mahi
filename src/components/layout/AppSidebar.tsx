@@ -173,7 +173,11 @@ export const SIDEBAR_NAV_GROUPS: NavGroup[] = [
     children: [
       { to: '/couriers', label: 'Courier Companies', end: true, permission: 'courier.read' },
       { to: '/couriers/parcels', label: 'Parcel Booking', permission: ['courier.manage', 'courier.book'] },
-      { to: '/couriers/tracking', label: 'Delivery Tracking', permission: 'courier.read' },
+      {
+        to: '/couriers/tracking',
+        label: 'Delivery Tracking',
+        permission: ['courier.read', 'courier.book', 'courier.settle', 'courier.cancel', 'orders.fulfil'],
+      },
       { to: '/couriers/returns', label: 'Return Requests', permission: 'sales.return.review' },
       { to: '/couriers/settlements', label: 'Courier Settlements', permission: ['courier.read', 'courier.settle'] },
     ],
